@@ -19,8 +19,7 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
   // 基础菜单项
   const baseMenuItems = [
     { id: 'home', label: '学习首页', icon: Home },
-    { id: 'tasks', label: '我的任务', icon: CheckSquare },
-    { id: 'quiz', label: '小测练习', icon: FileText },
+    { id: 'tasks', label: '我的课程', icon: CheckSquare },
     { id: 'retry', label: '错题重做', icon: RotateCcw },
     { id: 'progress', label: '学习进度', icon: TrendingUp },
     { id: 'certificate', label: '证书中心', icon: Award },
@@ -34,7 +33,7 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
 
   // 根据用户身份动态生成菜单项
   const menuItems = isAdmin() 
-    ? [...baseMenuItems.slice(0, 5), ...adminMenuItems, baseMenuItems[5]] // 在证书中心前插入管理员菜单项
+    ? [...baseMenuItems.slice(0, 4), ...adminMenuItems, baseMenuItems[4]] // 在证书中心前插入管理员菜单项
     : baseMenuItems;
 
   const handleLogout = () => {

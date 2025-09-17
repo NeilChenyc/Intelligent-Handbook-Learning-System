@@ -1,14 +1,9 @@
 import React from 'react';
-import { Button } from './ui/Button';
-import { LogOut, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
-  const { user, logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-  };
+  const { user } = useAuth();
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -24,17 +19,6 @@ const Header = () => {
           </div>
           <span className="text-sm text-gray-700">{user?.name || '用户'}</span>
         </div>
-        
-        {/* 退出按钮 */}
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleLogout}
-          className="flex items-center space-x-1"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>退出</span>
-        </Button>
       </div>
     </header>
   );

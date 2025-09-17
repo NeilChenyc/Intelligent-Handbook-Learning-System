@@ -50,17 +50,15 @@ const LoginPage = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
 
-    // 模拟登录验证
+    // 简化登录验证 - 任意账号密码都可以登录
     setTimeout(() => {
-      const targetUser = users[formData.userType];
-      
-      if (formData.username === targetUser.username && 
-          formData.password === targetUser.password) {
+      // 只要用户名和密码不为空就允许登录
+      if (formData.username.trim() && formData.password.trim()) {
         // 登录成功
         const userInfo = {
-          username: targetUser.username,
-          role: targetUser.role,
-          name: targetUser.name,
+          username: formData.username,
+          role: formData.userType, // 使用选择的用户类型
+          name: formData.userType === 'admin' ? '管理员' : '学员',
           loginTime: new Date().toISOString()
         };
         
@@ -70,11 +68,11 @@ const LoginPage = ({ onLogin }) => {
         // 调用父组件的登录回调
         onLogin(userInfo);
       } else {
-        setError('用户名或密码错误，请重试');
+        setError('请输入用户名和密码');
       }
       
       setIsLoading(false);
-    }, 1000);
+    }, 500); // 减少等待时间
   };
 
   return (
@@ -179,15 +177,6 @@ const LoginPage = ({ onLogin }) => {
             {isLoading ? '登录中...' : '登录'}
           </button>
         </form>
-
-        {/* 测试账号提示 */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-2">测试账号：</p>
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>管理员：admin / admin123</p>
-            <p>学员：student / student123</p>
-          </div>
-        </div>
       </div>
     </div>
   );
