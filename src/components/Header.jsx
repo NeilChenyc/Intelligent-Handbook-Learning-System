@@ -1,11 +1,13 @@
 import React from 'react';
 import { Button } from './ui/Button';
 import { LogOut, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
+  const { user, logout } = useAuth();
+
   const handleLogout = () => {
-    // 这里可以添加退出登录的逻辑
-    console.log('用户退出登录');
+    logout();
   };
 
   return (
@@ -20,7 +22,7 @@ const Header = () => {
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
             <User className="w-5 h-5 text-white" />
           </div>
-          <span className="text-sm text-gray-700">用户名</span>
+          <span className="text-sm text-gray-700">{user?.name || '用户'}</span>
         </div>
         
         {/* 退出按钮 */}
