@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/Intelligent-Handbook-Learning-System/static/css/main.59476a9e.css",
-    "main.js": "/Intelligent-Handbook-Learning-System/static/js/main.72624ae4.js",
+    "main.css": "/Intelligent-Handbook-Learning-System/static/css/main.132e2dbd.css",
+    "main.js": "/Intelligent-Handbook-Learning-System/static/js/main.6efa9d42.js",
     "index.html": "/Intelligent-Handbook-Learning-System/index.html",
-    "main.59476a9e.css.map": "/Intelligent-Handbook-Learning-System/static/css/main.59476a9e.css.map",
-    "main.72624ae4.js.map": "/Intelligent-Handbook-Learning-System/static/js/main.72624ae4.js.map"
+    "main.132e2dbd.css.map": "/Intelligent-Handbook-Learning-System/static/css/main.132e2dbd.css.map",
+    "main.6efa9d42.js.map": "/Intelligent-Handbook-Learning-System/static/js/main.6efa9d42.js.map"
   },
   "entrypoints": [
-    "static/css/main.59476a9e.css",
-    "static/js/main.72624ae4.js"
+    "static/css/main.132e2dbd.css",
+    "static/js/main.6efa9d42.js"
   ]
 }
