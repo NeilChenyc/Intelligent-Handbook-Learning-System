@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Intelligent-Handbook-Learning-System/static/css/main.dd4b8f19.css",
+    "main.js": "/Intelligent-Handbook-Learning-System/static/js/main.b58966f8.js",
+    "index.html": "/Intelligent-Handbook-Learning-System/index.html",
+    "main.dd4b8f19.css.map": "/Intelligent-Handbook-Learning-System/static/css/main.dd4b8f19.css.map",
+    "main.b58966f8.js.map": "/Intelligent-Handbook-Learning-System/static/js/main.b58966f8.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.dd4b8f19.css",
+    "static/js/main.b58966f8.js"
+  ]
+}
