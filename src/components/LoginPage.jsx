@@ -5,7 +5,7 @@ const LoginPage = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    userType: 'student' // 'admin' or 'student'
+    userType: 'admin' // 'admin' or 'student'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -114,6 +114,23 @@ const LoginPage = ({ onLogin }) => {
               <UserCheck className="w-4 h-4 mr-2" />
               管理员登录
             </button>
+          </div>
+        </div>
+
+        {/* 功能提示 */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 text-sm font-medium">💡</span>
+              </div>
+            </div>
+            <div>
+               <p className="text-blue-800 text-sm font-medium mb-1">功能体验提示</p>
+               <p className="text-blue-700 text-sm">
+                 请在管理员模式登录demo浏览完整功能，账号密码随便输即可
+               </p>
+             </div>
           </div>
         </div>
 

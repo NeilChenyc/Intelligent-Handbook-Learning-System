@@ -9,6 +9,7 @@ import QuizPage from './components/QuizPage';
 import ProgressPage from './components/ProgressPage';
 import HandbookPage from './components/HandbookPage';
 import PlaceholderPage from './components/PlaceholderPage';
+import WrongQuestionsPage from './components/WrongQuestionsPage';
 import ReportPage from './components/ReportPage';
 import CertificatePage from './components/CertificatePage';
 import CourseManagementPage from './components/CourseManagementPage';
@@ -17,8 +18,8 @@ import QuizManagementPage from './components/QuizManagementPage';
 // 主应用内容组件
 const AppContent = () => {
   const { isAuthenticated, isLoading, login } = useAuth();
-  const [activeMenu, setActiveMenu] = useState('home');
-  const [navigationHistory, setNavigationHistory] = useState(['home']);
+  const [activeMenu, setActiveMenu] = useState('tasks');
+  const [navigationHistory, setNavigationHistory] = useState(['tasks']);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
 
   // 处理菜单变化并更新历史记录
@@ -226,19 +227,12 @@ const AppContent = () => {
 
   const renderContent = () => {
     switch (activeMenu) {
-      case 'home':
-        return <HandbookPage />;
       case 'tasks':
         return <CoursePage />;
       case 'quiz':
         return <QuizPage />;
       case 'retry':
-        return (
-          <PlaceholderPage 
-            title="错题重做" 
-            description="重新练习之前做错的题目" 
-          />
-        );
+        return <WrongQuestionsPage />;
       case 'progress':
         return <ProgressPage />;
       case 'course-management':
@@ -248,7 +242,7 @@ const AppContent = () => {
       case 'certificate':
         return <CertificatePage />;
       default:
-        return <HomePage />;
+        return <CoursePage />;
     }
   };
 

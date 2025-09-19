@@ -181,6 +181,7 @@ const CoursePage = () => {
     return (
       <QuizPage 
         quizId={selectedQuizId}
+        courseName={selectedCourse?.title}
         onBack={handleBackToQuizList}
       />
     );

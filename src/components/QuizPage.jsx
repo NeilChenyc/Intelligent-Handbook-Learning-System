@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { CheckCircle, XCircle, FileText, Shield } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Shield, ArrowLeft } from 'lucide-react';
 
-const QuizPage = () => {
+const QuizPage = ({ quizId, courseName, onBack }) => {
   // 模拟公司制度考核数据
   const [questions] = useState([
     {
@@ -94,6 +94,45 @@ const QuizPage = () => {
 
   const handleSubmit = () => {
     setSubmitted(true);
+    
+    // 记录错题到localStorage
+    const wrongQuestions = [];
+    questions.forEach(question => {
+      const userAnswer = answers[question.id];
+      const isCorrect = isCorrectAnswer(question, userAnswer);
+      
+      if (!isCorrect) {
+        // 添加课程信息到错题中
+        const wrongQuestion = {
+          ...question,
+          courseName: courseName || '员工手册学习',
+          userAnswer: userAnswer,
+          timestamp: new Date().toISOString()
+        };
+        wrongQuestions.push(wrongQuestion);
+      }
+    });
+    
+    // 获取现有错题并合并
+    const existingWrongQuestions = JSON.parse(localStorage.getItem('wrongQuestions') || '[]');
+    
+    // 去重：如果题目已存在，更新它；否则添加新题目
+    const updatedWrongQuestions = [...existingWrongQuestions];
+    wrongQuestions.forEach(newWrongQ => {
+      const existingIndex = updatedWrongQuestions.findIndex(
+        existing => existing.id === newWrongQ.id && existing.courseName === newWrongQ.courseName
+      );
+      
+      if (existingIndex >= 0) {
+        // 更新现有错题
+        updatedWrongQuestions[existingIndex] = newWrongQ;
+      } else {
+        // 添加新错题
+        updatedWrongQuestions.push(newWrongQ);
+      }
+    });
+    
+    localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
   };
 
   const isCorrectAnswer = (question, userAnswer) => {
@@ -121,10 +160,26 @@ const QuizPage = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {/* 返回按钮 */}
+      {onBack && (
+        <div className="mb-4">
+          <Button 
+            variant="outline" 
+            onClick={onBack}
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>返回</span>
+          </Button>
+        </div>
+      )}
+      
       <div className="mb-6">
         <div className="flex items-center space-x-3 mb-4">
           <FileText className="w-8 h-8 text-blue-600" />
-          <h2 className="text-3xl font-bold text-gray-900">员工手册合规考核</h2>
+          <h2 className="text-3xl font-bold text-gray-900">
+            {courseName ? `${courseName} - 小测` : '员工手册合规考核'}
+          </h2>
         </div>
         <p className="text-gray-600">请仔细阅读题目并选择正确答案，测试您对公司规章制度的掌握程度</p>
       </div>
