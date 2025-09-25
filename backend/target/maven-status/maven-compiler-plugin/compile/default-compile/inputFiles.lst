@@ -1,0 +1,10 @@
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/exception/ResourceNotFoundException.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/dto/ApiResponse.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/controller/HealthController.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/LearningPlatformApplication.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/repository/BaseRepository.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/config/SecurityConfig.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/exception/GlobalExceptionHandler.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/service/BaseService.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/model/BaseEntity.java
+/Users/a99/localDocuments/codeBase/ideaWorkplace/5620/backend/src/main/java/com/example/learningplatform/config/CorsConfig.java
