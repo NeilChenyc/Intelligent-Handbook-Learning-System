@@ -15,23 +15,33 @@
 ## 项目结构
 
 ```
-src/main/java/com/example/learningplatform/
-├── config/                 # 配置类
-│   ├── CorsConfig.java     # CORS跨域配置
-│   └── SecurityConfig.java # Spring Security配置
+src/main/java/com/quiz/
+├── agent/                  # AI代理
+│   └── PdfQuizAgent.java   # PDF题目生成代理
 ├── controller/             # 控制器层
-│   └── HealthController.java
+│   ├── AuthController.java # 认证控制器
+│   ├── CourseController.java # 课程控制器
+│   ├── QuizController.java # 题目控制器
+│   ├── ProgressController.java # 进度控制器
+│   └── ReportController.java # 报告控制器
 ├── dto/                    # 数据传输对象
-│   └── ApiResponse.java    # 统一API响应格式
-├── exception/              # 异常处理
-│   ├── GlobalExceptionHandler.java
-│   └── ResourceNotFoundException.java
-├── model/                  # 实体类
-│   └── BaseEntity.java     # 基础实体类
+│   ├── ApiResponse.java    # 统一API响应格式
+│   ├── LoginRequest.java   # 登录请求
+│   ├── LoginResponse.java  # 登录响应
+│   └── ...                 # 其他DTO
+├── entity/                 # 实体类
+│   ├── User.java          # 用户实体
+│   ├── Course.java        # 课程实体
+│   ├── Quiz.java          # 题目实体
+│   └── ...                # 其他实体
 ├── repository/             # 数据访问层
-│   └── BaseRepository.java # 基础仓库接口
+│   ├── UserRepository.java # 用户仓库
+│   ├── CourseRepository.java # 课程仓库
+│   └── ...                # 其他仓库
 ├── service/                # 服务层
-│   └── BaseService.java    # 基础服务接口
+│   ├── AuthService.java   # 认证服务
+│   ├── CourseService.java # 课程服务
+│   └── ...                # 其他服务
 └── LearningPlatformApplication.java # 应用程序入口
 ```
 
