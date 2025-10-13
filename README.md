@@ -12,8 +12,7 @@ This project aims to create a complete agent-based learning ecosystem that inclu
 - **AI Agent Backend**: Intelligent learning assistants and content processors
 - **Learning Analytics**: Advanced progress tracking and performance analysis
 - **Content Management**: Dynamic handbook and training material management
-- **Compliance Monitoring**: Automated compliance tracking and reporting
-
+- **Compliance Monitoring**: Automated compliance tracking 
 ## ✨ Key Features
 
 ### 🤖 AI-Powered Learning
