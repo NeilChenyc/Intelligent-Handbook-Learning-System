@@ -56,12 +56,12 @@ export const AuthProvider = ({ children }) => {
 
   // 检查用户是否为管理员
   const isAdmin = () => {
-    return user && user.role === 'admin';
+    return user && (user.role === 'admin' || user.role === 'ADMIN');
   };
 
   // 检查用户是否为学员
   const isStudent = () => {
-    return user && user.role === 'student';
+    return user && (user.role === 'student' || user.role === 'STUDENT');
   };
 
   // 获取用户权限
@@ -70,9 +70,9 @@ export const AuthProvider = ({ children }) => {
     
     const basePermissions = ['dashboard', 'learning', 'progress'];
     
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'ADMIN') {
       return [...basePermissions, 'compliance', 'user-management', 'system-settings'];
-    } else if (user.role === 'student') {
+    } else if (user.role === 'student' || user.role === 'STUDENT') {
       return basePermissions;
     }
     

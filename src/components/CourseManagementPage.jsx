@@ -1,113 +1,199 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import CourseUploadModal from './CourseUploadModal';
-import CourseEditModal from './CourseEditModal';
-import QuizManagementPage from './QuizManagementPage';
 import { 
-  Upload, 
   BookOpen, 
+  Users, 
+  Calendar, 
+  Plus, 
+  Search, 
+  Filter, 
   Edit, 
   Eye, 
-  FileText, 
-  Calendar,
-  Users,
+  Trash2, 
+  MoreVertical,
+  FileText,
   Clock,
-  Plus
+  Tag
 } from 'lucide-react';
+import CourseUploadModal from './CourseUploadModal';
+import CourseEditModal from './CourseEditModal';
+import QuestionManagementPage from './QuestionManagementPage';
+import { getAllCourses, updateCourse, deleteCourse } from '../api/courseApi';
 
 const CourseManagementPage = () => {
-  const [courses, setCourses] = useState([
-    {
-      id: 1,
-      title: 'React 基础教程',
-      description: '学习 React 的基础知识和核心概念',
-      uploadDate: '2024-01-15',
-      status: 'published',
-      studentsCount: 45,
-      quizCount: 12,
-      fileSize: '2.3 MB'
-    },
-    {
-      id: 2,
-      title: 'JavaScript 高级特性',
-      description: '深入了解 JavaScript 的高级特性和最佳实践',
-      uploadDate: '2024-01-10',
-      status: 'draft',
-      studentsCount: 23,
-      quizCount: 8,
-      fileSize: '1.8 MB'
-    }
-  ]);
-
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedCourseForQuestions, setSelectedCourseForQuestions] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  // 获取课程数据
+  const fetchCourses = async (retryCount = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 添加超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      
+      const coursesData = await getAllCourses();
+      clearTimeout(timeoutId);
+      setCourses(coursesData);
+    } catch (err) {
+      console.error('Failed to fetch courses:', err);
+      
+      // 如果是网络错误且重试次数少于3次，自动重试
+      if (retryCount < 3 && (err.name === 'AbortError' || err.message.includes('fetch'))) {
+        console.log(`重试获取课程数据，第 ${retryCount + 1} 次`);
+        setTimeout(() => {
+          fetchCourses(retryCount + 1);
+        }, 1000 * (retryCount + 1)); // 递增延迟
+        return;
+      }
+      
+      let errorMessage = '获取课程列表失败，请稍后重试';
+      if (err.name === 'AbortError') {
+        errorMessage = '请求超时，请检查网络连接';
+      } else if (err.message.includes('500')) {
+        errorMessage = '服务器内部错误，请稍后重试';
+      } else if (err.message.includes('404')) {
+        errorMessage = '服务未找到，请检查后端服务是否正常运行';
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 组件挂载时获取数据
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
   const handleUploadClick = () => {
     setShowUploadModal(true);
   };
 
   const handleUpload = (courseData) => {
-    // 生成新的课程ID
-    const newCourse = {
-      ...courseData,
-      id: courses.length + 1,
-      tags: courseData.tags ? courseData.tags.split(',').map(tag => tag.trim()) : []
-    };
-    
-    setCourses(prev => [...prev, newCourse]);
+    // 重新获取课程列表以确保数据同步
+    fetchCourses();
     setShowUploadModal(false);
   };
+
+  // 添加加载和错误状态的处理
+  if (loading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">加载课程数据中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <BookOpen className="w-12 h-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">加载失败</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <Button onClick={fetchCourses} className="flex items-center space-x-2">
+              <span>重试</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleEditCourse = (course) => {
     setEditingCourse(course);
   };
 
-  const handleSaveCourse = (updatedCourse) => {
-    setCourses(prev => prev.map(c => c.id === updatedCourse.id ? updatedCourse : c));
-    setEditingCourse(null);
+  const handleSaveCourse = async (updatedCourse) => {
+    try {
+      const savedCourse = await updateCourse(updatedCourse.id, {
+        title: updatedCourse.title,
+        description: updatedCourse.description,
+        teacherId: updatedCourse.teacher?.id
+      });
+      
+      // 更新本地状态
+      setCourses(prev => prev.map(c => c.id === savedCourse.id ? savedCourse : c));
+      setEditingCourse(null);
+      
+      // 可选：显示成功消息
+      alert('课程更新成功！');
+    } catch (error) {
+      console.error('Failed to update course:', error);
+      alert('更新课程失败，请稍后重试');
+    }
   };
 
-  const handleQuizManagement = (course) => {
-    setSelectedCourse(course);
+  const handleQuestionManagement = (course) => {
+    setSelectedCourseForQuestions(course);
   };
 
-  // 如果选中了课程，显示小测题目管理页面
-  if (selectedCourse) {
+  const handlePreviewCourse = async (course) => {
+    try {
+      // 调用后端API下载PDF文件
+      const response = await fetch(`http://localhost:8081/api/courses/${course.id}/handbook`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          alert('该课程暂无手册文件');
+          return;
+        }
+        throw new Error('下载失败');
+      }
+
+      // 获取文件内容
+      const blob = await response.blob();
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = course.handbookFileName || `${course.title}_手册.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下载PDF失败:', error);
+      alert('下载失败，请稍后重试');
+    }
+  };
+
+  // 如果选中了课程进行题目管理，显示题目管理页面
+  if (selectedCourseForQuestions) {
     return (
-      <QuizManagementPage 
-        course={selectedCourse} 
-        onBack={() => setSelectedCourse(null)} 
+      <QuestionManagementPage 
+        course={selectedCourseForQuestions} 
+        onBack={() => setSelectedCourseForQuestions(null)} 
       />
     );
   }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'published':
-        return 'bg-green-100 text-green-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'published':
-        return '已发布';
-      case 'draft':
-        return '草稿';
-      case 'processing':
-        return '处理中';
-      default:
-        return '未知';
-    }
-  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -128,7 +214,7 @@ const CourseManagementPage = () => {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-3">
@@ -146,28 +232,12 @@ const CourseManagementPage = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {courses.reduce((sum, course) => sum + course.studentsCount, 0)}
-                </p>
-                <p className="text-sm text-gray-600">学习人数</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
               <div className="p-3 bg-purple-100 rounded-lg">
                 <FileText className="w-6 h-6 text-purple-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {courses.reduce((sum, course) => sum + course.quizCount, 0)}
+                  {courses.reduce((sum, course) => sum + (course.quizzes?.length || 0), 0)}
                 </p>
                 <p className="text-sm text-gray-600">小测题目</p>
               </div>
@@ -178,12 +248,12 @@ const CourseManagementPage = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Clock className="w-6 h-6 text-orange-600" />
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Clock className="w-6 h-6 text-green-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {courses.filter(course => course.status === 'published').length}
+                  {courses.filter(course => course.isActive).length}
                 </p>
                 <p className="text-sm text-gray-600">已发布</p>
               </div>
@@ -208,34 +278,31 @@ const CourseManagementPage = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(course.status)}`}>
-                        {getStatusText(course.status)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${course.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {course.isActive ? '已发布' : '未发布'}
                       </span>
                     </div>
                     <p className="text-gray-600 mb-4">{course.description}</p>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
                       <div className="flex items-center space-x-1">
                         <Calendar className="w-4 h-4" />
-                        <span>上传时间: {course.uploadDate}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Users className="w-4 h-4" />
-                        <span>学习人数: {course.studentsCount}</span>
+                        <span>创建时间: {new Date(course.createdAt).toLocaleDateString('zh-CN')}</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <FileText className="w-4 h-4" />
-                        <span>题目数: {course.quizCount}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Upload className="w-4 h-4" />
-                        <span>文件大小: {course.fileSize}</span>
+                        <span>教师: {course.teacher?.fullName || course.teacher?.username || '未知'}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex flex-col space-y-2 ml-6">
-                    <Button size="sm" variant="outline" className="flex items-center space-x-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex items-center space-x-1"
+                      onClick={() => handlePreviewCourse(course)}
+                    >
                       <Eye className="w-4 h-4" />
                       <span>预览</span>
                     </Button>
@@ -250,10 +317,11 @@ const CourseManagementPage = () => {
                     </Button>
                     <Button 
                       size="sm" 
+                      variant="outline"
                       className="flex items-center space-x-1"
-                      onClick={() => handleQuizManagement(course)}
+                      onClick={() => handleQuestionManagement(course)}
                     >
-                      <FileText className="w-4 h-4" />
+                      <Edit className="w-4 h-4" />
                       <span>题目管理</span>
                     </Button>
                   </div>

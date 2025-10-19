@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import HomePage from './components/HomePage';
@@ -21,6 +22,7 @@ const AppContent = () => {
   const [activeMenu, setActiveMenu] = useState('tasks');
   const [navigationHistory, setNavigationHistory] = useState(['tasks']);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
+  const [showRegister, setShowRegister] = useState(false);
 
   // 处理菜单变化并更新历史记录
   const handleMenuChange = (newMenu) => {
@@ -220,9 +222,25 @@ const AppContent = () => {
     );
   }
 
-  // 如果未登录，显示登录页面
+  // 如果未登录，显示登录或注册页面
   if (!isAuthenticated()) {
-    return <LoginPage onLogin={login} />;
+    if (showRegister) {
+      return (
+        <RegisterPage 
+          onRegister={(userInfo) => {
+            // 注册成功后可以选择自动登录或跳转到登录页面
+            setShowRegister(false);
+          }}
+          onBackToLogin={() => setShowRegister(false)}
+        />
+      );
+    }
+    return (
+      <LoginPage 
+        onLogin={login} 
+        onShowRegister={() => setShowRegister(true)}
+      />
+    );
   }
 
   const renderContent = () => {

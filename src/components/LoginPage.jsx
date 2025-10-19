@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, UserCheck, GraduationCap } from 'lucide-react';
 
-const LoginPage = ({ onLogin }) => {
+const LoginPage = ({ onLogin, onShowRegister }) => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -50,15 +50,30 @@ const LoginPage = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
 
-    // 简化登录验证 - 任意账号密码都可以登录
-    setTimeout(() => {
-      // 只要用户名和密码不为空就允许登录
-      if (formData.username.trim() && formData.password.trim()) {
+    try {
+      // 调用后端登录API
+      const response = await fetch('http://localhost:8081/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
         // 登录成功
         const userInfo = {
-          username: formData.username,
-          role: formData.userType, // 使用选择的用户类型
-          name: formData.userType === 'admin' ? '管理员' : '学员',
+          id: data.user.id,
+          username: data.user.username,
+          email: data.user.email,
+          fullName: data.user.fullName,
+          role: data.user.role.toLowerCase(),
+          name: data.user.fullName || data.user.username,
           loginTime: new Date().toISOString()
         };
         
@@ -68,11 +83,14 @@ const LoginPage = ({ onLogin }) => {
         // 调用父组件的登录回调
         onLogin(userInfo);
       } else {
-        setError('请输入用户名和密码');
+        setError(data.message || '登录失败，请检查用户名和密码');
       }
-      
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('网络错误，请稍后重试');
+    } finally {
       setIsLoading(false);
-    }, 500); // 减少等待时间
+    }
   };
 
   return (
@@ -180,6 +198,19 @@ const LoginPage = ({ onLogin }) => {
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
+
+          {/* 登录链接 */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              还没有账户？
+              <button
+                onClick={onShowRegister}
+                className="text-blue-600 hover:text-blue-700 font-medium ml-1"
+              >
+                立即注册
+              </button>
+            </p>
+          </div>
 
           {/* 登录按钮 */}
           <button

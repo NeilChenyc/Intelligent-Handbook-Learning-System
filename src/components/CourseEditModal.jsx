@@ -5,10 +5,7 @@ import { X, Save } from 'lucide-react';
 const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
-    category: '',
-    estimatedHours: '',
-    tags: ''
+    description: ''
   });
 
   const categories = [
@@ -24,10 +21,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
     if (course) {
       setFormData({
         title: course.title || '',
-        description: course.description || '',
-        category: course.category || '',
-        estimatedHours: course.estimatedHours || '',
-        tags: Array.isArray(course.tags) ? course.tags.join(', ') : (course.tags || '')
+        description: course.description || ''
       });
     }
   }, [course]);
@@ -50,8 +44,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
 
     const updatedCourse = {
       ...course,
-      ...formData,
-      tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
+      ...formData
     };
 
     onSave(updatedCourse);
@@ -77,8 +70,8 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 课程信息表单 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+            <div className="space-y-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   课程标题 *
                 </label>
@@ -93,7 +86,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
                 />
               </div>
 
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   课程描述
                 </label>
@@ -101,58 +94,9 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  rows={3}
+                  rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                   placeholder="请输入课程描述"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  课程分类
-                </label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                >
-                  <option value="">请选择分类</option>
-                  {categories.map(category => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  预计学习时长 (小时)
-                </label>
-                <input
-                  type="number"
-                  name="estimatedHours"
-                  value={formData.estimatedHours}
-                  onChange={handleInputChange}
-                  min="1"
-                  max="100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="例如: 8"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  标签 (用逗号分隔)
-                </label>
-                <input
-                  type="text"
-                  name="tags"
-                  value={formData.tags}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="例如: React, 前端, 入门"
                 />
               </div>
             </div>

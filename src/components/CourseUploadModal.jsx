@@ -12,10 +12,7 @@ import {
 const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
-    category: '',
-    estimatedHours: '',
-    tags: ''
+    description: ''
   });
   
   const [file, setFile] = useState(null);
@@ -23,15 +20,6 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
-
-  const categories = [
-    { value: 'programming', label: '编程开发' },
-    { value: 'design', label: '设计创意' },
-    { value: 'business', label: '商业管理' },
-    { value: 'marketing', label: '市场营销' },
-    { value: 'data', label: '数据分析' },
-    { value: 'other', label: '其他' }
-  ];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -94,33 +82,25 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     setUploadProgress(0);
 
     try {
-      // 模拟上传进度
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + Math.random() * 20;
-        });
-      }, 200);
+      // 创建FormData对象
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('teacherId', '1'); // 暂时硬编码教师ID
+      formDataToSend.append('handbookFile', file);
 
-      // 模拟上传延迟
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      clearInterval(progressInterval);
+      // 调用后端API
+      const response = await fetch('http://localhost:8081/api/courses/upload', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        throw new Error('上传失败');
+      }
+
+      const courseData = await response.json();
       setUploadProgress(100);
-
-      // 创建课程数据
-      const courseData = {
-        ...formData,
-        file: file,
-        uploadDate: new Date().toISOString().split('T')[0],
-        status: 'processing',
-        studentsCount: 0,
-        quizCount: 0,
-        fileSize: (file.size / (1024 * 1024)).toFixed(1) + ' MB'
-      };
 
       // 调用父组件的上传回调
       onUpload(courseData);
@@ -128,10 +108,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       // 重置表单
       setFormData({
         title: '',
-        description: '',
-        category: '',
-        estimatedHours: '',
-        tags: ''
+        description: ''
       });
       setFile(null);
       setUploadProgress(0);
@@ -261,55 +238,6 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                   placeholder="请输入课程描述"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  课程分类
-                </label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                >
-                  <option value="">请选择分类</option>
-                  {categories.map(category => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  预计学习时长 (小时)
-                </label>
-                <input
-                  type="number"
-                  name="estimatedHours"
-                  value={formData.estimatedHours}
-                  onChange={handleInputChange}
-                  min="1"
-                  max="100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="例如: 8"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  标签 (用逗号分隔)
-                </label>
-                <input
-                  type="text"
-                  name="tags"
-                  value={formData.tags}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="例如: React, 前端, 入门"
                 />
               </div>
             </div>

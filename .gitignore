@@ -126,3 +126,57 @@ Thumbs.db
 
 # gh-pages cache
 node_modules/.cache/gh-pages/
+
+# Java/Spring Boot
+backend/target/
+backend/*.jar
+backend/*.war
+backend/*.ear
+backend/hs_err_pid*
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# Application properties with sensitive data
+backend/src/main/resources/application-*.yml
+backend/src/main/resources/application-*.properties
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# API Keys and sensitive configuration
+config/keys.js
+config/config.json
+secrets.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Test files and temporary documents
+test-*.pdf
+test-*.txt
+*.tmp
+
+# Backend build artifacts
+backend1/target/
+backend1/*.jar
+backend1/*.war
+backend1/*.ear
+backend1/hs_err_pid*
+backend1/.mvn/
+backend1/mvnw
+backend1/mvnw.cmd
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
