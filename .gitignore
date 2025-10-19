@@ -140,6 +140,10 @@ backend/mvnw.cmd
 # Application properties with sensitive data
 backend/src/main/resources/application-*.yml
 backend/src/main/resources/application-*.properties
+backend1/src/main/resources/application-*.yml
+backend1/src/main/resources/application-*.properties
+*.yml
+*.yaml
 *.log
 
 # Environment variables
