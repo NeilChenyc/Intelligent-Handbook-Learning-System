@@ -145,7 +145,7 @@ const CourseManagementPage = () => {
   const handlePreviewCourse = async (course) => {
     try {
       // 调用后端API下载PDF文件
-      const response = await fetch(`http://localhost:8080/api/courses/${course.id}/handbook`, {
+      const response = await fetch(`http://localhost:8080/courses/${course.id}/handbook`, {
         method: 'GET',
         headers: {
           'Accept': 'application/pdf',

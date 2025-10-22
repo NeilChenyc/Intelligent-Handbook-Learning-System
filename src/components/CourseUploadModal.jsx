@@ -104,7 +104,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       formDataToSend.append('handbookFile', file);
 
       // 调用后端API
-      const response = await fetch('http://localhost:8080/api/courses/upload', {
+      const response = await fetch('http://localhost:8080/courses/upload', {
         method: 'POST',
         body: formDataToSend,
       });
@@ -151,7 +151,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       };
 
       // 调用AI处理API
-      const aiResponse = await fetch('http://localhost:8080/api/agent/process-course-async', {
+      const aiResponse = await fetch(`http://localhost:8080/api/agent/process-course/${courseId}/async`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

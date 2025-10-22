@@ -6,6 +6,8 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
 
 import java.util.List;
 
@@ -13,17 +15,20 @@ import java.util.List;
 @Slf4j
 public class QuizGenerationAgent {
 
-    private final QuizGenerator quizGenerator;
+    private QuizGenerator quizGenerator;
 
-    public QuizGenerationAgent() {
-        // For MVP, we'll use a mock implementation instead of actual OpenAI
-        // This avoids the need for API keys during development
-        QuizGenerator tempGenerator = null;
+    @Value("${langchain4j.openai.api-key:}")
+    private String openaiApiKey;
+
+    @PostConstruct
+    public void init() {
+        // Initialize QuizGenerator using API key from application.yml or environment variable as fallback
         try {
-            // Try to create with OpenAI if API key is available
-            String apiKey = System.getenv("OPENAI_API_KEY");
+            String apiKey = (openaiApiKey != null && !openaiApiKey.isEmpty())
+                    ? openaiApiKey
+                    : System.getenv("OPENAI_API_KEY");
             if (apiKey != null && !apiKey.isEmpty()) {
-                tempGenerator = AiServices.builder(QuizGenerator.class)
+                quizGenerator = AiServices.builder(QuizGenerator.class)
                         .chatLanguageModel(OpenAiChatModel.withApiKey(apiKey))
                         .build();
             } else {
@@ -33,7 +38,6 @@ public class QuizGenerationAgent {
         } catch (Exception e) {
             log.error("Failed to initialize QuizGenerator, using mock implementation", e);
         }
-        this.quizGenerator = tempGenerator;
     }
 
     public interface QuizGenerator {

@@ -31,7 +31,7 @@ public class AgentController {
      */
     @PostMapping("/process-course/{courseId}")
     public ResponseEntity<AgentProcessResult> processCourse(
-            @PathVariable Long courseId,
+            @PathVariable("courseId") Long courseId,
             @RequestBody AgentProcessRequest request) {
         try {
             log.info("Received AI processing request for course: {}, request: {}", courseId, request);
@@ -74,7 +74,7 @@ public class AgentController {
      */
     @PostMapping("/process-course/{courseId}/async")
     public ResponseEntity<Map<String, Object>> processCourseAsync(
-            @PathVariable Long courseId,
+            @PathVariable("courseId") Long courseId,
             @RequestBody AgentProcessRequest request) {
         try {
             log.info("Received async AI processing request for course: {}", courseId);
@@ -82,9 +82,9 @@ public class AgentController {
             // 设置课程ID
             request.setCourseId(courseId);
             
-            // 异步执行AI处理
+            // 异步执行AI处理，确保Controller与Service使用同一taskId
             String taskId = java.util.UUID.randomUUID().toString();
-            pdfQuizAgentService.processCourseAsync(request);
+            pdfQuizAgentService.processCourseAsync(request, taskId);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -109,7 +109,7 @@ public class AgentController {
      * @return 处理状态
      */
     @GetMapping("/status/{taskId}")
-    public ResponseEntity<ProcessingStatus> getProcessingStatus(@PathVariable String taskId) {
+    public ResponseEntity<ProcessingStatus> getProcessingStatus(@PathVariable("taskId") String taskId) {
         try {
             log.debug("Getting processing status for task: {}", taskId);
             

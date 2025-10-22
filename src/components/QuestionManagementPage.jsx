@@ -47,7 +47,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
   // 获取课程下的所有quiz
   const fetchQuizzes = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/quizzes/course/${course.id}`);
+      const response = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
       if (!response.ok) {
         throw new Error('获取小测失败');
       }

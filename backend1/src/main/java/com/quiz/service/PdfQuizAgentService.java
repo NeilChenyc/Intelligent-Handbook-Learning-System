@@ -12,8 +12,16 @@ import dev.langchain4j.service.UserMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -49,7 +57,10 @@ public class PdfQuizAgentService {
     private String openaiBaseUrl;
 
     // 存储异步处理任务的状态
-    private final Map<String, ProcessingStatus> taskStatusMap = new ConcurrentHashMap<>();
+    private final Map<String, ProcessingStatus> taskStatusMap = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // Add OkHttp client for Responses API
+    private final OkHttpClient httpClient = new OkHttpClient();
 
     /**
      * OpenAI 测验生成器接口
@@ -99,6 +110,14 @@ public class PdfQuizAgentService {
     @Transactional
     public AgentProcessResult processCourse(AgentProcessRequest request) {
         String taskId = UUID.randomUUID().toString();
+        return processCourseWithTaskId(request, taskId);
+    }
+
+    /**
+     * 使用指定的 taskId 处理课程 PDF 内容
+     */
+    @Transactional
+    public AgentProcessResult processCourseWithTaskId(AgentProcessRequest request, String taskId) {
         LocalDateTime startTime = LocalDateTime.now();
 
         try {
@@ -118,14 +137,14 @@ public class PdfQuizAgentService {
             // 2. 读取PDF内容
             String pdfContent = readPdfContent(course.getHandbookFilePath());
             if (pdfContent == null || pdfContent.trim().isEmpty()) {
-                throw new RuntimeException("无法读取PDF内容或内容为空");
+                log.warn("PDF文本读取失败或为空，继续使用文件输入进行AI处理");
             }
 
             updateTaskStatus(taskId, "IN_PROGRESS", 40, "调用AI生成测验...", request.getCourseId());
 
             // 3. 调用OpenAI生成测验
             QuizGenerationRequest.QuizGenerationResponse generationResponse = 
-                    generateQuizzesWithAI(pdfContent, course, request);
+                    generateQuizzesWithAI(pdfContent, course, request, taskId);
 
             updateTaskStatus(taskId, "IN_PROGRESS", 70, "保存测验到数据库...", request.getCourseId());
 
@@ -167,10 +186,19 @@ public class PdfQuizAgentService {
     }
 
     /**
-     * 异步处理课程
+     * 异步处理课程（生成并统一使用 taskId）
      */
     public CompletableFuture<AgentProcessResult> processCourseAsync(AgentProcessRequest request) {
-        return CompletableFuture.supplyAsync(() -> processCourse(request));
+        String taskId = UUID.randomUUID().toString();
+        return CompletableFuture.supplyAsync(() -> processCourseWithTaskId(request, taskId));
+    }
+
+    /**
+     * 异步处理课程（使用外部提供的 taskId）
+     */
+    public CompletableFuture<AgentProcessResult> processCourseAsync(AgentProcessRequest request, String taskId) {
+        updateTaskStatus(taskId, "PENDING", 0, "任务已创建，等待开始", request.getCourseId());
+        return CompletableFuture.supplyAsync(() -> processCourseWithTaskId(request, taskId));
     }
 
     /**
@@ -212,34 +240,49 @@ public class PdfQuizAgentService {
      * 使用AI生成测验
      */
     private QuizGenerationRequest.QuizGenerationResponse generateQuizzesWithAI(
-            String pdfContent, Course course, AgentProcessRequest request) {
-        
+            String pdfContent, Course course, AgentProcessRequest request, String taskId) {
         try {
-            // 检查OpenAI API密钥
             if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
-                log.warn("OpenAI API密钥未配置，使用模拟数据");
+                log.warn("OpenAI API密钥未配置或为默认值，使用备用数据");
+                updateTaskStatus(taskId, "IN_PROGRESS", 42, "OpenAI密钥未配置，使用备用数据", request.getCourseId());
                 return generateFallbackQuizzes(course, request);
             }
 
-            // 创建OpenAI客户端
-            QuizGenerator generator = AiServices.builder(QuizGenerator.class)
-                    .chatLanguageModel(OpenAiChatModel.builder()
-                            .apiKey(openaiApiKey)
-                            .modelName(openaiModel)
-                            .build())
-                    .build();
+            // 上传PDF并调用Responses API
+            updateTaskStatus(taskId, "IN_PROGRESS", 45, "上传PDF到OpenAI...", request.getCourseId());
+            byte[] pdfBytes = course.getHandbookFilePath();
+            String fileName = java.util.Optional.ofNullable(course.getHandbookFileName()).orElse("course.pdf");
+            String fileId = uploadPdfToOpenAI(pdfBytes, fileName);
+            if (fileId == null) {
+                log.warn("上传PDF到OpenAI失败，回退到备用测验生成");
+                updateTaskStatus(taskId, "IN_PROGRESS", 46, "上传PDF失败，回退到备用测验", request.getCourseId());
+                return generateFallbackQuizzes(course, request);
+            }
+            updateTaskStatus(taskId, "IN_PROGRESS", 48, "PDF上传成功", request.getCourseId());
 
-            // 构建提示词
-            String prompt = buildPrompt(pdfContent, course, request);
-            
-            // 调用AI生成
-            String response = generator.generateQuizzes(prompt);
-            
-            // 解析响应
-            return parseAIResponse(response);
-            
+            String prompt = buildPrompt(
+                    (pdfContent == null || pdfContent.isBlank()) ? "（由OpenAI读取PDF内容）" : pdfContent,
+                    course,
+                    request
+            );
+
+            updateTaskStatus(taskId, "IN_PROGRESS", 50, "调用OpenAI Responses...", request.getCourseId());
+            String responseText = callOpenAIResponses(fileId, prompt);
+            if (responseText == null || responseText.isBlank()) {
+                log.warn("Responses API返回为空，回退到备用测验生成");
+                updateTaskStatus(taskId, "IN_PROGRESS", 52, "Responses返回为空，回退备用测验", request.getCourseId());
+                return generateFallbackQuizzes(course, request);
+            }
+            log.info("Responses 返回文本长度: {}", responseText.length());
+            updateTaskStatus(taskId, "IN_PROGRESS", 60, "解析AI响应...", request.getCourseId());
+
+            QuizGenerationRequest.QuizGenerationResponse r = parseAIResponse(responseText);
+            int quizCountParsed = r.getQuizzes() != null ? r.getQuizzes().size() : 0;
+            updateTaskStatus(taskId, "IN_PROGRESS", 65, "解析完成，测验数: " + quizCountParsed, request.getCourseId());
+            return r;
         } catch (Exception e) {
             log.error("AI生成测验失败，使用备用方案", e);
+            updateTaskStatus(taskId, "IN_PROGRESS", 55, "AI生成失败，回退到备用测验", request.getCourseId());
             return generateFallbackQuizzes(course, request);
         }
     }
@@ -504,4 +547,156 @@ public class PdfQuizAgentService {
         log.info("任务状态更新: taskId={}, status={}, progress={}%, message={}", 
                 taskId, status, progress, message);
     }
+
+/**
+ * 上传PDF到OpenAI并返回file_id
+ */
+private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
+    try {
+        RequestBody fileBody = RequestBody.create(pdfBytes, MediaType.parse("application/pdf"));
+        MultipartBody requestBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", fileName, fileBody)
+                .addFormDataPart("purpose", "user_data")
+                .build();
+
+        Request request = new Request.Builder()
+                .url(openaiBaseUrl + "/files")
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer " + openaiApiKey)
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            String requestId = response.header("x-request-id");
+            String respBody = response.body() != null ? response.body().string() : null;
+            if (!response.isSuccessful()) {
+                String errMsg = null;
+                String errType = null;
+                String errCode = null;
+                String errParam = null;
+                try {
+                    if (respBody != null) {
+                        JsonNode errNode = objectMapper.readTree(respBody);
+                        if (errNode.has("error")) {
+                            JsonNode e = errNode.get("error");
+                            if (e.has("message")) errMsg = e.get("message").asText();
+                            if (e.has("type")) errType = e.get("type").asText();
+                            if (e.has("code")) errCode = e.get("code").asText();
+                            if (e.has("param")) errParam = e.get("param").asText();
+                        }
+                    }
+                } catch (Exception parseEx) {
+                    // ignore parse error
+                }
+                log.error("上传PDF到OpenAI失败，HTTP {}，requestId={}，type={}，code={}，param={}，错误信息={}",
+                        response.code(), requestId, errType, errCode, errParam, errMsg != null ? errMsg : respBody);
+                return null;
+            }
+            if (respBody == null) {
+                log.error("上传PDF到OpenAI失败：响应体为空，requestId={}", requestId);
+                return null;
+            }
+            JsonNode node = objectMapper.readTree(respBody);
+            return node.has("id") ? node.get("id").asText() : null;
+        }
+    } catch (Exception e) {
+        log.error("上传PDF到OpenAI异常", e);
+        return null;
+    }
+}
+
+/**
+ * 调用OpenAI Responses API（文件输入）并返回文本输出
+ */
+private String callOpenAIResponses(String fileId, String prompt) {
+    try {
+        // 构建请求JSON
+        com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
+        root.put("model", openaiModel);
+        com.fasterxml.jackson.databind.node.ArrayNode input = root.putArray("input");
+
+        com.fasterxml.jackson.databind.node.ObjectNode systemMsg = input.addObject();
+        systemMsg.put("role", "system");
+        com.fasterxml.jackson.databind.node.ArrayNode systemContent = systemMsg.putArray("content");
+        systemContent.addObject().put("type", "text").put("text", "你是一个专业的教育内容分析师和测验生成专家。请根据提供的PDF内容生成高质量的测验并严格返回JSON格式。");
+
+        com.fasterxml.jackson.databind.node.ObjectNode userMsg = input.addObject();
+        userMsg.put("role", "user");
+        com.fasterxml.jackson.databind.node.ArrayNode userContent = userMsg.putArray("content");
+        userContent.addObject().put("type", "input_text").put("text", prompt);
+        userContent.addObject().put("type", "input_file").put("file_id", fileId);
+
+        root.put("temperature", 0.2);
+
+        String json = objectMapper.writeValueAsString(root);
+        RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
+        Request request = new Request.Builder()
+                .url(openaiBaseUrl + "/responses")
+                .post(body)
+                .addHeader("Authorization", "Bearer " + openaiApiKey)
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            String requestId = response.header("x-request-id");
+            String respBody = response.body() != null ? response.body().string() : null;
+            if (!response.isSuccessful()) {
+                String errMsg = null;
+                String errType = null;
+                String errCode = null;
+                String errParam = null;
+                try {
+                    if (respBody != null) {
+                        JsonNode errNode = objectMapper.readTree(respBody);
+                        if (errNode.has("error")) {
+                            JsonNode e = errNode.get("error");
+                            if (e.has("message")) errMsg = e.get("message").asText();
+                            if (e.has("type")) errType = e.get("type").asText();
+                            if (e.has("code")) errCode = e.get("code").asText();
+                            if (e.has("param")) errParam = e.get("param").asText();
+                        }
+                    }
+                } catch (Exception parseEx) {
+                    // ignore
+                }
+                log.error("调用Responses API失败，HTTP {}，requestId={}，type={}，code={}，param={}，错误信息={}",
+                        response.code(), requestId, errType, errCode, errParam, errMsg != null ? errMsg : respBody);
+                return null;
+            }
+            if (respBody == null) {
+                log.warn("Responses API返回为空，requestId={}", requestId);
+                return null;
+            }
+            JsonNode node = objectMapper.readTree(respBody);
+            // 优先解析 output 数组中的 output_text
+            if (node.has("output") && node.get("output").isArray()) {
+                for (JsonNode out : node.get("output")) {
+                    if (out.has("content") && out.get("content").isArray()) {
+                        for (JsonNode part : out.get("content")) {
+                            if (part.has("type") && "output_text".equals(part.get("type").asText()) && part.has("text")) {
+                                return part.get("text").asText();
+                            }
+                        }
+                    }
+                    if (out.has("type") && "output_text".equals(out.get("type").asText()) && out.has("text")) {
+                        return out.get("text").asText();
+                    }
+                }
+            }
+            // 兼容：有些实现可能返回 output_text 字段
+            if (node.has("output_text")) {
+                return node.get("output_text").asText();
+            }
+            // 兜底：如果返回content结构（不太可能），尝试取第一段text
+            if (node.has("content") && node.get("content").isArray() && node.get("content").size() > 0) {
+                JsonNode c0 = node.get("content").get(0);
+                if (c0.has("text")) return c0.get("text").asText();
+            }
+            log.warn("Responses API未返回可解析的文本输出");
+            return null;
+        }
+    } catch (Exception e) {
+        log.error("调用Responses API异常", e);
+        return null;
+    }
+}
 }
