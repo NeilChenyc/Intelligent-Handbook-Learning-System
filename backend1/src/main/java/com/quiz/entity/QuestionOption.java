@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class QuestionOption {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +26,7 @@ public class QuestionOption {
     private Question question;
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    @JsonProperty("text")
+    @JsonProperty("optionText")
     private String optionText;
 
     @Column(name = "is_correct")

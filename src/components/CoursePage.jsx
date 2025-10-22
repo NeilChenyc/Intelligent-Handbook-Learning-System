@@ -86,7 +86,7 @@ const CoursePage = () => {
   const handleDownloadHandbook = async (course) => {
     try {
       // 调用后端API下载PDF文件
-      const response = await fetch(`http://localhost:8081/api/courses/${course.id}/handbook`, {
+      const response = await fetch(`http://localhost:8080/api/courses/${course.id}/handbook`, {
         method: 'GET',
         headers: {
           'Accept': 'application/pdf',
@@ -342,30 +342,6 @@ const CoursePage = () => {
       )}
     </div>
    );
-
-   // 根据当前视图渲染不同内容
-   if (currentView === 'quizList' && selectedCourse) {
-     return (
-       <CourseQuizListPage 
-         course={selectedCourse}
-         onBack={() => setCurrentView('courseList')}
-         onQuizSelect={(quizId) => {
-           setSelectedQuizId(quizId);
-           setCurrentView('quiz');
-         }}
-       />
-     );
-   }
-
-   if (currentView === 'quiz' && selectedQuizId) {
-     return (
-       <QuizPage 
-         quizId={selectedQuizId}
-         onBack={() => setCurrentView('quizList')}
-         onComplete={() => setCurrentView('quizList')}
-       />
-     );
-   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

@@ -23,14 +23,14 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
       if (question && !isAddMode) {
         // 编辑模式：使用现有题目数据
         setFormData({
-          questionText: question.text || '',
+          questionText: question.questionText || '',
           type: question.type || 'SINGLE_CHOICE',
           points: question.points || 1,
           orderIndex: question.orderIndex || 0,
           explanation: question.explanation || '',
           quizId: question.quiz?.id || '',
           options: question.options ? question.options.map(opt => ({
-            optionText: opt.text || '',
+            optionText: opt.optionText || '',
             isCorrect: opt.isCorrect || false
           })) : [
             { optionText: '', isCorrect: false },

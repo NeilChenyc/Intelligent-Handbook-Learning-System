@@ -14,6 +14,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Quiz {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,7 +42,7 @@ public class Quiz {
     private Integer totalPoints = 0; // 总分
 
     @Column(name = "passing_score")
-    private Integer passingScore = 60; // 及格分数
+    private Integer passingScore = 80; // 及格分数改为80
 
     @Column(name = "max_attempts")
     private Integer maxAttempts = 1; // 最大尝试次数

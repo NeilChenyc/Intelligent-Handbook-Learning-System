@@ -32,7 +32,15 @@ public class QuizService {
     }
 
     public List<Quiz> getQuizzesByCourse(Long courseId) {
-        return quizRepository.findByCourseIdAndIsActiveTrue(courseId);
+        try {
+            log.debug("Fetching quizzes for course ID: {}", courseId);
+            List<Quiz> quizzes = quizRepository.findByCourseIdAndIsActiveTrue(courseId);
+            log.debug("Repository returned {} quizzes for course ID: {}", quizzes.size(), courseId);
+            return quizzes;
+        } catch (Exception e) {
+            log.error("Error fetching quizzes for course ID: {}", courseId, e);
+            throw e;
+        }
     }
 
     public List<Quiz> getQuizzesByTeacher(Long teacherId) {
@@ -53,7 +61,7 @@ public class QuizService {
         quiz.setDescription(request.getDescription());
         quiz.setTimeLimitMinutes(request.getTimeLimitMinutes());
         quiz.setTotalPoints(request.getTotalPoints() != null ? request.getTotalPoints() : 0);
-        quiz.setPassingScore(request.getPassingScore() != null ? request.getPassingScore() : 60);
+        quiz.setPassingScore(request.getPassingScore() != null ? request.getPassingScore() : 80);
         quiz.setMaxAttempts(request.getMaxAttempts() != null ? request.getMaxAttempts() : 1);
         quiz.setCourse(course);
         quiz.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);

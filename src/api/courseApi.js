@@ -1,28 +1,10 @@
 // 课程相关API调用函数
 const API_BASE_URL = 'http://localhost:8080';
 
-// 创建一个通用的fetch函数，包含超时控制
-const fetchWithTimeout = async (url, options = {}, timeout = 8000) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
-};
-
 // 获取所有活跃课程
 export const getAllCourses = async () => {
   try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/courses`, {
+    const response = await fetch(`${API_BASE_URL}/courses`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

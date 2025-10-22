@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { CheckCircle, XCircle, FileText, BookOpen, Trophy, AlertCircle } from 'lucide-react';
+import { getUserWrongQuestions, submitWrongQuestionRedo, getUserWrongQuestionsCount } from '../api/wrongQuestionApi';
 
 const WrongQuestionsPage = () => {
   const [wrongQuestions, setWrongQuestions] = useState([]);
@@ -9,6 +10,13 @@ const WrongQuestionsPage = () => {
   const [userAnswer, setUserAnswer] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [wrongQuestionsCount, setWrongQuestionsCount] = useState(0);
+
+  // 模拟用户ID，实际应用中应从认证系统获取
+  const userId = 1;
 
   // 默认错题数据
   const defaultWrongQuestions = [
@@ -37,7 +45,7 @@ const WrongQuestionsPage = () => {
         { id: 'd', text: '与同事分享工作经验' }
       ],
       correctAnswer: ['a', 'b', 'c'],
-      explanation: '向外部透露客户信息、在公共场所讨论机密、私自带走工作文件都属于违反保密制度的行为。与同事正常分享工作经验是被允许的。',
+      explanation: '向外部透露客户信息、在公共场所讨论机密、私带来带工作文件都属于违反保密制度的行为。与同事正常分享工作经验是被允许的。',
       courseName: '信息安全培训'
     },
     {
@@ -56,24 +64,95 @@ const WrongQuestionsPage = () => {
     }
   ];
 
-  // 从localStorage获取错题数据
+  // 从后端获取错题数据
   useEffect(() => {
-    const savedWrongQuestions = localStorage.getItem('wrongQuestions');
-    if (savedWrongQuestions) {
-      const parsed = JSON.parse(savedWrongQuestions);
-      if (parsed.length > 0) {
-        setWrongQuestions(parsed);
-      } else {
-        // 如果没有错题，使用默认错题
-        setWrongQuestions(defaultWrongQuestions);
-        localStorage.setItem('wrongQuestions', JSON.stringify(defaultWrongQuestions));
+    const fetchWrongQuestions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 获取用户错题列表
+        const wrongQuestionsData = await getUserWrongQuestions(userId);
+        
+        // 获取错题数量统计
+        const countData = await getUserWrongQuestionsCount(userId);
+        setWrongQuestionsCount(countData.count || 0);
+        
+        if (wrongQuestionsData && wrongQuestionsData.length > 0) {
+          // 转换后端数据格式为前端期望的格式
+          const formattedQuestions = wrongQuestionsData.map(wrongQ => ({
+            id: wrongQ.wrongQuestionId,
+            wrongQuestionId: wrongQ.wrongQuestionId,
+            question: wrongQ.question.text,
+            questionId: wrongQ.question.id, // 添加questionId用于去重
+            type: wrongQ.question.type === 'MULTIPLE_CHOICE' ? 'multiple' : 'single',
+            options: wrongQ.question.options.map(opt => ({
+              id: opt.id,
+              text: opt.text
+            })),
+            correctAnswer: wrongQ.question.type === 'MULTIPLE_CHOICE' 
+              ? wrongQ.question.options.filter(opt => opt.isCorrect).map(opt => opt.id)
+              : wrongQ.question.options.find(opt => opt.isCorrect)?.id,
+            explanation: wrongQ.question.explanation || '',
+            courseName: wrongQ.question.quiz?.course?.title || '未知课程',
+            createdAt: wrongQ.createdAt,
+            isRedone: wrongQ.isRedone
+          }));
+          
+          // 去重处理：按questionId去重，保留最新的记录
+          const uniqueQuestions = [];
+          const seenQuestionIds = new Set();
+          
+          // 按创建时间倒序排序，确保保留最新的记录
+          const sortedQuestions = formattedQuestions.sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          
+          for (const question of sortedQuestions) {
+            if (!seenQuestionIds.has(question.questionId)) {
+              // 对选项进行去重处理
+              const uniqueOptions = [];
+              const seenOptionIds = new Set();
+              
+              for (const option of question.options) {
+                if (!seenOptionIds.has(option.id)) {
+                  uniqueOptions.push(option);
+                  seenOptionIds.add(option.id);
+                }
+              }
+              
+              // 更新题目的选项为去重后的选项
+              question.options = uniqueOptions;
+              uniqueQuestions.push(question);
+              seenQuestionIds.add(question.questionId);
+            }
+          }
+          
+          setWrongQuestions(uniqueQuestions);
+        } else {
+          // 如果没有错题，使用默认错题作为演示
+          setWrongQuestions(defaultWrongQuestions);
+        }
+        
+      } catch (err) {
+        console.error('获取错题失败:', err);
+        setError('加载错题失败，使用本地数据');
+        
+        // 降级到localStorage数据
+        const savedWrongQuestions = localStorage.getItem('wrongQuestions');
+        if (savedWrongQuestions) {
+          const parsed = JSON.parse(savedWrongQuestions);
+          setWrongQuestions(parsed.length > 0 ? parsed : defaultWrongQuestions);
+        } else {
+          setWrongQuestions(defaultWrongQuestions);
+        }
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // 如果localStorage中没有数据，使用默认错题
-      setWrongQuestions(defaultWrongQuestions);
-      localStorage.setItem('wrongQuestions', JSON.stringify(defaultWrongQuestions));
-    }
-  }, []);
+    };
+
+    fetchWrongQuestions();
+  }, [userId]);
 
   // 保存错题数据到localStorage
   const saveWrongQuestions = (questions) => {
@@ -97,31 +176,68 @@ const WrongQuestionsPage = () => {
     }
   };
 
-  const checkAnswer = () => {
-    if (!userAnswer) return;
+  const checkAnswer = async () => {
+    if (!userAnswer || submitting) return;
 
-    let correct = false;
-    if (currentQuestion.type === 'multiple') {
-      const correctSet = new Set(currentQuestion.correctAnswer);
-      const userSet = new Set(userAnswer);
-      correct = correctSet.size === userSet.size && 
-                [...correctSet].every(x => userSet.has(x));
-    } else {
-      correct = currentQuestion.correctAnswer === userAnswer;
-    }
-
-    setIsCorrect(correct);
-    setShowResult(true);
-
-    // 如果答对了，从错题列表中移除
-    if (correct) {
-      const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
-      saveWrongQuestions(updatedWrongQuestions);
+    try {
+      setSubmitting(true);
       
-      // 如果当前是最后一题，回到上一题；否则保持当前索引
-      if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
-        setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
+      // 检查答案是否正确
+      let correct = false;
+      if (currentQuestion.type === 'multiple') {
+        const correctSet = new Set(currentQuestion.correctAnswer);
+        const userSet = new Set(userAnswer);
+        correct = correctSet.size === userSet.size && 
+                  [...correctSet].every(x => userSet.has(x));
+      } else {
+        correct = currentQuestion.correctAnswer === userAnswer;
       }
+
+      setIsCorrect(correct);
+      setShowResult(true);
+
+      // 如果答对了，提交到后端并标记为已重做
+      if (correct && currentQuestion.wrongQuestionId) {
+        try {
+          await submitWrongQuestionRedo(currentQuestion.wrongQuestionId, userAnswer);
+          
+          // 从错题列表中移除
+          const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
+          setWrongQuestions(updatedWrongQuestions);
+          
+          // 更新错题数量
+          setWrongQuestionsCount(prev => Math.max(0, prev - 1));
+          
+          // 更新localStorage作为备份
+          localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
+          
+          // 如果当前是最后一题，回到上一题；否则保持当前索引
+          if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
+            setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
+          }
+        } catch (apiError) {
+          console.error('提交错题重做失败:', apiError);
+          // API失败时仍然在本地移除，但显示警告
+          setError('网络错误，但答案正确已记录');
+          
+          const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
+          setWrongQuestions(updatedWrongQuestions);
+          localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
+          
+          if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
+            setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
+          }
+        }
+      } else if (!correct) {
+        // 答错了，保持在错题列表中
+        console.log('答案错误，继续练习');
+      }
+      
+    } catch (error) {
+      console.error('检查答案失败:', error);
+      setError('检查答案时出错，请重试');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -149,6 +265,46 @@ const WrongQuestionsPage = () => {
     setShowResult(false);
     setIsCorrect(false);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">错题重做</h2>
+          <p className="text-gray-600">正在加载错题数据...</p>
+        </div>
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">加载中...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">错题重做</h2>
+          <p className="text-gray-600">重新练习之前做错的题目</p>
+        </div>
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">加载失败</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>重新加载</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (wrongQuestions.length === 0) {
     return (
@@ -249,7 +405,7 @@ const WrongQuestionsPage = () => {
 
               return (
                 <div
-                  key={option.id}
+                  key={`option-${currentQuestion.questionId}-${option.id}`}
                   className={optionClass}
                   onClick={() => handleAnswerSelect(option.id)}
                 >
@@ -259,7 +415,7 @@ const WrongQuestionsPage = () => {
                         <div className={`w-2 h-2 bg-current ${currentQuestion.type === 'multiple' ? 'rounded-sm' : 'rounded-full'}`} />
                       )}
                     </div>
-                    <span className="font-medium">{option.id.toUpperCase()}.</span>
+                    <span className="font-medium">{String.fromCharCode(65 + (currentQuestion.options.indexOf(option)))}.</span>
                     <span>{option.text}</span>
                   </div>
                 </div>
@@ -286,14 +442,15 @@ const WrongQuestionsPage = () => {
           <>
             <Button 
               onClick={checkAnswer}
-              disabled={!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0)}
+              disabled={!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0) || submitting}
               className="px-8"
             >
-              确认答案
+              {submitting ? '提交中...' : '确认答案'}
             </Button>
             <Button 
-              variant="outline"
+              variant="outline" 
               onClick={resetAnswer}
+              disabled={submitting}
               className="px-8"
             >
               重新选择
@@ -308,6 +465,15 @@ const WrongQuestionsPage = () => {
           </Button>
         )}
       </div>
+
+      {/* 错题统计信息 */}
+      {wrongQuestionsCount > 0 && (
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-500">
+            总错题数量：{wrongQuestionsCount} 道
+          </p>
+        </div>
+      )}
 
       {/* 提示信息 */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">

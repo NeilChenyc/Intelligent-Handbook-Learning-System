@@ -15,6 +15,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Question {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +27,7 @@ public class Question {
     private Quiz quiz;
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    @JsonProperty("text")
+    @JsonProperty("questionText")
     private String questionText;
 
     @Enumerated(EnumType.STRING)

@@ -39,4 +39,7 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
     
     @Query("SELECT qa FROM QuizAttempt qa WHERE qa.quiz.course.id = :courseId ORDER BY qa.createdAt DESC")
     List<QuizAttempt> findByCourseIdOrderByCreatedAtDesc(@Param("courseId") Long courseId);
+    
+    @Query("SELECT DISTINCT qa.quiz.id FROM QuizAttempt qa WHERE qa.user.id = :userId AND qa.quiz.course.id = :courseId AND qa.isPassed = true")
+    List<Long> findPassedQuizIdsByUserIdAndCourseId(@Param("userId") Long userId, @Param("courseId") Long courseId);
 }

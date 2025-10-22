@@ -1,6 +1,8 @@
 package com.quiz.controller;
 
+import com.quiz.entity.QuizAttempt;
 import com.quiz.entity.User;
+import com.quiz.service.QuizAttemptService;
 import com.quiz.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -18,6 +21,7 @@ import java.util.Map;
 public class TestController {
 
     private final UserService userService;
+    private final QuizAttemptService quizAttemptService;
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
@@ -49,6 +53,38 @@ public class TestController {
                 "timestamp", LocalDateTime.now()
             ));
         }
+    }
+
+    @GetMapping("/quiz-attempts/{userId}/{quizId}")
+    public ResponseEntity<Map<String, Object>> getQuizAttempts(@PathVariable Long userId, @PathVariable Long quizId) {
+        try {
+            // 直接使用repository查询
+            int attemptCount = quizAttemptService.getAttemptsByUserAndQuiz(userId, quizId).size();
+            return ResponseEntity.ok(Map.of(
+                "userId", userId,
+                "quizId", quizId,
+                "attemptCount", attemptCount,
+                "timestamp", LocalDateTime.now()
+            ));
+        } catch (Exception e) {
+            log.error("Error getting quiz attempts for user {} and quiz {}: {}", userId, quizId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                "error", e.getMessage(),
+                "userId", userId,
+                "quizId", quizId,
+                "timestamp", LocalDateTime.now()
+            ));
+        }
+    }
+
+    @PostMapping("/json-test")
+    public ResponseEntity<Map<String, Object>> testJsonRequest(@RequestBody Map<String, Object> request) {
+        log.info("JSON test endpoint called with request: {}", request);
+        return ResponseEntity.ok(Map.of(
+            "received", request,
+            "status", "success",
+            "timestamp", LocalDateTime.now()
+        ));
     }
 
     @PostMapping("/create-sample-data")

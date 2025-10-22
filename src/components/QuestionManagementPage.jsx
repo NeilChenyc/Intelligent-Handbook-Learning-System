@@ -47,7 +47,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
   // 获取课程下的所有quiz
   const fetchQuizzes = async () => {
     try {
-      const response = await fetch(`http://localhost:8081/api/quizzes/course/${course.id}`);
+      const response = await fetch(`http://localhost:8080/api/quizzes/course/${course.id}`);
       if (!response.ok) {
         throw new Error('获取小测失败');
       }
@@ -294,8 +294,8 @@ const QuestionManagementPage = ({ course, onBack }) => {
                       )}
                     </div>
                     
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      {question.text}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {question.questionText}
                     </h3>
                     
                     {(question.type === 'SINGLE_CHOICE' || question.type === 'MULTIPLE_CHOICE') && question.options && (
@@ -313,7 +313,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
                             >
                               <span className="font-medium">
                                 {String.fromCharCode(65 + optionIndex)}.
-                              </span> {option.text}
+                              </span> {option.optionText}
                               {option.isCorrect && (
                                 <CheckCircle className="w-4 h-4 text-green-600 inline ml-2" />
                               )}

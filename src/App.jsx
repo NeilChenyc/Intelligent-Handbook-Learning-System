@@ -15,6 +15,7 @@ import ReportPage from './components/ReportPage';
 import CertificatePage from './components/CertificatePage';
 import CourseManagementPage from './components/CourseManagementPage';
 import QuizManagementPage from './components/QuizManagementPage';
+import TestQuizPage from './components/TestQuizPage';
 
 // 主应用内容组件
 const AppContent = () => {
@@ -259,6 +260,8 @@ const AppContent = () => {
         return <ReportPage />;
       case 'certificate':
         return <CertificatePage />;
+      case 'test':
+        return <TestQuizPage />;
       default:
         return <CoursePage />;
     }

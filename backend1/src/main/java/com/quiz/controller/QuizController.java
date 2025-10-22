@@ -45,9 +45,22 @@ public class QuizController {
     }
 
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<List<Quiz>> getQuizzesByCourse(@PathVariable Long courseId) {
-        List<Quiz> quizzes = quizService.getQuizzesByCourse(courseId);
-        return ResponseEntity.ok(quizzes);
+    public ResponseEntity<List<QuizResponseDto>> getQuizzesByCourse(@PathVariable Long courseId) {
+        try {
+            log.debug("Getting quizzes for course ID: {}", courseId);
+            List<Quiz> quizzes = quizService.getQuizzesByCourse(courseId);
+            log.debug("Found {} quizzes for course ID: {}", quizzes.size(), courseId);
+            
+            // 转换为DTO避免循环引用
+            List<QuizResponseDto> quizDtos = quizzes.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(quizDtos);
+        } catch (Exception e) {
+            log.error("Error getting quizzes for course ID: {}", courseId, e);
+            throw e;
+        }
     }
 
     private QuizResponseDto convertToDto(Quiz quiz) {

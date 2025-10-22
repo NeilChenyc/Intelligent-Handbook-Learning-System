@@ -1,59 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { CheckCircle, Clock, AlertCircle, ArrowLeft, BookOpen, Play, Lock, Trophy, BarChart3 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) => {
-  const [quizzes, setQuizzes] = useState([
-    {
-      id: 1,
-      title: '第一章：基础概念',
-      description: '学习基本概念和理论知识',
-      status: 'completed',
-      score: 95,
-      duration: 30,
-      questions: 10,
-      attempts: 1,
-      maxAttempts: 3,
-      unlocked: true
-    },
-    {
-      id: 2,
-      title: '第二章：实践应用',
-      description: '通过实际案例理解应用方法',
-      status: 'available',
-      score: null,
-      duration: 45,
-      questions: 15,
-      attempts: 0,
-      maxAttempts: 3,
-      unlocked: true
-    },
-    {
-      id: 3,
-      title: '第三章：高级技巧',
-      description: '掌握高级技巧和最佳实践',
-      status: 'locked',
-      score: null,
-      duration: 60,
-      questions: 20,
-      attempts: 0,
-      maxAttempts: 3,
-      unlocked: false
-    },
-    {
-      id: 4,
-      title: '第四章：综合测试',
-      description: '综合运用所学知识',
-      status: 'locked',
-      score: null,
-      duration: 90,
-      questions: 25,
-      attempts: 0,
-      maxAttempts: 2,
-      unlocked: false
+  const { user } = useAuth();
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 从后端获取课程的quiz数据
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      try {
+        setLoading(true);
+        
+        // 获取课程的所有小测
+        const quizzesResponse = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
+        if (!quizzesResponse.ok) {
+          throw new Error('获取测验数据失败');
+        }
+        const courseQuizzes = await quizzesResponse.json();
+        
+        // 获取用户在该课程中已通过的小测ID列表
+        let passedQuizIds = [];
+        if (user?.id) {
+          try {
+            const passedResponse = await fetch(`http://localhost:8080/quiz-attempts/user/${user.id}/course/${course.id}/passed`);
+            if (passedResponse.ok) {
+              passedQuizIds = await passedResponse.json();
+            }
+          } catch (error) {
+            console.warn('获取已通过小测信息失败:', error);
+          }
+        }
+        
+        // 按ID排序小测
+        const sortedQuizzes = courseQuizzes.sort((a, b) => a.id - b.id);
+        
+        // 将quiz数据转换为组件需要的格式，并根据通过情况设置解锁状态
+        const formattedQuizzes = sortedQuizzes.map((quiz, index) => {
+          const isCompleted = passedQuizIds.includes(quiz.id);
+          const isPreviousCompleted = index === 0 || passedQuizIds.includes(sortedQuizzes[index - 1].id);
+          
+          let status, unlocked;
+          if (isCompleted) {
+            status = 'completed';
+            unlocked = true;
+          } else if (isPreviousCompleted) {
+            status = 'available';
+            unlocked = true;
+          } else {
+            status = 'locked';
+            unlocked = false;
+          }
+          
+          return {
+            id: quiz.id,
+            quizNumber: index + 1,
+            title: `测验${index + 1}：${quiz.title}`,
+            description: quiz.description || '暂无描述',
+            status: status,
+            score: null, // 这里可以后续扩展获取具体分数
+            duration: quiz.timeLimitMinutes || 30,
+            questions: quiz.questions?.length || 0,
+            attempts: 0, // 这里可以后续扩展获取尝试次数
+            maxAttempts: quiz.maxAttempts || 3,
+            unlocked: unlocked,
+            totalPoints: quiz.totalPoints || 0,
+            passingScore: quiz.passingScore || 80
+          };
+        });
+        
+        setQuizzes(formattedQuizzes);
+      } catch (err) {
+        console.error('获取测验数据失败:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (course?.id && user?.id) {
+      fetchQuizzes();
     }
-  ]);
+  }, [course?.id, user?.id]);
 
   const handleStartQuiz = (quizId) => {
     // 调用父组件传入的回调函数，跳转到小测页面
@@ -62,39 +94,78 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
     }
   };
 
-  const handleCompleteQuiz = (quizId, score) => {
-    // 完成小测后的逻辑
-    setQuizzes(prevQuizzes => {
-      const updatedQuizzes = prevQuizzes.map(quiz => {
-        if (quiz.id === quizId) {
-          const updatedQuiz = {
-            ...quiz,
-            status: 'completed',
-            score: score,
-            attempts: quiz.attempts + 1
-          };
-          return updatedQuiz;
-        }
-        return quiz;
-      });
-
-      // 解锁下一个小测
-      const currentIndex = updatedQuizzes.findIndex(q => q.id === quizId);
-      if (currentIndex < updatedQuizzes.length - 1) {
-        updatedQuizzes[currentIndex + 1].unlocked = true;
-        updatedQuizzes[currentIndex + 1].status = 'available';
+  const handleCompleteQuiz = async (quizId, score) => {
+    // 完成小测后重新获取数据以更新解锁状态
+    try {
+      // 获取课程的所有小测
+      const quizzesResponse = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
+      if (!quizzesResponse.ok) {
+        throw new Error('获取测验数据失败');
       }
+      const courseQuizzes = await quizzesResponse.json();
+      
+      // 获取用户在该课程中已通过的小测ID列表
+      let passedQuizIds = [];
+      if (user?.id) {
+        try {
+          const passedResponse = await fetch(`http://localhost:8080/quiz-attempts/user/${user.id}/course/${course.id}/passed`);
+          if (passedResponse.ok) {
+            passedQuizIds = await passedResponse.json();
+          }
+        } catch (error) {
+          console.warn('获取已通过小测信息失败:', error);
+        }
+      }
+      
+      // 按ID排序小测
+      const sortedQuizzes = courseQuizzes.sort((a, b) => a.id - b.id);
+      
+      // 将quiz数据转换为组件需要的格式，并根据通过情况设置解锁状态
+      const formattedQuizzes = sortedQuizzes.map((quiz, index) => {
+        const isCompleted = passedQuizIds.includes(quiz.id);
+        const isPreviousCompleted = index === 0 || passedQuizIds.includes(sortedQuizzes[index - 1].id);
+        
+        let status, unlocked;
+        if (isCompleted) {
+          status = 'completed';
+          unlocked = true;
+        } else if (isPreviousCompleted) {
+          status = 'available';
+          unlocked = true;
+        } else {
+          status = 'locked';
+          unlocked = false;
+        }
+        
+        return {
+          id: quiz.id,
+          quizNumber: index + 1,
+          title: `测验${index + 1}：${quiz.title}`,
+          description: quiz.description || '暂无描述',
+          status: status,
+          score: null, // 这里可以后续扩展获取具体分数
+          duration: quiz.timeLimitMinutes || 30,
+          questions: quiz.questions?.length || 0,
+          attempts: 0, // 这里可以后续扩展获取尝试次数
+          maxAttempts: quiz.maxAttempts || 3,
+          unlocked: unlocked,
+          totalPoints: quiz.totalPoints || 0,
+          passingScore: quiz.passingScore || 80
+        };
+      });
+      
+      setQuizzes(formattedQuizzes);
 
-      return updatedQuizzes;
-    });
-
-    // 计算并更新课程进度
-    const completedQuizzes = quizzes.filter(q => q.status === 'completed').length + 1;
-    const totalQuizzes = quizzes.length;
-    const newProgress = Math.round((completedQuizzes / totalQuizzes) * 100);
-    
-    if (onProgressUpdate) {
-      onProgressUpdate(course.id, newProgress);
+      // 计算并更新课程进度
+      const completedQuizzes = passedQuizIds.length;
+      const totalQuizzes = formattedQuizzes.length;
+      const newProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
+      
+      if (onProgressUpdate) {
+        onProgressUpdate(course.id, newProgress);
+      }
+    } catch (error) {
+      console.error('更新小测状态失败:', error);
     }
   };
 
@@ -124,11 +195,6 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
       default: return '未知';
     }
   };
-
-  const completedQuizzes = quizzes.filter(q => q.status === 'completed').length;
-  const totalQuizzes = quizzes.length;
-  const courseProgress = Math.round((completedQuizzes / totalQuizzes) * 100);
-  const averageScore = quizzes.filter(q => q.score !== null).reduce((sum, q) => sum + q.score, 0) / completedQuizzes || 0;
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -176,6 +242,57 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
     return 'text-red-600';
   };
 
+  // 计算统计数据
+  const totalQuizzes = quizzes.length;
+  const completedQuizzes = quizzes.filter(q => q.status === 'completed').length;
+  const courseProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
+  const averageScore = quizzes.filter(q => q.score !== null).reduce((sum, q) => sum + q.score, 0) / (completedQuizzes || 1);
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Button 
+          variant="outline" 
+          onClick={onBack}
+          className="mb-4 flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>返回课程列表</span>
+        </Button>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">正在加载测验数据...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Button 
+          variant="outline" 
+          onClick={onBack}
+          className="mb-4 flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>返回课程列表</span>
+        </Button>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-2">加载失败</p>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* 返回按钮和课程标题 */}
@@ -198,7 +315,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{course.title}</h1>
               <p className="text-gray-600 mb-4">{course.description}</p>
               <div className="flex items-center space-x-6 text-sm text-gray-600">
-                <span>讲师: {course.instructor}</span>
+                <span>课程ID: {course.id}</span>
                 <span>小测数量: {totalQuizzes}</span>
                 <span>已完成: {completedQuizzes}</span>
               </div>
@@ -298,8 +415,8 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
                 <div className="flex items-start space-x-4 flex-1">
                   {/* 序号和状态图标 */}
                   <div className="flex flex-col items-center space-y-2">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
-                      {index + 1}
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
+                      {quiz.quizNumber}
                     </div>
                     {getStatusIcon(quiz.status)}
                   </div>
@@ -396,7 +513,8 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
               <li>• 需要按顺序完成小测，完成前一个才能解锁下一个</li>
               <li>• 每个小测最多可尝试 {quizzes[0]?.maxAttempts || 3} 次</li>
               <li>• 完成所有小测后，课程进度将更新为 100%</li>
-              <li>• 建议得分达到 80 分以上再进行下一个小测</li>
+              <li>• 小测通过标准为达到 80% 正确率（80 分以上）</li>
+              <li>• 只有通过前一个小测才能解锁下一个小测</li>
             </ul>
           </div>
         </div>

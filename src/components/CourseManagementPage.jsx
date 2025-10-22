@@ -37,12 +37,7 @@ const CourseManagementPage = () => {
       setLoading(true);
       setError(null);
       
-      // 添加超时控制
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
-      
       const coursesData = await getAllCourses();
-      clearTimeout(timeoutId);
       setCourses(coursesData);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
@@ -150,7 +145,7 @@ const CourseManagementPage = () => {
   const handlePreviewCourse = async (course) => {
     try {
       // 调用后端API下载PDF文件
-      const response = await fetch(`http://localhost:8081/api/courses/${course.id}/handbook`, {
+      const response = await fetch(`http://localhost:8080/api/courses/${course.id}/handbook`, {
         method: 'GET',
         headers: {
           'Accept': 'application/pdf',
