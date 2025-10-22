@@ -34,7 +34,7 @@ public class QuizService {
     public List<Quiz> getQuizzesByCourse(Long courseId) {
         try {
             log.debug("Fetching quizzes for course ID: {}", courseId);
-            List<Quiz> quizzes = quizRepository.findByCourseIdAndIsActiveTrue(courseId);
+            List<Quiz> quizzes = quizRepository.findActiveByCourseIdFetchCourseAndQuestions(courseId);
             log.debug("Repository returned {} quizzes for course ID: {}", quizzes.size(), courseId);
             return quizzes;
         } catch (Exception e) {

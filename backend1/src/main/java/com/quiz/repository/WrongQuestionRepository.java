@@ -18,8 +18,8 @@ public interface WrongQuestionRepository extends JpaRepository<WrongQuestion, Lo
     // 查找用户所有未重做的错题
     List<WrongQuestion> findByUserAndIsRedoneFalse(User user);
     
-    // 根据用户ID查找未重做的错题
-    @Query("SELECT wq FROM WrongQuestion wq " +
+    // 根据用户ID查找未重做的错题（包含必要的关联以避免懒加载）
+    @Query("SELECT DISTINCT wq FROM WrongQuestion wq " +
            "LEFT JOIN FETCH wq.user " +
            "LEFT JOIN FETCH wq.question q " +
            "LEFT JOIN FETCH q.options " +
@@ -40,12 +40,28 @@ public interface WrongQuestionRepository extends JpaRepository<WrongQuestion, Lo
     @Query("SELECT COUNT(wq) FROM WrongQuestion wq WHERE wq.user.id = :userId AND wq.isRedone = false")
     Long countByUserIdAndIsRedoneFalse(@Param("userId") Long userId);
     
-    // 查找用户在特定课程下的错题
-    @Query("SELECT wq FROM WrongQuestion wq WHERE wq.user.id = :userId AND wq.question.quiz.course.id = :courseId AND wq.isRedone = false ORDER BY wq.createdAt DESC")
+    // 查找用户在特定课程下的错题（预抓取所有必要关联）
+    @Query("SELECT DISTINCT wq FROM WrongQuestion wq " +
+           "LEFT JOIN FETCH wq.user " +
+           "LEFT JOIN FETCH wq.question q " +
+           "LEFT JOIN FETCH q.options " +
+           "LEFT JOIN FETCH q.quiz quiz " +
+           "LEFT JOIN FETCH quiz.course " +
+           "LEFT JOIN FETCH wq.quizAttempt " +
+           "WHERE wq.user.id = :userId AND quiz.course.id = :courseId AND wq.isRedone = false " +
+           "ORDER BY wq.createdAt DESC")
     List<WrongQuestion> findByUserIdAndCourseIdAndIsRedoneFalse(@Param("userId") Long userId, @Param("courseId") Long courseId);
     
-    // 查找用户在特定小测下的错题
-    @Query("SELECT wq FROM WrongQuestion wq WHERE wq.user.id = :userId AND wq.question.quiz.id = :quizId AND wq.isRedone = false ORDER BY wq.createdAt DESC")
+    // 查找用户在特定小测下的错题（预抓取所有必要关联）
+    @Query("SELECT DISTINCT wq FROM WrongQuestion wq " +
+           "LEFT JOIN FETCH wq.user " +
+           "LEFT JOIN FETCH wq.question q " +
+           "LEFT JOIN FETCH q.options " +
+           "LEFT JOIN FETCH q.quiz quiz " +
+           "LEFT JOIN FETCH quiz.course " +
+           "LEFT JOIN FETCH wq.quizAttempt " +
+           "WHERE wq.user.id = :userId AND quiz.id = :quizId AND wq.isRedone = false " +
+           "ORDER BY wq.createdAt DESC")
     List<WrongQuestion> findByUserIdAndQuizIdAndIsRedoneFalse(@Param("userId") Long userId, @Param("quizId") Long quizId);
     
     // 检查是否已存在相同的错题记录

@@ -184,3 +184,5 @@ backend1/mvnw.cmd
 # Backup files
 *.bak
 *.backup
+# Ignore local application config
+backend1/src/main/resources/application.yml
