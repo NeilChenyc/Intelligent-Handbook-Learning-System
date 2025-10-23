@@ -4,7 +4,7 @@ import { Button } from './ui/Button';
 import { CheckCircle, Clock, AlertCircle, Plus, Calendar, User, Tag, Filter, BookOpen, Play, RefreshCw, Download } from 'lucide-react';
 import CourseQuizListPage from './CourseQuizListPage';
 import QuizPage from './QuizPage';
-import { getAllCourses, formatCourseForDisplay, COURSE_STATUS, filterCoursesByStatus } from '../api/courseApi';
+import { getAllCourses, formatCourseForDisplay, COURSE_STATUS, filterCoursesByStatus, downloadCourseHandbook } from '../api/courseApi';
 import { useAuth } from '../contexts/AuthContext';
 
 const CoursePage = () => {
@@ -85,25 +85,9 @@ const CoursePage = () => {
   // 处理PDF下载
   const handleDownloadHandbook = async (course) => {
     try {
-      // 调用后端API下载PDF文件
-      const response = await fetch(`http://localhost:8080/api/courses/${course.id}/handbook`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/pdf',
-        },
-      });
+      // 使用前端API按需下载PDF文件（后端路径：/courses/{id}/handbook）
+      const blob = await downloadCourseHandbook(course.id);
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          alert('该课程暂无手册文件');
-          return;
-        }
-        throw new Error('下载失败');
-      }
-
-      // 获取文件内容
-      const blob = await response.blob();
-      
       // 创建下载链接
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -111,8 +95,6 @@ const CoursePage = () => {
       link.download = course.handbookFileName || `${course.title}_手册.pdf`;
       document.body.appendChild(link);
       link.click();
-      
-      // 清理
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {

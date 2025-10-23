@@ -20,6 +20,8 @@ import {
   BookOpen,
   AlertCircle
 } from 'lucide-react';
+import QuizCreateModal from './QuizCreateModal';
+import { createQuiz, getQuizzesByCourse } from '../api/quizApi';
 
 const QuestionManagementPage = ({ course, onBack }) => {
   const [questions, setQuestions] = useState([]);
@@ -30,6 +32,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showQuizModal, setShowQuizModal] = useState(false);
 
   // 获取课程下的所有题目
   const fetchQuestions = async () => {
@@ -47,11 +50,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
   // 获取课程下的所有quiz
   const fetchQuizzes = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
-      if (!response.ok) {
-        throw new Error('获取小测失败');
-      }
-      const data = await response.json();
+      const data = await getQuizzesByCourse(course.id);
       setQuizzes(data);
     } catch (err) {
       console.error('获取小测失败:', err);
@@ -108,6 +107,25 @@ const QuestionManagementPage = ({ course, onBack }) => {
 
   const handleAddQuestion = () => {
     setShowAddModal(true);
+  };
+
+  // 添加小测：打开模态
+  const handleAddQuiz = () => {
+    setShowQuizModal(true);
+  };
+
+  // 保存小测：调用后端并刷新列表
+  const handleSaveQuiz = async (quizData) => {
+    try {
+      await createQuiz({ courseId: course.id, ...quizData });
+      setSuccessMessage('小测创建成功！');
+      await fetchQuizzes();
+      setShowQuizModal(false);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 2000);
+    } catch (err) {
+      alert('创建小测失败: ' + err.message);
+    }
   };
 
   const getTypeLabel = (type) => {
@@ -188,11 +206,11 @@ const QuestionManagementPage = ({ course, onBack }) => {
             <p className="text-gray-600">管理和编辑课程的题目库</p>
           </div>
           <Button 
-            onClick={handleAddQuestion}
+            onClick={handleAddQuiz}
             className="flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>添加题目</span>
+            <span>添加小测</span>
           </Button>
         </div>
       </div>
@@ -364,9 +382,9 @@ const QuestionManagementPage = ({ course, onBack }) => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">暂无题目</h3>
               <p className="text-gray-500 mb-4">开始添加您的第一个题目</p>
               <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2">
-                <Plus className="w-4 h-4" />
-                <span>添加题目</span>
-              </Button>
+                 <Plus className="w-4 h-4" />
+                 <span>添加题目</span>
+               </Button>
             </div>
           )}
         </CardContent>
@@ -390,6 +408,13 @@ const QuestionManagementPage = ({ course, onBack }) => {
         quizzes={quizzes}
         onSave={handleSaveQuestion}
         isAddMode={true}
+      />
+
+      {/* 创建小测模态框 */}
+      <QuizCreateModal
+        isOpen={showQuizModal}
+        onClose={() => setShowQuizModal(false)}
+        onSave={handleSaveQuiz}
       />
     </div>
   );

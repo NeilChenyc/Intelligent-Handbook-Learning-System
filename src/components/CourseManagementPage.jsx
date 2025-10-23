@@ -19,7 +19,7 @@ import {
 import CourseUploadModal from './CourseUploadModal';
 import CourseEditModal from './CourseEditModal';
 import QuestionManagementPage from './QuestionManagementPage';
-import { getAllCourses, updateCourse, deleteCourse } from '../api/courseApi';
+import { getAllCourses, updateCourse, deleteCourse, deleteCourseCascade, formatCourseForDisplay, downloadCourseHandbook } from '../api/courseApi';
 
 const CourseManagementPage = () => {
   const [courses, setCourses] = useState([]);
@@ -38,7 +38,7 @@ const CourseManagementPage = () => {
       setError(null);
       
       const coursesData = await getAllCourses();
-      setCourses(coursesData);
+      setCourses(coursesData.map(formatCourseForDisplay));
     } catch (err) {
       console.error('Failed to fetch courses:', err);
       
@@ -66,7 +66,6 @@ const CourseManagementPage = () => {
     }
   };
 
-  // 组件挂载时获取数据
   useEffect(() => {
     fetchCourses();
   }, []);
@@ -75,44 +74,22 @@ const CourseManagementPage = () => {
     setShowUploadModal(true);
   };
 
-  const handleUpload = (courseData) => {
-    // 重新获取课程列表以确保数据同步
-    fetchCourses();
-    setShowUploadModal(false);
+  const handlePreviewCourse = async (course) => {
+    try {
+      const blob = await downloadCourseHandbook(course.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = course.handbookFileName || `${course.title}_手册.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下载PDF文件失败:', error);
+      alert(error.message || '下载文件失败，请稍后重试');
+    }
   };
-
-  // 添加加载和错误状态的处理
-  if (loading) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">加载课程数据中...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-red-500 mb-4">
-              <BookOpen className="w-12 h-12 mx-auto" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">加载失败</h3>
-            <p className="text-gray-500 mb-4">{error}</p>
-            <Button onClick={fetchCourses} className="flex items-center space-x-2">
-              <span>重试</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const handleEditCourse = (course) => {
     setEditingCourse(course);
@@ -120,21 +97,12 @@ const CourseManagementPage = () => {
 
   const handleSaveCourse = async (updatedCourse) => {
     try {
-      const savedCourse = await updateCourse(updatedCourse.id, {
-        title: updatedCourse.title,
-        description: updatedCourse.description,
-        teacherId: updatedCourse.teacher?.id
-      });
-      
-      // 更新本地状态
-      setCourses(prev => prev.map(c => c.id === savedCourse.id ? savedCourse : c));
+      await updateCourse(updatedCourse.id, updatedCourse);
+      alert('课程更新成功');
       setEditingCourse(null);
-      
-      // 可选：显示成功消息
-      alert('课程更新成功！');
-    } catch (error) {
-      console.error('Failed to update course:', error);
-      alert('更新课程失败，请稍后重试');
+      fetchCourses();
+    } catch (err) {
+      alert('更新课程失败: ' + err.message);
     }
   };
 
@@ -142,41 +110,19 @@ const CourseManagementPage = () => {
     setSelectedCourseForQuestions(course);
   };
 
-  const handlePreviewCourse = async (course) => {
+  // 新增：删除课程（级联硬删除）
+  const handleDeleteCourse = async (course) => {
+    const ok = window.confirm(
+      `确定要删除课程“${course.title}”吗？\n这将从数据库中删除该课程、所有关联测验、这些测验的题目与选项，以及错题记录与相关测验提交/作答。此操作不可恢复。`
+    );
+    if (!ok) return;
+
     try {
-      // 调用后端API下载PDF文件
-      const response = await fetch(`http://localhost:8080/courses/${course.id}/handbook`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/pdf',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          alert('该课程暂无手册文件');
-          return;
-        }
-        throw new Error('下载失败');
-      }
-
-      // 获取文件内容
-      const blob = await response.blob();
-      
-      // 创建下载链接
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = course.handbookFileName || `${course.title}_手册.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      
-      // 清理
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('下载PDF失败:', error);
-      alert('下载失败，请稍后重试');
+      await deleteCourseCascade(course.id);
+      alert('课程及关联数据已删除');
+      fetchCourses();
+    } catch (err) {
+      alert('删除失败: ' + (err.message || '请检查后端服务'));
     }
   };
 
@@ -184,77 +130,45 @@ const CourseManagementPage = () => {
   if (selectedCourseForQuestions) {
     return (
       <QuestionManagementPage 
-        course={selectedCourseForQuestions} 
-        onBack={() => setSelectedCourseForQuestions(null)} 
+        course={selectedCourseForQuestions}
+        onBack={() => setSelectedCourseForQuestions(null)}
       />
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">课程管理</h2>
             <p className="text-gray-600">管理和上传课程手册，自动生成小测题目</p>
           </div>
-          <Button 
-            onClick={handleUploadClick}
-            className="flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>上传新课程</span>
+          <div>
+            <Button onClick={handleUploadClick} className="flex items-center space-x-2">
+              <Plus className="w-4 h-4" />
+              <span>上传课程</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* 搜索和筛选 */}
+        <div className="flex items-center space-x-2 mb-4">
+          <div className="relative flex-1">
+            <input 
+              type="text" 
+              placeholder="搜索课程..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 pl-9"
+            />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+          </div>
+          <Button variant="outline" className="flex items-center space-x-2">
+            <Filter className="w-4 h-4" />
+            <span>筛选</span>
           </Button>
         </div>
-      </div>
-
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <BookOpen className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
-                <p className="text-sm text-gray-600">总课程数</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {courses.reduce((sum, course) => sum + (course.quizzes?.length || 0), 0)}
-                </p>
-                <p className="text-sm text-gray-600">小测题目</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Clock className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {courses.filter(course => course.isActive).length}
-                </p>
-                <p className="text-sm text-gray-600">已发布</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* 课程列表 */}
@@ -266,66 +180,19 @@ const CourseManagementPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {courses.map((course) => (
-              <div key={course.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${course.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {course.isActive ? '已发布' : '未发布'}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 mb-4">{course.description}</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>创建时间: {new Date(course.createdAt).toLocaleDateString('zh-CN')}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <FileText className="w-4 h-4" />
-                        <span>教师: {course.teacher?.fullName || course.teacher?.username || '未知'}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col space-y-2 ml-6">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex items-center space-x-1"
-                      onClick={() => handlePreviewCourse(course)}
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>预览</span>
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex items-center space-x-1"
-                      onClick={() => handleEditCourse(course)}
-                    >
-                      <Edit className="w-4 h-4" />
-                      <span>编辑</span>
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="flex items-center space-x-1"
-                      onClick={() => handleQuestionManagement(course)}
-                    >
-                      <Edit className="w-4 h-4" />
-                      <span>题目管理</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {courses.length === 0 && (
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">加载中...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={() => fetchCourses()} variant="outline">
+                重试
+              </Button>
+            </div>
+          ) : courses.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <BookOpen className="w-12 h-12 mx-auto" />
@@ -337,6 +204,77 @@ const CourseManagementPage = () => {
                 <span>上传课程</span>
               </Button>
             </div>
+          ) : (
+            <div className="space-y-4">
+              {courses.map((course) => (
+                <div key={course.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${course.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {course.isActive ? '已发布' : '未发布'}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 mb-4">{course.description}</p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>创建时间: {new Date(course.createdAt).toLocaleDateString('zh-CN')}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <FileText className="w-4 h-4" />
+                          <span>教师: {course.teacher?.fullName || course.teacher?.username || '未知'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col space-y-2 ml-6">
+                      {course.handbookFileName && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center space-x-1"
+                          onClick={() => handlePreviewCourse(course)}
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>预览</span>
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex items-center space-x-1"
+                        onClick={() => handleEditCourse(course)}
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>编辑</span>
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center space-x-1"
+                        onClick={() => handleQuestionManagement(course)}
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>题目管理</span>
+                      </Button>
+                      {/* 新增：删除按钮 */}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center space-x-1 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => handleDeleteCourse(course)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>删除</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -345,7 +283,7 @@ const CourseManagementPage = () => {
       <CourseUploadModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onUpload={handleUpload}
+        onUpload={() => fetchCourses()}
       />
 
       {/* 编辑模态框 */}

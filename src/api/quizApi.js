@@ -82,3 +82,28 @@ export const getQuizAttemptDetail = async (attemptId) => {
   }
   return response.json();
 };
+
+// 创建小测
+export const createQuiz = async ({ courseId, title, description, passingScore }) => {
+  const response = await fetch(`${API_BASE_URL}/quizzes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ courseId, title, description, passingScore }),
+  });
+
+  if (!response.ok) {
+    throw new Error('创建小测失败');
+  }
+  return response.json();
+};
+
+// 获取课程下的小测列表
+export const getQuizzesByCourse = async (courseId) => {
+  const response = await fetch(`${API_BASE_URL}/quizzes/course/${courseId}`);
+  if (!response.ok) {
+    throw new Error('获取小测失败');
+  }
+  return response.json();
+};

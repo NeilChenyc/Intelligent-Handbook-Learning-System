@@ -1,10 +1,10 @@
 // 课程相关API调用函数
 const API_BASE_URL = 'http://localhost:8080';
 
-// 获取所有活跃课程
+// 获取所有活跃课程（后端已忽略PDF二进制字段）
 export const getAllCourses = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/courses`, {
+    const response = await fetch(`${API_BASE_URL}/courses/summaries`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -19,6 +19,31 @@ export const getAllCourses = async () => {
     return courses;
   } catch (error) {
     console.error('Error fetching courses:', error);
+    throw error;
+  }
+};
+
+// 按需下载课程手册PDF（仅在用户点击时请求）
+export const downloadCourseHandbook = async (courseId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}/handbook`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/pdf',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('该课程暂无手册文件');
+      }
+      throw new Error(`下载失败，状态码: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    return blob;
+  } catch (error) {
+    console.error('Error downloading handbook:', error);
     throw error;
   }
 };
@@ -51,7 +76,7 @@ export const getCourseById = async (courseId) => {
 // 根据教师ID获取课程列表
 export const getCoursesByTeacher = async (teacherId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/courses/teacher/${teacherId}`, {
+    const response = await fetch(`${API_BASE_URL}/courses/summaries/teacher/${teacherId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +98,7 @@ export const getCoursesByTeacher = async (teacherId) => {
 // 搜索课程
 export const searchCourses = async (title) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/courses/search?title=${encodeURIComponent(title)}`, {
+    const response = await fetch(`${API_BASE_URL}/courses/summaries/search?title=${encodeURIComponent(title)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -92,7 +117,7 @@ export const searchCourses = async (title) => {
   }
 };
 
-// 创建新课程
+// 创建课程
 export const createCourse = async (courseData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses`, {
@@ -159,6 +184,27 @@ export const deleteCourse = async (courseId) => {
   }
 };
 
+// 级联硬删除课程及其关联数据
+export const deleteCourseCascade = async (courseId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/courses/${courseId}/cascade`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error cascade deleting course:', error);
+    throw error;
+  }
+};
+
 // 课程状态枚举
 export const COURSE_STATUS = {
   ALL: 'all',
@@ -187,17 +233,34 @@ export const filterCoursesByStatus = (courses, status) => {
 export const formatCourseForDisplay = (course) => {
   if (!course) return null;
 
+  const createdAtDate = course.createdAt ? new Date(course.createdAt) : null;
+  const updatedAtDate = course.updatedAt ? new Date(course.updatedAt) : null;
+
+  const teacherName = (
+    (course.teacher && (course.teacher.fullName || course.teacher.username)) ||
+    course.teacherFullName ||
+    '未知教师'
+  );
+
+  const teacherObj = course.teacher || (
+    (course.teacherFullName || course.teacherId)
+      ? {
+          id: course.teacherId ?? null,
+          fullName: course.teacherFullName ?? undefined,
+          username: course.teacherFullName ?? undefined,
+        }
+      : undefined
+  );
+
   return {
     ...course,
-    formattedCreatedAt: new Date(course.createdAt).toLocaleDateString('zh-CN'),
-    formattedUpdatedAt: new Date(course.updatedAt).toLocaleDateString('zh-CN'),
-    teacherName: course.teacher?.fullName || course.teacher?.username || '未知教师',
-    quizCount: course.quizzes?.length || 0,
-    statusText: course.isActive ? '活跃' : '已停用',
-    // 确保PDF相关字段被包含
+    teacher: teacherObj,
+    teacherName,
+    formattedCreatedAt: createdAtDate ? createdAtDate.toLocaleDateString('zh-CN') : '未知',
+    formattedUpdatedAt: updatedAtDate ? updatedAtDate.toLocaleDateString('zh-CN') : '未知',
     handbookContent: course.handbookContent,
     handbookFileName: course.handbookFileName,
     handbookContentType: course.handbookContentType,
-    handbookFileSize: course.handbookFileSize
+    handbookFileSize: course.handbookFileSize,
   };
 };
