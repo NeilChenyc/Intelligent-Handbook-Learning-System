@@ -1,6 +1,8 @@
 package com.quiz.service;
 
 import com.quiz.dto.CreateQuestionRequest;
+import com.quiz.dto.QuestionDto;
+import com.quiz.dto.QuestionOptionDto;
 import com.quiz.entity.Question;
 import com.quiz.entity.QuestionOption;
 import com.quiz.entity.Quiz;
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,36 @@ public class QuestionService {
 
     public List<Question> getQuestionsByQuiz(Long quizId) {
         return questionRepository.findActiveByQuizIdOrderByOrderIndex(quizId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<QuestionDto> getQuestionDtosByQuiz(Long quizId) {
+        List<Question> questions = questionRepository.findActiveByQuizIdOrderByOrderIndex(quizId);
+        return questions.stream()
+                .map(q -> {
+                    QuestionDto dto = new QuestionDto();
+                    dto.setId(q.getId());
+                    dto.setQuestionText(q.getQuestionText());
+                    dto.setType(q.getType());
+                    dto.setExplanation(q.getExplanation());
+                    dto.setPoints(q.getPoints());
+                    dto.setOrderIndex(q.getOrderIndex());
+
+                    List<QuestionOptionDto> optionDtos = (q.getOptions() != null)
+                            ? q.getOptions().stream()
+                                    .map(o -> new QuestionOptionDto(
+                                            o.getId(),
+                                            o.getOptionText(),
+                                            o.getIsCorrect(),
+                                            o.getOrderIndex()
+                                    ))
+                                    .collect(Collectors.toList())
+                            : java.util.Collections.emptyList();
+
+                    dto.setOptions(optionDtos);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +41,40 @@ public class QuizService {
             return quizzes;
         } catch (Exception e) {
             log.error("Error fetching quizzes for course ID: {}", courseId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 获取课程下的小测摘要信息（不包含题目详情）- 用于小测列表显示
+     */
+    public List<Quiz> getQuizSummariesByCourse(Long courseId) {
+        try {
+            log.debug("Fetching quiz summaries for course ID: {}", courseId);
+            List<Quiz> quizzes = quizRepository.findActiveByCourseIdWithoutQuestions(courseId);
+            log.debug("Repository returned {} quiz summaries for course ID: {}", quizzes.size(), courseId);
+            return quizzes;
+        } catch (Exception e) {
+            log.error("Error fetching quiz summaries for course ID: {}", courseId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 获取课程下各小测的题目数量
+     */
+    public Map<Long, Integer> getQuizQuestionCounts(Long courseId) {
+        try {
+            List<Object[]> results = quizRepository.findQuizQuestionCountsByCourseId(courseId);
+            Map<Long, Integer> questionCounts = new HashMap<>();
+            for (Object[] result : results) {
+                Long quizId = (Long) result[0];
+                Long count = (Long) result[1];
+                questionCounts.put(quizId, count.intValue());
+            }
+            return questionCounts;
+        } catch (Exception e) {
+            log.error("Error fetching quiz question counts for course ID: {}", courseId, e);
             throw e;
         }
     }
@@ -122,5 +158,9 @@ public class QuizService {
     public boolean isQuizOwnedByTeacher(Long quizId, Long teacherId) {
         Optional<Quiz> quiz = quizRepository.findById(quizId);
         return quiz.isPresent() && quiz.get().getCourse().getTeacher().getId().equals(teacherId);
+    }
+
+    public List<com.quiz.dto.QuizSummaryDto> getQuizSummaryDtosByCourse(Long courseId) {
+        return quizRepository.findSummaryDtosByCourseId(courseId);
     }
 }

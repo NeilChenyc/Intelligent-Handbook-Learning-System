@@ -3,10 +3,14 @@ package com.quiz.controller;
 import com.quiz.agent.PdfQuizAgent;
 import com.quiz.dto.QuizCreateRequest;
 import com.quiz.dto.QuizResponseDto;
+import com.quiz.dto.QuizSummaryDto;
 import com.quiz.entity.Course;
 import com.quiz.entity.Quiz;
 import com.quiz.service.CourseService;
 import com.quiz.service.QuizService;
+import com.quiz.service.QuizAttemptService;
+import com.quiz.service.CourseQuizListCacheService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/quizzes")
@@ -27,6 +32,8 @@ public class QuizController {
     private final QuizService quizService;
     private final CourseService courseService;
     private final PdfQuizAgent pdfQuizAgent;
+    private final QuizAttemptService quizAttemptService;
+    private final CourseQuizListCacheService courseQuizListCacheService;
 
     @GetMapping
     public ResponseEntity<List<QuizResponseDto>> getAllQuizzes() {
@@ -63,6 +70,90 @@ public class QuizController {
         }
     }
 
+    /**
+     * 获取课程下的小测摘要信息（优化版本，不包含题目详情）
+     */
+    @GetMapping("/course/{courseId}/summaries")
+    public ResponseEntity<List<QuizSummaryDto>> getQuizSummariesByCourse(@PathVariable("courseId") Long courseId) {
+        try {
+            log.debug("Getting quiz summaries for course ID: {}", courseId);
+            List<QuizSummaryDto> summaries = quizService.getQuizSummaryDtosByCourse(courseId);
+            Map<Long, Integer> questionCounts = quizService.getQuizQuestionCounts(courseId);
+            log.debug("Found {} quiz summaries for course ID: {}", summaries.size(), courseId);
+            
+            List<QuizSummaryDto> quizSummaries = summaries.stream()
+                    .peek(dto -> dto.setQuestionCount(questionCounts.getOrDefault(dto.getId(), 0)))
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(quizSummaries);
+        } catch (Exception e) {
+            log.error("Error getting quiz summaries for course ID: {}", courseId, e);
+            throw e;
+        }
+    }
+
+    /**
+     * 获取课程下的小测列表（带用户通过信息），并使用 Supabase Postgres 做简易缓存。
+     */
+    @GetMapping("/course/{courseId}/list-cached")
+    public ResponseEntity<Map<String, Object>> getCourseQuizListCached(@PathVariable("courseId") Long courseId,
+                                                                       @RequestParam("userId") Long userId) {
+        try {
+            log.info("list-cached request courseId={}, userId={}", courseId, userId);
+            // 命中缓存则直接返回
+            java.util.Optional<String> cachedOpt = courseQuizListCacheService.getCache(courseId, userId);
+            if (cachedOpt.isPresent()) {
+                String payload = cachedOpt.get();
+                log.info("Cache HIT courseId={}, userId={}, payloadSize={}", courseId, userId, payload != null ? payload.length() : 0);
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> result;
+                try {
+                    result = mapper.readValue(payload, Map.class);
+                } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                    log.warn("Failed to parse cached JSON for courseId={}, userId={}", courseId, userId, ex);
+                    result = new java.util.HashMap<>();
+                    result.put("quizzes", java.util.Collections.emptyList());
+                    result.put("passedQuizIds", java.util.Collections.emptyList());
+                }
+                return ResponseEntity.ok(result);
+            }
+
+            log.info("Cache MISS courseId={}, userId={}", courseId, userId);
+            // 未命中缓存：查询摘要与用户通过列表（使用投影查询，避免加载 Course 大字段）
+            List<QuizSummaryDto> quizSummaries = quizService.getQuizSummaryDtosByCourse(courseId);
+            Map<Long, Integer> questionCounts = quizService.getQuizQuestionCounts(courseId);
+            quizSummaries.forEach(dto -> dto.setQuestionCount(questionCounts.getOrDefault(dto.getId(), 0)));
+
+            List<Long> passedQuizIds = quizAttemptService.getUserPassedQuizzesInCourse(userId, courseId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("quizzes", quizSummaries);
+            result.put("passedQuizIds", passedQuizIds);
+
+            log.info("Built fresh result: quizzes={}, passedIds={}", quizSummaries.size(), passedQuizIds.size());
+
+            // 写入缓存
+            ObjectMapper mapper = new ObjectMapper();
+            String payloadJson;
+            try {
+                payloadJson = mapper.writeValueAsString(result);
+            } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                log.warn("Failed to serialize result JSON for courseId={}, userId={}", courseId, userId, ex);
+                payloadJson = "{\"quizzes\":[],\"passedQuizIds\":[]}";
+            }
+            courseQuizListCacheService.putCache(courseId, userId, payloadJson);
+            log.info("Cache PUT done courseId={}, userId={}, payloadSize={}", courseId, userId, payloadJson.length());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("list-cached failed courseId={}, userId={}", courseId, userId, e);
+            Map<String, Object> fallback = new java.util.HashMap<>();
+            fallback.put("quizzes", java.util.Collections.emptyList());
+            fallback.put("passedQuizIds", java.util.Collections.emptyList());
+            return ResponseEntity.ok(fallback);
+        }
+    }
+
     private QuizResponseDto convertToDto(Quiz quiz) {
         QuizResponseDto dto = new QuizResponseDto();
         dto.setId(quiz.getId());
@@ -86,6 +177,34 @@ public class QuizController {
         } else {
             dto.setQuestionCount(0);
         }
+        
+        return dto;
+    }
+
+    /**
+     * 转换为小测摘要DTO
+     */
+    private QuizSummaryDto convertToSummaryDto(Quiz quiz, Integer questionCount) {
+        QuizSummaryDto dto = new QuizSummaryDto();
+        dto.setId(quiz.getId());
+        dto.setTitle(quiz.getTitle());
+        dto.setDescription(quiz.getDescription());
+        dto.setTimeLimitMinutes(quiz.getTimeLimitMinutes());
+        dto.setTotalPoints(quiz.getTotalPoints());
+        dto.setPassingScore(quiz.getPassingScore());
+        dto.setMaxAttempts(quiz.getMaxAttempts());
+        dto.setIsActive(quiz.getIsActive());
+        dto.setCreatedAt(quiz.getCreatedAt());
+        dto.setUpdatedAt(quiz.getUpdatedAt());
+        
+        // 设置课程信息
+        if (quiz.getCourse() != null) {
+            dto.setCourseId(quiz.getCourse().getId());
+            dto.setCourseTitle(quiz.getCourse().getTitle());
+        }
+        
+        // 设置题目数量（从参数获取，避免加载题目）
+        dto.setQuestionCount(questionCount);
         
         return dto;
     }

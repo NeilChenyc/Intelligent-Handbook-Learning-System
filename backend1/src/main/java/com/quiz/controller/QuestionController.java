@@ -1,6 +1,7 @@
 package com.quiz.controller;
 
 import com.quiz.dto.CreateQuestionRequest;
+import com.quiz.dto.QuestionDto;
 import com.quiz.entity.Question;
 import com.quiz.service.QuestionService;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +24,9 @@ public class QuestionController {
      * 根据quiz ID获取所有活跃题目
      */
     @GetMapping("/quiz/{quizId}")
-    public ResponseEntity<List<Question>> getQuestionsByQuiz(@PathVariable("quizId") Long quizId) {
+    public ResponseEntity<List<QuestionDto>> getQuestionsByQuiz(@PathVariable("quizId") Long quizId) {
         try {
-            List<Question> questions = questionService.getQuestionsByQuiz(quizId);
+            List<QuestionDto> questions = questionService.getQuestionDtosByQuiz(quizId);
             return ResponseEntity.ok(questions);
         } catch (Exception e) {
             log.error("Error getting questions by quiz id: {}", quizId, e);
