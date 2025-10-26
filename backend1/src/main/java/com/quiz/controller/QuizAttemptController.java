@@ -75,7 +75,7 @@ public class QuizAttemptController {
      * 提交小测答案
      */
     @PostMapping("/{attemptId}/submit")
-    public ResponseEntity<?> submitQuizAttempt(@PathVariable Long attemptId, @RequestBody List<SubmitAnswerRequest> answerRequests) {
+    public ResponseEntity<?> submitQuizAttempt(@PathVariable("attemptId") Long attemptId, @RequestBody List<SubmitAnswerRequest> answerRequests) {
         log.info("=== submitQuizAttempt method called ===");
         log.info("AttemptId: {}, AnswerRequests: {}", attemptId, answerRequests);
         
@@ -125,7 +125,7 @@ public class QuizAttemptController {
      * 获取小测尝试详情
      */
     @GetMapping("/{attemptId}")
-    public ResponseEntity<?> getQuizAttempt(@PathVariable Long attemptId) {
+    public ResponseEntity<?> getQuizAttempt(@PathVariable("attemptId") Long attemptId) {
         try {
             Optional<QuizAttempt> attempt = quizAttemptService.getAttemptById(attemptId);
             if (attempt.isPresent()) {
@@ -144,8 +144,8 @@ public class QuizAttemptController {
      */
     @GetMapping("/user/{userId}/course/{courseId}/passed")
     public ResponseEntity<List<Long>> getUserPassedQuizzesInCourse(
-            @PathVariable Long userId, 
-            @PathVariable Long courseId) {
+            @PathVariable("userId") Long userId, 
+            @PathVariable("courseId") Long courseId) {
         try {
             List<Long> passedQuizIds = quizAttemptService.getUserPassedQuizzesInCourse(userId, courseId);
             return ResponseEntity.ok(passedQuizIds);

@@ -24,7 +24,7 @@ public class WrongQuestionController {
      * 获取用户未重做的错题列表
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestions(@PathVariable Long userId) {
+    public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestions(@PathVariable("userId") Long userId) {
         try {
             log.info("Getting wrong questions for user: {}", userId);
             List<WrongQuestionDTO> wrongQuestions = wrongQuestionService.getUserWrongQuestions(userId);
@@ -41,8 +41,8 @@ public class WrongQuestionController {
      */
     @GetMapping("/user/{userId}/course/{courseId}")
     public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestionsByCourse(
-            @PathVariable Long userId,
-            @PathVariable Long courseId) {
+            @PathVariable("userId") Long userId,
+            @PathVariable("courseId") Long courseId) {
         try {
             List<WrongQuestionDTO> wrongQuestions = wrongQuestionService.getUserWrongQuestionsByCourse(userId, courseId);
             return ResponseEntity.ok(wrongQuestions);
@@ -57,8 +57,8 @@ public class WrongQuestionController {
      */
     @GetMapping("/user/{userId}/quiz/{quizId}")
     public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestionsByQuiz(
-            @PathVariable Long userId,
-            @PathVariable Long quizId) {
+            @PathVariable("userId") Long userId,
+            @PathVariable("quizId") Long quizId) {
         try {
             List<WrongQuestionDTO> wrongQuestions = wrongQuestionService.getUserWrongQuestionsByQuiz(userId, quizId);
             return ResponseEntity.ok(wrongQuestions);
@@ -72,7 +72,7 @@ public class WrongQuestionController {
      * 获取用户未重做错题数量统计
      */
     @GetMapping("/user/{userId}/count")
-    public ResponseEntity<Map<String, Long>> getUserWrongQuestionsCount(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, Long>> getUserWrongQuestionsCount(@PathVariable("userId") Long userId) {
         try {
             Long count = wrongQuestionService.countUserWrongQuestions(userId);
             return ResponseEntity.ok(Map.of("count", count));
@@ -87,7 +87,7 @@ public class WrongQuestionController {
      */
     @PostMapping("/{wrongQuestionId}/redo")
     public ResponseEntity<Map<String, Object>> redoWrongQuestion(
-            @PathVariable Long wrongQuestionId,
+            @PathVariable("wrongQuestionId") Long wrongQuestionId,
             @RequestBody Map<String, Object> request) {
         try {
             log.info("Processing wrong question redo for ID: {}, request: {}", wrongQuestionId, request);
@@ -127,7 +127,7 @@ public class WrongQuestionController {
      * 获取错题详情
      */
     @GetMapping("/{wrongQuestionId}")
-    public ResponseEntity<WrongQuestion> getWrongQuestionDetail(@PathVariable Long wrongQuestionId) {
+    public ResponseEntity<WrongQuestion> getWrongQuestionDetail(@PathVariable("wrongQuestionId") Long wrongQuestionId) {
         try {
             return wrongQuestionService.getWrongQuestionById(wrongQuestionId)
                     .map(ResponseEntity::ok)

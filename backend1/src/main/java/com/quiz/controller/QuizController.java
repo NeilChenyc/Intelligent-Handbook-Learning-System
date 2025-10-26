@@ -38,14 +38,14 @@ public class QuizController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Quiz> getQuizById(@PathVariable Long id) {
+    public ResponseEntity<Quiz> getQuizById(@PathVariable("id") Long id) {
         return quizService.getQuizById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<List<QuizResponseDto>> getQuizzesByCourse(@PathVariable Long courseId) {
+    public ResponseEntity<List<QuizResponseDto>> getQuizzesByCourse(@PathVariable("courseId") Long courseId) {
         try {
             log.debug("Getting quizzes for course ID: {}", courseId);
             List<Quiz> quizzes = quizService.getQuizzesByCourse(courseId);
@@ -102,7 +102,7 @@ public class QuizController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Quiz> updateQuiz(@PathVariable Long id, @RequestBody QuizCreateRequest request) {
+    public ResponseEntity<Quiz> updateQuiz(@PathVariable("id") Long id, @RequestBody QuizCreateRequest request) {
         try {
             Quiz quiz = quizService.updateQuiz(id, request);
             return ResponseEntity.ok(quiz);
@@ -113,7 +113,7 @@ public class QuizController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteQuiz(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteQuiz(@PathVariable("id") Long id) {
         try {
             quizService.deleteQuiz(id);
             return ResponseEntity.ok().build();

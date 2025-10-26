@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { CheckCircle, XCircle, FileText, Shield, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ArrowLeft, ArrowRight, RotateCcw, Trophy, FileText, Shield } from 'lucide-react';
 import { getQuestionsByQuiz, startQuizAttempt, submitQuizAnswers } from '../api/quizApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const QuizPage = ({ quizId, courseName, onBack }) => {
+  const { user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,12 +15,18 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
   const [wrongQuestionsCount, setWrongQuestionsCount] = useState(0);
   const [quizResult, setQuizResult] = useState(null);
 
-  // 模拟用户ID，实际应用中应从认证系统获取
-  const userId = 1;
+  // 从认证系统获取用户ID
+  const userId = user?.id;
 
   // 从后端获取题目数据并开始小测尝试
   useEffect(() => {
     const initializeQuiz = async () => {
+      // 如果用户未登录或没有quizId，不执行数据获取
+      if (!userId || !quizId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         console.log('Debug: 开始初始化小测, quizId:', quizId, 'userId:', userId);

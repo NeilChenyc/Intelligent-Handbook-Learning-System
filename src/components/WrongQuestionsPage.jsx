@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { CheckCircle, XCircle, FileText, BookOpen, Trophy, AlertCircle } from 'lucide-react';
 import { getUserWrongQuestions, submitWrongQuestionRedo, getUserWrongQuestionsCount } from '../api/wrongQuestionApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const WrongQuestionsPage = () => {
+  const { user } = useAuth();
   const [wrongQuestions, setWrongQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState(null);
@@ -15,8 +17,8 @@ const WrongQuestionsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [wrongQuestionsCount, setWrongQuestionsCount] = useState(0);
 
-  // 模拟用户ID，实际应用中应从认证系统获取
-  const userId = 1;
+  // 从认证系统获取用户ID
+  const userId = user?.id;
 
   // 默认错题数据
   const defaultWrongQuestions = [
@@ -67,6 +69,12 @@ const WrongQuestionsPage = () => {
   // 从后端获取错题数据
   useEffect(() => {
     const fetchWrongQuestions = async () => {
+      // 如果用户未登录，不执行数据获取
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
