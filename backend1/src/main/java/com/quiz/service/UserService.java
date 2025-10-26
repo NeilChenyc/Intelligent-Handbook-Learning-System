@@ -51,6 +51,8 @@ public class UserService {
         user.setFullName(userDetails.getFullName());
         user.setEmail(userDetails.getEmail());
         user.setRole(userDetails.getRole());
+        // 支持更新 apartment 字段
+        user.setApartment(userDetails.getApartment());
         user.setUpdatedAt(LocalDateTime.now());
 
         return userRepository.save(user);
