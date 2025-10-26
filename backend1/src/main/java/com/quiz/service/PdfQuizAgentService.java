@@ -272,7 +272,7 @@ public class PdfQuizAgentService {
             );
 
             updateTaskStatus(taskId, "IN_PROGRESS", 50, "调用OpenAI Responses...", request.getCourseId());
-            String responseText = callOpenAIResponses(fileId, prompt);
+            String responseText = callOpenAIResponses(fileId, prompt, request);
             if (responseText == null || responseText.isBlank()) {
                 log.warn("Responses API返回为空，终止任务");
                 updateTaskStatus(taskId, "FAILED", 52, "Responses返回为空，任务终止", request.getCourseId());
@@ -320,8 +320,9 @@ public class PdfQuizAgentService {
      * 解析AI响应
      */
     private QuizGenerationRequest.QuizGenerationResponse parseAIResponse(String response) {
+        String sanitized = sanitizeJsonResponse(response);
         try {
-            JsonNode rootNode = objectMapper.readTree(response);
+            JsonNode rootNode = objectMapper.readTree(sanitized);
             JsonNode quizzesNode = rootNode.get("quizzes");
             
             List<QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz> quizzes = new ArrayList<>();
@@ -340,9 +341,59 @@ public class PdfQuizAgentService {
                     .build();
                     
         } catch (Exception e) {
-            log.error("解析AI响应失败", e);
+            log.error("解析AI响应失败: sanitizedHead={}, rawHead={}", truncate(sanitized, 300), truncate(response, 300), e);
             throw new RuntimeException("解析AI响应失败: " + e.getMessage());
         }
+    }
+
+    private String sanitizeJsonResponse(String response) {
+        if (response == null) return null;
+        String s = response.trim();
+        // 移除可能的 BOM
+        if (!s.isEmpty() && s.charAt(0) == '\uFEFF') {
+            s = s.substring(1).trim();
+        }
+        // 处理Markdown代码块 ```json ... ``` 或 ``` ... ```
+        if (s.startsWith("```") ) {
+            int first = s.indexOf("```");
+            int second = s.indexOf("```", first + 3);
+            if (second > first) {
+                String inner = s.substring(first + 3, second).trim();
+                // 去掉可选语言标签 json/JSON
+                if (inner.toLowerCase(java.util.Locale.ROOT).startsWith("json")) {
+                    int nl = inner.indexOf('\n');
+                    if (nl >= 0) inner = inner.substring(nl + 1).trim();
+                    else inner = inner.replaceFirst("(?i)^json\\s*", "").trim();
+                }
+                s = inner;
+            } else {
+                s = s.replace("```", "").trim();
+            }
+        }
+        // 再次去除可能残留的开头/结尾代码围栏
+        s = s.replaceFirst("(?s)^\\s*```(?:json|JSON)?\\s*", "");
+        s = s.replaceFirst("(?s)\\s*```\\s*$", "");
+        
+        // 如仍含非JSON包裹文本，尝试截取首个对象或数组
+        if (!s.isEmpty() && s.charAt(0) != '{' && s.charAt(0) != '[') {
+            int objStart = s.indexOf('{');
+            int objEnd = s.lastIndexOf('}');
+            int arrStart = s.indexOf('[');
+            int arrEnd = s.lastIndexOf(']');
+            String candidate = null;
+            if (objStart >= 0 && objEnd > objStart) {
+                candidate = s.substring(objStart, objEnd + 1);
+            } else if (arrStart >= 0 && arrEnd > arrStart) {
+                candidate = s.substring(arrStart, arrEnd + 1);
+            }
+            if (candidate != null) s = candidate.trim();
+        }
+        return s;
+    }
+
+    private String truncate(String s, int max) {
+        if (s == null) return "null";
+        return s.length() > max ? s.substring(0, max) + "...[truncated]" : s;
     }
 
     /**
@@ -616,100 +667,185 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
 }
 
 /**
- * 调用OpenAI Responses API（文件输入）并返回文本输出
- */
-private String callOpenAIResponses(String fileId, String prompt) {
-    try {
-        // 构建请求JSON
-        com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
-        root.put("model", openaiModel);
-        com.fasterxml.jackson.databind.node.ArrayNode input = root.putArray("input");
+     * 调用OpenAI Responses API（文件输入）并返回文本输出 - 带配置约束
+     */
+    private String callOpenAIResponses(String fileId, String prompt, AgentProcessRequest request) {
+        try {
+            // 构建请求JSON
+            com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
+            root.put("model", openaiModel);
+            com.fasterxml.jackson.databind.node.ObjectNode textCfg = root.putObject("text");
+            com.fasterxml.jackson.databind.node.ObjectNode textFormat = textCfg.putObject("format");
+            // 使用严格 JSON Schema 约束输出结构
+            textFormat.put("type", "json_schema");
+            textFormat.put("name", "QuizSchema");
+            // API 要求 schema/strict 直接位于 text.format 下
+            textFormat.put("strict", true);
+            com.fasterxml.jackson.databind.node.ObjectNode schema = textFormat.putObject("schema");
+            // quizzes 顶层数组结构
+            schema.put("type", "object");
+            schema.put("additionalProperties", false);
+            com.fasterxml.jackson.databind.node.ArrayNode required = schema.putArray("required");
+            required.add("quizzes");
+            com.fasterxml.jackson.databind.node.ObjectNode properties = schema.putObject("properties");
+            // quizzes 数组 - 添加长度约束
+            com.fasterxml.jackson.databind.node.ObjectNode quizzesProp = properties.putObject("quizzes");
+            quizzesProp.put("type", "array");
+            quizzesProp.put("minItems", request.getQuizCount());
+            quizzesProp.put("maxItems", request.getQuizCount());
+            com.fasterxml.jackson.databind.node.ObjectNode quizzesItems = quizzesProp.putObject("items");
+            quizzesItems.put("type", "object");
+            quizzesItems.put("additionalProperties", false);
+            com.fasterxml.jackson.databind.node.ArrayNode quizRequired = quizzesItems.putArray("required");
+            quizRequired.add("title");
+            quizRequired.add("description");
+            quizRequired.add("difficulty");
+            quizRequired.add("questions");
+            com.fasterxml.jackson.databind.node.ObjectNode quizProps = quizzesItems.putObject("properties");
+            quizProps.putObject("title").put("type", "string");
+            quizProps.putObject("description").put("type", "string");
+            // 难度为枚举
+            com.fasterxml.jackson.databind.node.ObjectNode difficultyProp = quizProps.putObject("difficulty");
+            difficultyProp.put("type", "string");
+            com.fasterxml.jackson.databind.node.ArrayNode difficultyEnum = difficultyProp.putArray("enum");
+            difficultyEnum.add("easy"); difficultyEnum.add("medium"); difficultyEnum.add("hard");
+            // questions 数组 - 添加长度约束
+            com.fasterxml.jackson.databind.node.ObjectNode questionsProp = quizProps.putObject("questions");
+            questionsProp.put("type", "array");
+            questionsProp.put("minItems", request.getQuestionsPerQuiz());
+            questionsProp.put("maxItems", request.getQuestionsPerQuiz());
+            com.fasterxml.jackson.databind.node.ObjectNode questionItems = questionsProp.putObject("items");
+            questionItems.put("type", "object");
+            questionItems.put("additionalProperties", false);
+            com.fasterxml.jackson.databind.node.ArrayNode questionRequired = questionItems.putArray("required");
+            questionRequired.add("text");
+            questionRequired.add("type");
+            questionRequired.add("options");
+            questionRequired.add("explanation");
+            questionRequired.add("points");
+            com.fasterxml.jackson.databind.node.ObjectNode questionProps = questionItems.putObject("properties");
+            questionProps.putObject("text").put("type", "string");
+            // 题目类型限定为 MULTIPLE_CHOICE
+            com.fasterxml.jackson.databind.node.ObjectNode qTypeProp = questionProps.putObject("type");
+            qTypeProp.put("type", "string");
+            com.fasterxml.jackson.databind.node.ArrayNode qTypeEnum = qTypeProp.putArray("enum");
+            qTypeEnum.add("MULTIPLE_CHOICE");
+            // options 数组 - 固定4个选项
+            com.fasterxml.jackson.databind.node.ObjectNode optionsProp = questionProps.putObject("options");
+            optionsProp.put("type", "array");
+            optionsProp.put("minItems", 4);
+            optionsProp.put("maxItems", 4);
+            com.fasterxml.jackson.databind.node.ObjectNode optionItems = optionsProp.putObject("items");
+            optionItems.put("type", "object");
+            optionItems.put("additionalProperties", false);
+            com.fasterxml.jackson.databind.node.ArrayNode optionRequired = optionItems.putArray("required");
+            optionRequired.add("text");
+            optionRequired.add("isCorrect");
+            com.fasterxml.jackson.databind.node.ObjectNode optionProps = optionItems.putObject("properties");
+            optionProps.putObject("text").put("type", "string");
+            optionProps.putObject("isCorrect").put("type", "boolean");
+            // explanation 与 points
+            questionProps.putObject("explanation").put("type", "string");
+            questionProps.putObject("points").put("type", "integer");
+            
+            // 继续构造 input 消息
+            com.fasterxml.jackson.databind.node.ArrayNode input = root.putArray("input");
+            com.fasterxml.jackson.databind.node.ObjectNode systemMsg = input.addObject();
+            systemMsg.put("role", "system");
+            com.fasterxml.jackson.databind.node.ArrayNode systemContent = systemMsg.putArray("content");
+            systemContent.addObject().put("type", "input_text").put("text", "你是一个专业的教育内容分析师和测验生成专家。根据提供的PDF内容生成高质量测验。只返回严格符合 Schema 的纯 JSON，不要使用Markdown代码块、反引号或任何解释。");
+            com.fasterxml.jackson.databind.node.ObjectNode userMsg = input.addObject();
+            userMsg.put("role", "user");
+            com.fasterxml.jackson.databind.node.ArrayNode userContent = userMsg.putArray("content");
+            userContent.addObject().put("type", "input_text").put("text", prompt);
+            userContent.addObject().put("type", "input_file").put("file_id", fileId);
 
-        com.fasterxml.jackson.databind.node.ObjectNode systemMsg = input.addObject();
-        systemMsg.put("role", "system");
-        com.fasterxml.jackson.databind.node.ArrayNode systemContent = systemMsg.putArray("content");
-        systemContent.addObject().put("type", "input_text").put("text", "你是一个专业的教育内容分析师和测验生成专家。请根据提供的PDF内容生成高质量的测验并严格返回JSON格式。");
+            String json = objectMapper.writeValueAsString(root);
+            log.info("Calling Responses API: url={}{} , model={}, fileId={}, promptLen={}, headers=OpenAI-Beta:pdfs=v1", openaiBaseUrl, "/responses", openaiModel, fileId, (prompt != null ? prompt.length() : 0));
+            log.debug("Responses payload (truncated): {}", json.length() > 2000 ? json.substring(0, 2000) + "...[truncated]" : json);
 
-        com.fasterxml.jackson.databind.node.ObjectNode userMsg = input.addObject();
-        userMsg.put("role", "user");
-        com.fasterxml.jackson.databind.node.ArrayNode userContent = userMsg.putArray("content");
-        userContent.addObject().put("type", "input_text").put("text", prompt);
-        userContent.addObject().put("type", "input_file").put("file_id", fileId);
+            RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
+            Request httpRequest = new Request.Builder()
+                    .url(openaiBaseUrl + "/responses")
+                    .post(body)
+                    .addHeader("Authorization", "Bearer " + openaiApiKey)
+                    .addHeader("OpenAI-Beta", "pdfs=v1")
+                    .build();
 
-        String json = objectMapper.writeValueAsString(root);
-        log.info("Calling Responses API: url={}{} , model={}, fileId={}, promptLen={}, headers=OpenAI-Beta:pdfs=v1", openaiBaseUrl, "/responses", openaiModel, fileId, (prompt != null ? prompt.length() : 0));
-        log.debug("Responses payload (truncated): {}", json.length() > 2000 ? json.substring(0, 2000) + "...[truncated]" : json);
-
-        RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
-        Request request = new Request.Builder()
-                .url(openaiBaseUrl + "/responses")
-                .post(body)
-                .addHeader("Authorization", "Bearer " + openaiApiKey)
-                .addHeader("OpenAI-Beta", "pdfs=v1")
-                .build();
-
-        try (Response response = httpClient.newCall(request).execute()) {
-            String requestId = response.header("x-request-id");
-            String respBody = response.body() != null ? response.body().string() : null;
-            log.info("Responses API HTTP {} requestId={} bodyLen={}", response.code(), requestId, respBody != null ? respBody.length() : -1);
-            if (!response.isSuccessful()) {
-                String errMsg = null;
-                String errType = null;
-                String errCode = null;
-                String errParam = null;
-                try {
+            try (Response response = httpClient.newCall(httpRequest).execute()) {
+                String requestId = response.header("x-request-id");
+                String respBody = response.body() != null ? response.body().string() : null;
+                log.info("Responses API HTTP {} requestId={} bodyLen={}", response.code(), requestId, respBody != null ? respBody.length() : -1);
+                if (!response.isSuccessful()) {
+                    String errMsg = null;
+                    String errType = null;
+                    String errCode = null;
+                    String errParam = null;
+                    try {
+                        if (respBody != null) {
+                            JsonNode errNode = objectMapper.readTree(respBody);
+                            if (errNode.has("error")) {
+                                JsonNode e = errNode.get("error");
+                                if (e.has("message")) errMsg = e.get("message").asText();
+                                if (e.has("type")) errType = e.get("type").asText();
+                                if (e.has("code")) errCode = e.get("code").asText();
+                                if (e.has("param")) errParam = e.get("param").asText();
+                            }
+                        }
+                    } catch (Exception parseEx) {
+                        // ignore
+                    }
                     if (respBody != null) {
-                        JsonNode errNode = objectMapper.readTree(respBody);
-                        if (errNode.has("error")) {
-                            JsonNode e = errNode.get("error");
-                            if (e.has("message")) errMsg = e.get("message").asText();
-                            if (e.has("type")) errType = e.get("type").asText();
-                            if (e.has("code")) errCode = e.get("code").asText();
-                            if (e.has("param")) errParam = e.get("param").asText();
-                        }
+                        String truncated = respBody.length() > 2000 ? respBody.substring(0, 2000) + "...[truncated]" : respBody;
+                        log.error("Responses API error raw body (truncated): {}", truncated);
                     }
-                } catch (Exception parseEx) {
-                    // ignore
+                    log.error("调用Responses API失败，HTTP {}，requestId={}，type={}，code={}，param={}，错误信息={}",
+                            response.code(), requestId, errType, errCode, errParam, errMsg != null ? errMsg : respBody);
+                    return null;
                 }
-                if (respBody != null) {
-                    String truncated = respBody.length() > 2000 ? respBody.substring(0, 2000) + "...[truncated]" : respBody;
-                    log.error("Responses API error raw body (truncated): {}", truncated);
+                if (respBody == null) {
+                    log.error("调用Responses API失败：响应体为空，requestId={}", requestId);
+                    return null;
                 }
-                log.error("调用Responses API失败，HTTP {}，requestId={}，type={}，code={}，param={}，错误信息={}",
-                        response.code(), requestId, errType, errCode, errParam, errMsg != null ? errMsg : respBody);
-                return null;
-            }
-            if (respBody == null) {
-                log.error("调用Responses API失败：响应体为空，requestId={}", requestId);
-                return null;
-            }
-            JsonNode node = objectMapper.readTree(respBody);
-            // Responses API统一输出文本字段
-            String output = null;
-            if (node.has("output_text")) {
-                output = node.get("output_text").asText();
-            } else if (node.has("output") && node.get("output").isArray() && node.get("output").size() > 0) {
-                // 兼容可能的数组输出
-                JsonNode first = node.get("output").get(0);
-                if (first.has("content") && first.get("content").isArray()) {
-                    for (JsonNode part : first.get("content")) {
-                        if (part.has("type") && "output_text".equals(part.get("type").asText()) && part.has("text")) {
-                            output = part.get("text").asText();
-                            break;
+                JsonNode node = objectMapper.readTree(respBody);
+                // Responses API统一输出文本字段
+                String output = null;
+                if (node.has("output_text")) {
+                    output = node.get("output_text").asText();
+                } else if (node.has("output") && node.get("output").isArray() && node.get("output").size() > 0) {
+                    // 兼容可能的数组输出
+                    JsonNode first = node.get("output").get(0);
+                    if (first.has("content") && first.get("content").isArray()) {
+                        for (JsonNode part : first.get("content")) {
+                            if (part.has("type") && "output_text".equals(part.get("type").asText()) && part.has("text")) {
+                                output = part.get("text").asText();
+                                break;
+                            }
                         }
                     }
                 }
+                return output;
             }
-            return output;
+        } catch (java.net.SocketTimeoutException te) {
+            log.error("调用Responses API超时：url={}{} , model={}, fileId={}, message={}", openaiBaseUrl, "/responses", openaiModel, fileId, te.getMessage(), te);
+            return null;
+        } catch (Exception e) {
+            log.error("调用Responses API异常：url={}{} , model={}, fileId={}, message={}", openaiBaseUrl, "/responses", openaiModel, fileId, e.getMessage(), e);
+            return null;
         }
-    } catch (java.net.SocketTimeoutException te) {
-        log.error("调用Responses API超时：url={}{} , model={}, fileId={}, message={}", openaiBaseUrl, "/responses", openaiModel, fileId, te.getMessage(), te);
-        return null;
-    } catch (Exception e) {
-        log.error("调用Responses API异常：url={}{} , model={}, fileId={}, message={}", openaiBaseUrl, "/responses", openaiModel, fileId, e.getMessage(), e);
-        return null;
     }
-}
+
+    /**
+     * 调用OpenAI Responses API（文件输入）并返回文本输出 - 简化版本用于预检
+     */
+    private String callOpenAIResponses(String fileId, String prompt) {
+        // 创建默认请求参数用于预检
+        AgentProcessRequest defaultRequest = new AgentProcessRequest();
+        defaultRequest.setQuizCount(1);
+        defaultRequest.setQuestionsPerQuiz(1);
+        defaultRequest.setDifficulty("medium");
+        return callOpenAIResponses(fileId, prompt, defaultRequest);
+    }
 
 // 公共方法：在入库前进行AI预检（上传PDF+调用Responses）
 public void preflightCheckPdfWithOpenAI(byte[] pdfBytes, String fileName, String prompt) {

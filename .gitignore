@@ -184,5 +184,9 @@ backend1/mvnw.cmd
 # Backup files
 *.bak
 *.backup
+
+# Documentation and design files
+agentdesign.md
+
 # Ignore local application config
 backend1/src/main/resources/application.yml
