@@ -50,7 +50,7 @@ public class PdfQuizAgentService {
     @Value("${langchain4j.openai.api-key:}")
     private String openaiApiKey;
 
-    @Value("${langchain4j.openai.model:gpt-5-mini}")
+    @Value("${langchain4j.openai.model:gpt-4o-mini}")
     private String openaiModel;
 
     @Value("${langchain4j.openai.base-url:https://api.openai.com/v1}")
@@ -60,7 +60,12 @@ public class PdfQuizAgentService {
     private final Map<String, ProcessingStatus> taskStatusMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Add OkHttp client for Responses API
-    private final OkHttpClient httpClient = new OkHttpClient();
+    private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .connectTimeout(java.time.Duration.ofSeconds(30))
+            .readTimeout(java.time.Duration.ofSeconds(120))
+            .writeTimeout(java.time.Duration.ofSeconds(120))
+            .callTimeout(java.time.Duration.ofSeconds(150))
+            .build();
 
     /**
      * OpenAI 测验生成器接口
@@ -243,9 +248,9 @@ public class PdfQuizAgentService {
             String pdfContent, Course course, AgentProcessRequest request, String taskId) {
         try {
             if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
-                log.warn("OpenAI API密钥未配置或为默认值，使用备用数据");
-                updateTaskStatus(taskId, "IN_PROGRESS", 42, "OpenAI密钥未配置，使用备用数据", request.getCourseId());
-                return generateFallbackQuizzes(course, request);
+                log.warn("OpenAI API密钥未配置或为默认值，终止任务");
+                updateTaskStatus(taskId, "FAILED", 42, "OpenAI密钥未配置，任务终止", request.getCourseId());
+                throw new RuntimeException("OpenAI API密钥未配置或无效");
             }
 
             // 上传PDF并调用Responses API
@@ -254,9 +259,9 @@ public class PdfQuizAgentService {
             String fileName = java.util.Optional.ofNullable(course.getHandbookFileName()).orElse("course.pdf");
             String fileId = uploadPdfToOpenAI(pdfBytes, fileName);
             if (fileId == null) {
-                log.warn("上传PDF到OpenAI失败，回退到备用测验生成");
-                updateTaskStatus(taskId, "IN_PROGRESS", 46, "上传PDF失败，回退到备用测验", request.getCourseId());
-                return generateFallbackQuizzes(course, request);
+                log.warn("上传PDF到OpenAI失败，终止任务");
+                updateTaskStatus(taskId, "FAILED", 46, "上传PDF失败，任务终止", request.getCourseId());
+                throw new RuntimeException("上传PDF到OpenAI失败");
             }
             updateTaskStatus(taskId, "IN_PROGRESS", 48, "PDF上传成功", request.getCourseId());
 
@@ -269,9 +274,9 @@ public class PdfQuizAgentService {
             updateTaskStatus(taskId, "IN_PROGRESS", 50, "调用OpenAI Responses...", request.getCourseId());
             String responseText = callOpenAIResponses(fileId, prompt);
             if (responseText == null || responseText.isBlank()) {
-                log.warn("Responses API返回为空，回退到备用测验生成");
-                updateTaskStatus(taskId, "IN_PROGRESS", 52, "Responses返回为空，回退备用测验", request.getCourseId());
-                return generateFallbackQuizzes(course, request);
+                log.warn("Responses API返回为空，终止任务");
+                updateTaskStatus(taskId, "FAILED", 52, "Responses返回为空，任务终止", request.getCourseId());
+                throw new RuntimeException("Responses API返回为空");
             }
             log.info("Responses 返回文本长度: {}", responseText.length());
             updateTaskStatus(taskId, "IN_PROGRESS", 60, "解析AI响应...", request.getCourseId());
@@ -281,9 +286,9 @@ public class PdfQuizAgentService {
             updateTaskStatus(taskId, "IN_PROGRESS", 65, "解析完成，测验数: " + quizCountParsed, request.getCourseId());
             return r;
         } catch (Exception e) {
-            log.error("AI生成测验失败，使用备用方案", e);
-            updateTaskStatus(taskId, "IN_PROGRESS", 55, "AI生成失败，回退到备用测验", request.getCourseId());
-            return generateFallbackQuizzes(course, request);
+            log.error("AI生成测验失败，任务终止", e);
+            updateTaskStatus(taskId, "FAILED", 55, "AI生成失败: " + e.getMessage(), request.getCourseId());
+            throw e;
         }
     }
 
@@ -569,6 +574,7 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
         try (Response response = httpClient.newCall(request).execute()) {
             String requestId = response.header("x-request-id");
             String respBody = response.body() != null ? response.body().string() : null;
+            log.info("Files API HTTP {} requestId={} bodyLen={}", response.code(), requestId, respBody != null ? respBody.length() : -1);
             if (!response.isSuccessful()) {
                 String errMsg = null;
                 String errType = null;
@@ -588,6 +594,10 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
                 } catch (Exception parseEx) {
                     // ignore parse error
                 }
+                if (respBody != null) {
+                    String truncated = respBody.length() > 2000 ? respBody.substring(0, 2000) + "...[truncated]" : respBody;
+                    log.error("Files API error raw body (truncated): {}", truncated);
+                }
                 log.error("上传PDF到OpenAI失败，HTTP {}，requestId={}，type={}，code={}，param={}，错误信息={}",
                         response.code(), requestId, errType, errCode, errParam, errMsg != null ? errMsg : respBody);
                 return null;
@@ -600,7 +610,7 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
             return node.has("id") ? node.get("id").asText() : null;
         }
     } catch (Exception e) {
-        log.error("上传PDF到OpenAI异常", e);
+        log.error("上传PDF到OpenAI异常：url={}{} , fileName={}, message={}", openaiBaseUrl, "/files", fileName, e.getMessage(), e);
         return null;
     }
 }
@@ -618,7 +628,7 @@ private String callOpenAIResponses(String fileId, String prompt) {
         com.fasterxml.jackson.databind.node.ObjectNode systemMsg = input.addObject();
         systemMsg.put("role", "system");
         com.fasterxml.jackson.databind.node.ArrayNode systemContent = systemMsg.putArray("content");
-        systemContent.addObject().put("type", "text").put("text", "你是一个专业的教育内容分析师和测验生成专家。请根据提供的PDF内容生成高质量的测验并严格返回JSON格式。");
+        systemContent.addObject().put("type", "input_text").put("text", "你是一个专业的教育内容分析师和测验生成专家。请根据提供的PDF内容生成高质量的测验并严格返回JSON格式。");
 
         com.fasterxml.jackson.databind.node.ObjectNode userMsg = input.addObject();
         userMsg.put("role", "user");
@@ -626,19 +636,22 @@ private String callOpenAIResponses(String fileId, String prompt) {
         userContent.addObject().put("type", "input_text").put("text", prompt);
         userContent.addObject().put("type", "input_file").put("file_id", fileId);
 
-        root.put("temperature", 0.2);
-
         String json = objectMapper.writeValueAsString(root);
+        log.info("Calling Responses API: url={}{} , model={}, fileId={}, promptLen={}, headers=OpenAI-Beta:pdfs=v1", openaiBaseUrl, "/responses", openaiModel, fileId, (prompt != null ? prompt.length() : 0));
+        log.debug("Responses payload (truncated): {}", json.length() > 2000 ? json.substring(0, 2000) + "...[truncated]" : json);
+
         RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
         Request request = new Request.Builder()
                 .url(openaiBaseUrl + "/responses")
                 .post(body)
                 .addHeader("Authorization", "Bearer " + openaiApiKey)
+                .addHeader("OpenAI-Beta", "pdfs=v1")
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
             String requestId = response.header("x-request-id");
             String respBody = response.body() != null ? response.body().string() : null;
+            log.info("Responses API HTTP {} requestId={} bodyLen={}", response.code(), requestId, respBody != null ? respBody.length() : -1);
             if (!response.isSuccessful()) {
                 String errMsg = null;
                 String errType = null;
@@ -658,45 +671,58 @@ private String callOpenAIResponses(String fileId, String prompt) {
                 } catch (Exception parseEx) {
                     // ignore
                 }
+                if (respBody != null) {
+                    String truncated = respBody.length() > 2000 ? respBody.substring(0, 2000) + "...[truncated]" : respBody;
+                    log.error("Responses API error raw body (truncated): {}", truncated);
+                }
                 log.error("调用Responses API失败，HTTP {}，requestId={}，type={}，code={}，param={}，错误信息={}",
                         response.code(), requestId, errType, errCode, errParam, errMsg != null ? errMsg : respBody);
                 return null;
             }
             if (respBody == null) {
-                log.warn("Responses API返回为空，requestId={}", requestId);
+                log.error("调用Responses API失败：响应体为空，requestId={}", requestId);
                 return null;
             }
             JsonNode node = objectMapper.readTree(respBody);
-            // 优先解析 output 数组中的 output_text
-            if (node.has("output") && node.get("output").isArray()) {
-                for (JsonNode out : node.get("output")) {
-                    if (out.has("content") && out.get("content").isArray()) {
-                        for (JsonNode part : out.get("content")) {
-                            if (part.has("type") && "output_text".equals(part.get("type").asText()) && part.has("text")) {
-                                return part.get("text").asText();
-                            }
+            // Responses API统一输出文本字段
+            String output = null;
+            if (node.has("output_text")) {
+                output = node.get("output_text").asText();
+            } else if (node.has("output") && node.get("output").isArray() && node.get("output").size() > 0) {
+                // 兼容可能的数组输出
+                JsonNode first = node.get("output").get(0);
+                if (first.has("content") && first.get("content").isArray()) {
+                    for (JsonNode part : first.get("content")) {
+                        if (part.has("type") && "output_text".equals(part.get("type").asText()) && part.has("text")) {
+                            output = part.get("text").asText();
+                            break;
                         }
-                    }
-                    if (out.has("type") && "output_text".equals(out.get("type").asText()) && out.has("text")) {
-                        return out.get("text").asText();
                     }
                 }
             }
-            // 兼容：有些实现可能返回 output_text 字段
-            if (node.has("output_text")) {
-                return node.get("output_text").asText();
-            }
-            // 兜底：如果返回content结构（不太可能），尝试取第一段text
-            if (node.has("content") && node.get("content").isArray() && node.get("content").size() > 0) {
-                JsonNode c0 = node.get("content").get(0);
-                if (c0.has("text")) return c0.get("text").asText();
-            }
-            log.warn("Responses API未返回可解析的文本输出");
-            return null;
+            return output;
         }
-    } catch (Exception e) {
-        log.error("调用Responses API异常", e);
+    } catch (java.net.SocketTimeoutException te) {
+        log.error("调用Responses API超时：url={}{} , model={}, fileId={}, message={}", openaiBaseUrl, "/responses", openaiModel, fileId, te.getMessage(), te);
         return null;
+    } catch (Exception e) {
+        log.error("调用Responses API异常：url={}{} , model={}, fileId={}, message={}", openaiBaseUrl, "/responses", openaiModel, fileId, e.getMessage(), e);
+        return null;
+    }
+}
+
+// 公共方法：在入库前进行AI预检（上传PDF+调用Responses）
+public void preflightCheckPdfWithOpenAI(byte[] pdfBytes, String fileName, String prompt) {
+    if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
+        throw new RuntimeException("OpenAI API密钥未配置或无效");
+    }
+    String fid = uploadPdfToOpenAI(pdfBytes, fileName != null ? fileName : "course.pdf");
+    if (fid == null) {
+        throw new RuntimeException("上传PDF到OpenAI失败");
+    }
+    String resp = callOpenAIResponses(fid, (prompt != null && !prompt.isBlank()) ? prompt : "PDF预检：请读取文件并返回任意文本");
+    if (resp == null || resp.isBlank()) {
+        throw new RuntimeException("Responses API返回为空");
     }
 }
 }

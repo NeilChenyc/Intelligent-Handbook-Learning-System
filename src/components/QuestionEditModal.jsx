@@ -258,11 +258,13 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
                 }`}
               >
                 <option value="">请选择小测</option>
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <option key={num} value={num}>
-                    小测 {num}
-                  </option>
-                ))}
+                {Array.isArray(quizzes) && quizzes.length > 0
+                  ? quizzes.map((quiz, idx) => (
+                      <option key={quiz.id} value={quiz.id}>
+                        {quiz.title ? `测验${idx + 1}：${quiz.title}` : `测验 ${quiz.id}`}
+                      </option>
+                    ))
+                  : <option value="" disabled>该课程暂无小测</option>}
               </select>
               {errors.quizId && (
                 <p className="mt-1 text-sm text-red-600">{errors.quizId}</p>

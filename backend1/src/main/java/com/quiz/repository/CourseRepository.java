@@ -26,4 +26,14 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     
     @Query("SELECT COUNT(c) FROM Course c WHERE c.teacher.id = :teacherId AND c.isActive = true")
     Long countActiveByTeacherId(@Param("teacherId") Long teacherId);
+
+    // 新增：仅选择必要字段的课程摘要，避免加载PDF内容
+    @Query("SELECT new com.quiz.dto.CourseSummaryDTO(c.id, c.title, c.description, c.isActive, c.teacher.id, c.teacher.fullName, c.handbookFileName, c.createdAt) FROM Course c WHERE c.isActive = true")
+    List<com.quiz.dto.CourseSummaryDTO> findActiveCourseSummaries();
+
+    @Query("SELECT new com.quiz.dto.CourseSummaryDTO(c.id, c.title, c.description, c.isActive, c.teacher.id, c.teacher.fullName, c.handbookFileName, c.createdAt) FROM Course c WHERE c.teacher.id = :teacherId AND c.isActive = true")
+    List<com.quiz.dto.CourseSummaryDTO> findCourseSummariesByTeacherId(@Param("teacherId") Long teacherId);
+
+    @Query("SELECT new com.quiz.dto.CourseSummaryDTO(c.id, c.title, c.description, c.isActive, c.teacher.id, c.teacher.fullName, c.handbookFileName, c.createdAt) FROM Course c WHERE c.title LIKE %:title% AND c.isActive = true")
+    List<com.quiz.dto.CourseSummaryDTO> findCourseSummariesByTitleContainingAndIsActiveTrue(@Param("title") String title);
 }

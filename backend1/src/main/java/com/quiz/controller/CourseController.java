@@ -1,6 +1,7 @@
 package com.quiz.controller;
 
 import com.quiz.dto.CourseCreateRequest;
+import com.quiz.dto.CourseSummaryDTO;
 import com.quiz.entity.Course;
 import com.quiz.service.CourseService;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/courses")
@@ -29,14 +31,14 @@ public class CourseController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Course> getCourseById(@PathVariable Long id) {
+    public ResponseEntity<Course> getCourseById(@PathVariable("id") Long id) {
         return courseService.getCourseById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/teacher/{teacherId}")
-    public ResponseEntity<List<Course>> getCoursesByTeacher(@PathVariable Long teacherId) {
+    public ResponseEntity<List<Course>> getCoursesByTeacher(@PathVariable("teacherId") Long teacherId) {
         try {
             List<Course> courses = courseService.getCoursesByTeacher(teacherId);
             return ResponseEntity.ok(courses);
@@ -57,29 +59,24 @@ public class CourseController {
         }
     }
 
-    @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ResponseEntity<Course> createCourseWithPdf(
-            @RequestParam("title") String title,
-            @RequestParam("description") String description,
-            @RequestParam("teacherId") Long teacherId,
+    // 新增：支持multipart/form-data的PDF上传端点
+    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Course> uploadCourse(
+            @ModelAttribute CourseCreateRequest request,
             @RequestParam("handbookFile") MultipartFile handbookFile) {
         try {
-            CourseCreateRequest request = new CourseCreateRequest();
-            request.setTitle(title);
-            request.setDescription(description);
-            request.setTeacherId(teacherId);
-            
             Course course = courseService.createCourseWithPdf(request, handbookFile);
             return ResponseEntity.ok(course);
         } catch (Exception e) {
-            log.error("Error creating course with PDF", e);
+            log.error("Error uploading course with PDF", e);
             return ResponseEntity.badRequest().build();
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Course> updateCourse(@PathVariable Long id, @RequestBody CourseCreateRequest request) {
+    public ResponseEntity<Course> updateCourse(@PathVariable Map<String, String> pathVars, @RequestBody CourseCreateRequest request) {
         try {
+            Long id = Long.valueOf(pathVars.get("id"));
             Course course = courseService.updateCourse(id, request);
             return ResponseEntity.ok(course);
         } catch (Exception e) {
@@ -89,12 +86,24 @@ public class CourseController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteCourse(@PathVariable("id") Long id) {
         try {
             courseService.deleteCourse(id);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Error deleting course", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // 新增：级联硬删除课程及其关联数据
+    @DeleteMapping("/{id}/cascade")
+    public ResponseEntity<Void> deleteCourseCascade(@PathVariable("id") Long id) {
+        try {
+            courseService.deleteCourseCascade(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Error cascade deleting course", e);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -106,8 +115,9 @@ public class CourseController {
     }
 
     @GetMapping("/{id}/handbook")
-    public ResponseEntity<byte[]> downloadCourseHandbook(@PathVariable Long id) {
+    public ResponseEntity<byte[]> downloadCourseHandbook(@PathVariable Map<String, String> pathVars) {
         try {
+            Long id = Long.valueOf(pathVars.get("id"));
             log.info("Attempting to download handbook for course id: {}", id);
             
             Course course = courseService.getCourseById(id)
@@ -133,8 +143,23 @@ public class CourseController {
                     .headers(headers)
                     .body(course.getHandbookFilePath());
         } catch (Exception e) {
-            log.error("Error downloading course handbook for id: {}", id, e);
+            log.error("Error downloading course handbook", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @GetMapping("/summaries")
+    public org.springframework.http.ResponseEntity<java.util.List<CourseSummaryDTO>> getCourseSummaries() {
+        return org.springframework.http.ResponseEntity.ok(courseService.getCourseSummaries());
+    }
+
+    @GetMapping("/summaries/search")
+    public org.springframework.http.ResponseEntity<java.util.List<CourseSummaryDTO>> searchCourseSummaries(@RequestParam("title") String title) {
+        return org.springframework.http.ResponseEntity.ok(courseService.searchCourseSummaries(title));
+    }
+
+    @GetMapping("/summaries/teacher/{teacherId}")
+    public org.springframework.http.ResponseEntity<java.util.List<CourseSummaryDTO>> getCourseSummariesByTeacher(@PathVariable("teacherId") Long teacherId) {
+        return org.springframework.http.ResponseEntity.ok(courseService.getCourseSummariesByTeacher(teacherId));
     }
 }

@@ -4,9 +4,11 @@ import com.quiz.entity.Quiz;
 import com.quiz.entity.QuizAttempt;
 import com.quiz.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,4 +44,10 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
     
     @Query("SELECT DISTINCT qa.quiz.id FROM QuizAttempt qa WHERE qa.user.id = :userId AND qa.quiz.course.id = :courseId AND qa.isPassed = true")
     List<Long> findPassedQuizIdsByUserIdAndCourseId(@Param("userId") Long userId, @Param("courseId") Long courseId);
+    
+    // 新增：按课程ID删除所有测验提交（将级联删除学生答案）
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM QuizAttempt qa WHERE qa.quiz.course.id = :courseId")
+    void deleteByCourseId(@Param("courseId") Long courseId);
 }

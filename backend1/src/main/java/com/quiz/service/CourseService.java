@@ -1,13 +1,17 @@
 package com.quiz.service;
 
 import com.quiz.dto.CourseCreateRequest;
+import com.quiz.dto.CourseSummaryDTO;
 import com.quiz.entity.Course;
 import com.quiz.entity.User;
 import com.quiz.repository.CourseRepository;
 import com.quiz.repository.UserRepository;
+import com.quiz.repository.WrongQuestionRepository;
+import com.quiz.repository.QuizAttemptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -22,11 +26,16 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final WrongQuestionRepository wrongQuestionRepository;
+    private final QuizAttemptRepository quizAttemptRepository;
+    // 新增：引入AI预检服务
+    private final PdfQuizAgentService pdfQuizAgentService;
 
+    @Transactional(readOnly = true)
     public List<Course> getAllActiveCourses() {
         try {
             log.info("Fetching all active courses");
-            List<Course> courses = courseRepository.findAll();
+            List<Course> courses = courseRepository.findByIsActiveTrue();
             // 手动设置quizzes为null以避免序列化问题，但保留PDF相关字段
             courses.forEach(course -> {
                 course.setQuizzes(null);
@@ -73,7 +82,7 @@ public class CourseService {
         return savedCourse;
     }
 
-    public Course createCourseWithPdf(CourseCreateRequest request, MultipartFile handbookFile) throws IOException {
+    public Course createCourseWithPdf(CourseCreateRequest request, org.springframework.web.multipart.MultipartFile handbookFile) throws IOException {
         // 验证教师是否存在
         User teacher = userRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
@@ -87,12 +96,16 @@ public class CourseService {
             throw new RuntimeException("Only PDF files are allowed");
         }
 
+        // 先进行AI预检，避免PDF先入库导致不必要的egress
+        String preflightPrompt = "课程预检:\n标题:" + request.getTitle() + "\n描述:" + request.getDescription();
+        pdfQuizAgentService.preflightCheckPdfWithOpenAI(handbookFile.getBytes(), handbookFile.getOriginalFilename(), preflightPrompt);
+
         Course course = new Course();
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setTeacher(teacher);
         
-        // 设置PDF文件信息
+        // 设置PDF文件信息（通过预检后再入库）
         course.setHandbookFileName(handbookFile.getOriginalFilename());
         course.setHandbookContentType(handbookFile.getContentType());
         course.setHandbookFileSize(handbookFile.getSize());
@@ -155,6 +168,18 @@ public class CourseService {
         log.info("Course with id {} has been activated", id);
     }
 
+    public List<CourseSummaryDTO> getCourseSummaries() {
+        return courseRepository.findActiveCourseSummaries();
+    }
+
+    public List<CourseSummaryDTO> getCourseSummariesByTeacher(Long teacherId) {
+        return courseRepository.findCourseSummariesByTeacherId(teacherId);
+    }
+
+    public List<CourseSummaryDTO> searchCourseSummaries(String title) {
+        return courseRepository.findCourseSummariesByTitleContainingAndIsActiveTrue(title);
+    }
+
     public List<Course> searchCourses(String title) {
         return courseRepository.findByTitleContainingAndIsActiveTrue(title);
     }
@@ -166,5 +191,29 @@ public class CourseService {
     public boolean isCourseOwnedByTeacher(Long courseId, Long teacherId) {
         Optional<Course> course = courseRepository.findById(courseId);
         return course.isPresent() && course.get().getTeacher().getId().equals(teacherId);
+    }
+
+    /**
+     * 级联硬删除课程及其关联数据
+     * 删除范围：课程、相关测验、测验下题目与选项、错题记录、测验提交与作答
+     */
+    @Transactional
+    public void deleteCourseCascade(Long id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Course not found"));
+
+        log.info("Starting cascade delete for course id {}", id);
+
+        // 1) 删除该课程涉及的错题（关联题目或测验提交）
+        wrongQuestionRepository.deleteByCourseId(id);
+        log.info("Deleted wrong questions for course id {}", id);
+
+        // 2) 删除该课程下的所有测验提交（将级联删除学生答案与选项关联）
+        quizAttemptRepository.deleteByCourseId(id);
+        log.info("Deleted quiz attempts for course id {}", id);
+
+        // 3) 删除课程实体（级联删除其下测验、题目和选项）
+        courseRepository.delete(course);
+        log.info("Cascade deleted course entity and related quizzes/questions/options for id {}", id);
     }
 }

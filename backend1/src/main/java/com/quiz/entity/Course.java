@@ -39,10 +39,12 @@ public class Course {
     private String handbookFileName;
 
     @Column(name = "handbook_file_path")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private byte[] handbookFilePath;
 
     // 添加一个方法来获取Base64编码的内容
     @Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public String getHandbookContent() {
         if (handbookFilePath != null) {
             return java.util.Base64.getEncoder().encodeToString(handbookFilePath);

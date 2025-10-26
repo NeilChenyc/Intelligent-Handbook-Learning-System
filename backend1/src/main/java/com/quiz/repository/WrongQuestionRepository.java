@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -71,4 +74,10 @@ public interface WrongQuestionRepository extends JpaRepository<WrongQuestion, Lo
     // 查找所有已重做的错题（用于清理）
     @Query("SELECT wq FROM WrongQuestion wq WHERE wq.isRedone = true")
     List<WrongQuestion> findByIsRedoneTrue();
+
+    // 新增：按课程ID删除所有错题（涉及课程下的题目或测验提交）
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM WrongQuestion wq WHERE wq.question.quiz.course.id = :courseId OR wq.quizAttempt.quiz.course.id = :courseId")
+    void deleteByCourseId(@Param("courseId") Long courseId);
 }
