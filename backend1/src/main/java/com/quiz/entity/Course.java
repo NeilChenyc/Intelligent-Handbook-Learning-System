@@ -58,6 +58,10 @@ public class Course {
     @Column(name = "handbook_content_type")
     private String handbookContentType;
 
+    // 部门字段用于课程管理页面的部门课程分发
+    @Column(name = "department")
+    private String department;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

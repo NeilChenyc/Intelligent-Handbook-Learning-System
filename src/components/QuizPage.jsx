@@ -5,15 +5,50 @@ import { CheckCircle, XCircle, Clock, ArrowLeft, ArrowRight, RotateCcw, Trophy, 
 import { getQuestionsByQuiz, startQuizAttempt, submitQuizAnswers } from '../api/quizApi';
 import { useAuth } from '../contexts/AuthContext';
 
-const QuizPage = ({ quizId, courseName, onBack }) => {
+const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
   const { user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [attemptId, setAttemptId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [nextQuizId, setNextQuizId] = useState(null);
   const [wrongQuestionsCount, setWrongQuestionsCount] = useState(0);
   const [quizResult, setQuizResult] = useState(null);
+
+  // 获取下一个小测ID
+  const getNextQuizId = async () => {
+    if (!course?.id || !quizId) return null;
+    
+    try {
+      const response = await fetch(`http://localhost:8080/quizzes/course/${course.id}/summaries`);
+      if (response.ok) {
+        const quizzes = await response.json();
+        const sortedQuizzes = quizzes.sort((a, b) => a.id - b.id);
+        const currentIndex = sortedQuizzes.findIndex(quiz => quiz.id === quizId);
+        
+        if (currentIndex >= 0 && currentIndex < sortedQuizzes.length - 1) {
+          return sortedQuizzes[currentIndex + 1].id;
+        }
+      }
+    } catch (error) {
+      console.error('获取下一个小测失败:', error);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const fetchNextQuizId = async () => {
+      const nextId = await getNextQuizId();
+      setNextQuizId(nextId);
+    };
+    
+    // 在组件加载时就获取下一个小测ID，不需要等到提交后
+    if (course?.id && quizId) {
+      fetchNextQuizId();
+    }
+  }, [course?.id, quizId]);
 
   // 从认证系统获取用户ID
   const userId = user?.id;
@@ -80,7 +115,6 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
   }, [quizId, userId]);
 
   const [answers, setAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
 
   const handleAnswerChange = (questionId, optionId, isMultiple = false) => {
     if (submitted) return;
@@ -99,7 +133,17 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
   };
 
   const handleSubmit = async () => {
-    if (!attemptId || submitting) return;
+    console.log('Debug: handleSubmit 被调用');
+    console.log('Debug: attemptId:', attemptId);
+    console.log('Debug: submitting:', submitting);
+    console.log('Debug: submitted:', submitted);
+    
+    if (!attemptId || submitting) {
+      console.log('Debug: 提交被阻止 - attemptId为空或正在提交中');
+      console.log('Debug: attemptId 是否为空:', !attemptId);
+      console.log('Debug: 是否正在提交:', submitting);
+      return;
+    }
     
     // 准备答案数据，格式化为后端期望的格式
     const formattedAnswers = Object.entries(answers).map(([questionId, answer]) => ({
@@ -109,9 +153,13 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
     
     try {
       setSubmitting(true);
+      console.log('Debug: 开始提交小测');
+      console.log('Debug: attemptId:', attemptId);
+      console.log('Debug: formattedAnswers:', formattedAnswers);
       
       // 提交到后端
       const result = await submitQuizAnswers(attemptId, formattedAnswers);
+      console.log('Debug: 提交成功，结果:', result);
       
       // 设置提交状态
       setSubmitted(true);
@@ -164,6 +212,8 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
       });
       
       localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
+      
+      // 结果已保存，展示结果页由下方按钮控制导航
       
     } catch (error) {
       console.error('提交小测失败:', error);
@@ -273,8 +323,14 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
             <div className="flex items-center space-x-2">
               <Shield className="w-5 h-5 text-green-500" />
               <span className="font-medium">
-                合规考核完成！得分：{score.correct}/{score.total} ({Math.round(score.correct / score.total * 100)}%)
-                {score.correct / score.total >= 0.8 ? ' - 考核通过' : ' - 需要重新学习'}
+                合规考核完成！得分：{quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined
+                  ? `${quizResult.score}/${quizResult.maxPossibleScore} (${Math.round((quizResult.score / quizResult.maxPossibleScore) * 100)}%)`
+                  : `${score.correct}/${score.total} (${Math.round((score.correct / score.total) * 100)}%)`
+                }
+                {quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined
+                  ? ((quizResult.score / quizResult.maxPossibleScore) >= 0.8 ? ' - 考核通过' : ' - 需要重新学习')
+                  : (score.correct / score.total >= 0.8 ? ' - 考核通过' : ' - 需要重新学习')
+                }
               </span>
             </div>
           </CardContent>
@@ -387,9 +443,11 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <div className="text-3xl font-bold text-blue-600">
-                    {quizResult?.score !== undefined ? `${quizResult.score}分` : `${questions.length - wrongQuestionsCount}/${questions.length}`}
+                    {quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined
+                      ? `${quizResult.score}/${quizResult.maxPossibleScore}`
+                      : `${questions.length - wrongQuestionsCount}/${questions.length}`}
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">总分</div>
+                  <div className="text-sm text-gray-600 mt-1">总分/满分</div>
                 </div>
                 
                 <div className="bg-white p-4 rounded-lg shadow-sm">
@@ -410,9 +468,14 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
               {/* 通过情况 */}
               <div className="mb-6">
                 {(() => {
-                  const correctRate = ((questions.length - wrongQuestionsCount) / questions.length) * 100;
-                  const passed = correctRate >= 60; // 假设60分及格
-                  
+                  const hasBackendScores = quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined;
+                  const percent = hasBackendScores && quizResult.maxPossibleScore > 0
+                    ? (quizResult.score / quizResult.maxPossibleScore) * 100
+                    : ((questions.length - wrongQuestionsCount) / questions.length) * 100;
+                  const passed = quizResult?.passed !== undefined
+                    ? quizResult.passed
+                    : percent >= 80;
+
                   return (
                     <div className={`inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold ${
                       passed 
@@ -422,12 +485,12 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
                       {passed ? (
                         <>
                           <CheckCircle className="w-6 h-6 mr-2" />
-                          恭喜通过！正确率: {correctRate.toFixed(1)}%
+                          恭喜通过！得分比例: {percent.toFixed(1)}%
                         </>
                       ) : (
                         <>
                           <XCircle className="w-6 h-6 mr-2" />
-                          未通过，正确率: {correctRate.toFixed(1)}%
+                          未通过，得分比例: {percent.toFixed(1)}%
                         </>
                       )}
                     </div>
@@ -445,20 +508,62 @@ const QuizPage = ({ quizId, courseName, onBack }) => {
             </div>
           </div>
           
-          <div className="mt-8 flex justify-center">
-            <Button 
-              onClick={() => {
-                setAnswers({});
-                setSubmitted(false);
-                setQuizResult(null);
-                setWrongQuestionsCount(0);
-              }}
-              variant="outline"
-              size="lg"
-              className="px-8"
-            >
-              重新考核
-            </Button>
+          <div className="mt-8 flex justify-center space-x-4">
+            {/* 判断是否通过并显示相应按钮 */}
+            {(() => {
+              const score = quizResult?.score !== undefined ? quizResult.score : Math.round((questions.length - wrongQuestionsCount) / questions.length * 100);
+              const passed = quizResult?.passed !== undefined ? quizResult.passed : (score >= 80);
+              
+              if (passed && nextQuizId) {
+                // 通过且有下一个小测，显示"下一个测验"按钮
+                return (
+                  <Button 
+                    onClick={() => {
+                      if (onQuizComplete) {
+                        const score = quizResult?.score !== undefined ? quizResult.score : Math.round((questions.length - wrongQuestionsCount) / questions.length * 100);
+                        const passed = quizResult?.passed !== undefined ? quizResult.passed : (score >= 80);
+                        onQuizComplete(quizId, score, passed);
+                      }
+                    }}
+                    size="lg"
+                    className="px-8"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                    继续考核
+                  </Button>
+                );
+              } else if (passed && !nextQuizId) {
+                // 通过但没有下一个小测，显示"返回课程"按钮
+                return (
+                  <Button 
+                    onClick={onBack}
+                    size="lg"
+                    className="px-8"
+                  >
+                    返回课程
+                  </Button>
+                );
+              } else {
+                // 未通过，显示"重新考核"按钮
+                return (
+                  <Button 
+                    onClick={() => {
+                      setAnswers({});
+                      setSubmitted(false);
+                      setQuizResult(null);
+                      setWrongQuestionsCount(0);
+                      // 保留 nextQuizId，避免重新考核后丢失“继续考核”能力
+                    }}
+                    variant="outline"
+                    size="lg"
+                    className="px-8"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    重新考核
+                  </Button>
+                );
+              }
+            })()}
           </div>
         </>
       )}

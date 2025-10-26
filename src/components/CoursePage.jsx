@@ -28,7 +28,21 @@ const CoursePage = () => {
       setError(null);
       const coursesData = await getAllCourses();
       const formattedCourses = coursesData.map(formatCourseForDisplay);
-      setCourses(formattedCourses);
+      
+      // 根据用户部门筛选课程
+      const filteredCourses = formattedCourses.filter(course => {
+        // 显示 department 为 "Everyone" 或 null 的课程
+        if (!course.department || course.department === 'Everyone') {
+          return true;
+        }
+        // 显示 department 与用户部门相同的课程
+        if (user && user.department && course.department === user.department) {
+          return true;
+        }
+        return false;
+      });
+      
+      setCourses(filteredCourses);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
       setError('获取课程列表失败，请稍后重试');

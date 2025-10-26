@@ -73,6 +73,7 @@ public class CourseService {
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setTeacher(teacher);
+        course.setDepartment(request.getDepartment()); // 设置部门字段
         course.setIsActive(true);
         course.setCreatedAt(LocalDateTime.now());
         course.setUpdatedAt(LocalDateTime.now());
@@ -104,6 +105,7 @@ public class CourseService {
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setTeacher(teacher);
+        course.setDepartment(request.getDepartment()); // 设置部门字段
         
         // 设置PDF文件信息（通过预检后再入库）
         course.setHandbookFileName(handbookFile.getOriginalFilename());
@@ -129,6 +131,7 @@ public class CourseService {
 
         existingCourse.setTitle(request.getTitle());
         existingCourse.setDescription(request.getDescription());
+        existingCourse.setDepartment(request.getDepartment()); // 更新部门字段
         
         // 如果需要更换教师
         if (request.getTeacherId() != null && 

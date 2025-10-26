@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { CheckCircle, Clock, AlertCircle, ArrowLeft, BookOpen, Play, Lock, Trophy, BarChart3 } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, ArrowLeft, BookOpen, Play, Lock, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getCourseQuizListCached } from '../api/quizApi';
 
 const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) => {
   const { user } = useAuth();
@@ -16,26 +17,9 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
       try {
         setLoading(true);
         
-        // 获取课程的所有小测
-        const quizzesResponse = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
-        if (!quizzesResponse.ok) {
-          throw new Error('获取测验数据失败');
-        }
-        const courseQuizzes = await quizzesResponse.json();
-        
-        // 获取用户在该课程中已通过的小测ID列表
-        let passedQuizIds = [];
-        if (user?.id) {
-          try {
-            const passedResponse = await fetch(`http://localhost:8080/quiz-attempts/user/${user.id}/course/${course.id}/passed`);
-            if (passedResponse.ok) {
-              passedQuizIds = await passedResponse.json();
-            }
-          } catch (error) {
-            console.warn('获取已通过小测信息失败:', error);
-          }
-        }
-        
+        // 使用后端聚合 + 缓存接口获取小测摘要与已通过ID
+        const { quizzes: courseQuizzes, passedQuizIds } = await getCourseQuizListCached(course.id, user.id);
+
         // 按ID排序小测
         const sortedQuizzes = courseQuizzes.sort((a, b) => a.id - b.id);
         
@@ -64,7 +48,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
             status: status,
             score: null, // 这里可以后续扩展获取具体分数
             duration: quiz.timeLimitMinutes || 30,
-            questions: quiz.questions?.length || 0,
+            questions: quiz.questionCount || 0,
             attempts: 0, // 这里可以后续扩展获取尝试次数
             maxAttempts: quiz.maxAttempts || 3,
             unlocked: unlocked,
@@ -145,7 +129,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
           status: status,
           score: null, // 这里可以后续扩展获取具体分数
           duration: quiz.timeLimitMinutes || 30,
-          questions: quiz.questions?.length || 0,
+          questions: quiz.questionCount || 0,
           attempts: 0, // 这里可以后续扩展获取尝试次数
           maxAttempts: quiz.maxAttempts || 3,
           unlocked: unlocked,
@@ -166,33 +150,6 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
       }
     } catch (error) {
       console.error('更新小测状态失败:', error);
-    }
-  };
-
-  const getQuizStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'available': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'locked': return 'bg-gray-100 text-gray-600 border-gray-200';
-      default: return 'bg-gray-100 text-gray-600 border-gray-200';
-    }
-  };
-
-  const getQuizStatusIcon = (status) => {
-    switch (status) {
-      case 'completed': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'available': return <Play className="w-5 h-5 text-blue-500" />;
-      case 'locked': return <Lock className="w-5 h-5 text-gray-400" />;
-      default: return <Clock className="w-5 h-5 text-gray-400" />;
-    }
-  };
-
-  const getQuizStatusText = (status) => {
-    switch (status) {
-      case 'completed': return '已完成';
-      case 'available': return '可开始';
-      case 'locked': return '未解锁';
-      default: return '未知';
     }
   };
 
@@ -219,19 +176,6 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
         return 'bg-gray-100 text-gray-500 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-500 border-gray-200';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'completed':
-        return '已完成';
-      case 'available':
-        return '可开始';
-      case 'locked':
-        return '未解锁';
-      default:
-        return '未知';
     }
   };
 
@@ -425,14 +369,11 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">{quiz.title}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getQuizStatusColor(quiz.status)}`}>
-                        {getQuizStatusText(quiz.status)}
-                      </span>
                     </div>
                     
                     <p className="text-gray-600 mb-3">{quiz.description}</p>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
                         <span>{quiz.duration} 分钟</span>
@@ -440,10 +381,6 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
                       <div className="flex items-center space-x-1">
                         <BookOpen className="w-4 h-4" />
                         <span>{quiz.questions} 题</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <BarChart3 className="w-4 h-4" />
-                        <span>{quiz.attempts}/{quiz.maxAttempts} 次尝试</span>
                       </div>
                       {quiz.status === 'completed' && quiz.score !== null && (
                         <div className="flex items-center space-x-1">

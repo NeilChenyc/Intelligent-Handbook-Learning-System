@@ -12,8 +12,19 @@ import {
 const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
   const [formData, setFormData] = useState({
     title: '',
-    description: ''
+    description: '',
+    department: 'Everyone'
   });
+
+  // 部门选项
+  const departments = [
+    { value: 'Everyone', label: 'Everyone' },
+    { value: 'Engineering', label: 'Engineering' },
+    { value: 'Human Resources', label: 'Human Resources' },
+    { value: 'Marketing', label: 'Marketing' },
+    { value: 'Finance', label: 'Finance' },
+    { value: 'Operations', label: 'Operations' }
+  ];
   
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -100,6 +111,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('department', formData.department || 'Everyone');
       formDataToSend.append('teacherId', '1'); // 暂时硬编码教师ID
       formDataToSend.append('handbookFile', file);
 
@@ -246,7 +258,8 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     // 重置表单
     setFormData({
       title: '',
-      description: ''
+      description: '',
+      department: 'Everyone'
     });
     setFile(null);
     setUploadProgress(0);
@@ -464,6 +477,25 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                   placeholder="请输入课程描述"
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  分配部门 *
+                </label>
+                <select
+                  name="department"
+                  value={formData.department}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  required
+                >
+                  {departments.map((dept) => (
+                    <option key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

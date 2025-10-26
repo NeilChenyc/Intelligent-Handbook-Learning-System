@@ -9,7 +9,7 @@ import com.quiz.entity.Quiz;
 import com.quiz.service.CourseService;
 import com.quiz.service.QuizService;
 import com.quiz.service.QuizAttemptService;
-import com.quiz.service.CourseQuizListCacheService;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,6 @@ public class QuizController {
     private final CourseService courseService;
     private final PdfQuizAgent pdfQuizAgent;
     private final QuizAttemptService quizAttemptService;
-    private final CourseQuizListCacheService courseQuizListCacheService;
 
     @GetMapping
     public ResponseEntity<List<QuizResponseDto>> getAllQuizzes() {
@@ -93,33 +92,15 @@ public class QuizController {
     }
 
     /**
-     * 获取课程下的小测列表（带用户通过信息），并使用 Supabase Postgres 做简易缓存。
+     * 获取课程下的小测列表（带用户通过信息）
      */
     @GetMapping("/course/{courseId}/list-cached")
     public ResponseEntity<Map<String, Object>> getCourseQuizListCached(@PathVariable("courseId") Long courseId,
                                                                        @RequestParam("userId") Long userId) {
         try {
             log.info("list-cached request courseId={}, userId={}", courseId, userId);
-            // 命中缓存则直接返回
-            java.util.Optional<String> cachedOpt = courseQuizListCacheService.getCache(courseId, userId);
-            if (cachedOpt.isPresent()) {
-                String payload = cachedOpt.get();
-                log.info("Cache HIT courseId={}, userId={}, payloadSize={}", courseId, userId, payload != null ? payload.length() : 0);
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> result;
-                try {
-                    result = mapper.readValue(payload, Map.class);
-                } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
-                    log.warn("Failed to parse cached JSON for courseId={}, userId={}", courseId, userId, ex);
-                    result = new java.util.HashMap<>();
-                    result.put("quizzes", java.util.Collections.emptyList());
-                    result.put("passedQuizIds", java.util.Collections.emptyList());
-                }
-                return ResponseEntity.ok(result);
-            }
-
-            log.info("Cache MISS courseId={}, userId={}", courseId, userId);
-            // 未命中缓存：查询摘要与用户通过列表（使用投影查询，避免加载 Course 大字段）
+            
+            // 直接查询摘要与用户通过列表（使用投影查询，避免加载 Course 大字段）
             List<QuizSummaryDto> quizSummaries = quizService.getQuizSummaryDtosByCourse(courseId);
             Map<Long, Integer> questionCounts = quizService.getQuizQuestionCounts(courseId);
             quizSummaries.forEach(dto -> dto.setQuestionCount(questionCounts.getOrDefault(dto.getId(), 0)));
@@ -130,19 +111,7 @@ public class QuizController {
             result.put("quizzes", quizSummaries);
             result.put("passedQuizIds", passedQuizIds);
 
-            log.info("Built fresh result: quizzes={}, passedIds={}", quizSummaries.size(), passedQuizIds.size());
-
-            // 写入缓存
-            ObjectMapper mapper = new ObjectMapper();
-            String payloadJson;
-            try {
-                payloadJson = mapper.writeValueAsString(result);
-            } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
-                log.warn("Failed to serialize result JSON for courseId={}, userId={}", courseId, userId, ex);
-                payloadJson = "{\"quizzes\":[],\"passedQuizIds\":[]}";
-            }
-            courseQuizListCacheService.putCache(courseId, userId, payloadJson);
-            log.info("Cache PUT done courseId={}, userId={}, payloadSize={}", courseId, userId, payloadJson.length());
+            log.info("Built result: quizzes={}, passedIds={}", quizSummaries.size(), passedQuizIds.size());
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {

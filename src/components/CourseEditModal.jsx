@@ -5,23 +5,25 @@ import { X, Save } from 'lucide-react';
 const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
   const [formData, setFormData] = useState({
     title: '',
-    description: ''
+    description: '',
+    department: ''
   });
 
-  const categories = [
-    { value: 'programming', label: '编程开发' },
-    { value: 'design', label: '设计创意' },
-    { value: 'business', label: '商业管理' },
-    { value: 'marketing', label: '市场营销' },
-    { value: 'data', label: '数据分析' },
-    { value: 'other', label: '其他' }
+  const departments = [
+    { value: 'Everyone', label: 'Everyone' },
+    { value: 'Engineering', label: 'Engineering' },
+    { value: 'Human Resources', label: 'Human Resources' },
+    { value: 'Marketing', label: 'Marketing' },
+    { value: 'Finance', label: 'Finance' },
+    { value: 'Operations', label: 'Operations' }
   ];
 
   useEffect(() => {
     if (course) {
       setFormData({
         title: course.title || '',
-        description: course.description || ''
+        description: course.description || '',
+        department: course.department || 'Everyone'
       });
     }
   }, [course]);
@@ -98,6 +100,25 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                   placeholder="请输入课程描述"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  分配部门 *
+                </label>
+                <select
+                  name="department"
+                  value={formData.department}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  required
+                >
+                  {departments.map((dept) => (
+                    <option key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

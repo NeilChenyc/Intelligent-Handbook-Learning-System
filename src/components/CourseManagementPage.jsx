@@ -218,7 +218,7 @@ const CourseManagementPage = () => {
                       </div>
                       <p className="text-gray-600 mb-4">{course.description}</p>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                         <div className="flex items-center space-x-1">
                           <Calendar className="w-4 h-4" />
                           <span>创建时间: {new Date(course.createdAt).toLocaleDateString('zh-CN')}</span>
@@ -226,6 +226,10 @@ const CourseManagementPage = () => {
                         <div className="flex items-center space-x-1">
                           <FileText className="w-4 h-4" />
                           <span>教师: {course.teacher?.fullName || course.teacher?.username || '未知'}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Tag className="w-4 h-4" />
+                          <span>部门: {course.department || 'Everyone'}</span>
                         </div>
                       </div>
                     </div>

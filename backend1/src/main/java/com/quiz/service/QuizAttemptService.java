@@ -167,23 +167,25 @@ public class QuizAttemptService {
             }
         }
         
-        // 更新QuizAttempt的分数信息
-         attempt.setScore(totalScore);
-         attempt.setCompletedAt(LocalDateTime.now());
-         attempt.setIsPassed(totalScore >= attempt.getQuiz().getPassingScore());
-         quizAttemptRepository.save(attempt);
-         
-         // 返回提交结果
-         return new QuizSubmissionResult(
-             attempt.getId(),
-             totalScore,
-             maxPossibleScore,
-             attempt.getIsPassed(),
-             attempt.getQuiz().getPassingScore(),
-             attempt.getCompletedAt(),
-             questionResults,
-             wrongQuestions
-         );
+        // 更新QuizAttempt的分数信息并持久化通过状态
+        attempt.setScore(totalScore);
+        attempt.setCompletedAt(LocalDateTime.now());
+        // 通过规则：总分/满分 > 80%
+        boolean isPassed = maxPossibleScore > 0 && ((double) totalScore / (double) maxPossibleScore) > 0.8;
+        attempt.setIsPassed(isPassed);
+        quizAttemptRepository.save(attempt);
+        
+        // 返回提交结果
+        return new QuizSubmissionResult(
+            attempt.getId(),
+            totalScore,
+            maxPossibleScore,
+            attempt.getIsPassed(),
+            attempt.getQuiz().getPassingScore(),
+            attempt.getCompletedAt(),
+            questionResults,
+            wrongQuestions
+        );
      }
 
      /**

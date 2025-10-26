@@ -23,6 +23,28 @@ export const getAllCourses = async () => {
   }
 };
 
+// 新增：获取完整课程列表（用于管理页，包含部门等字段）
+export const getAllCoursesFull = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/courses`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const courses = await response.json();
+    return courses;
+  } catch (error) {
+    console.error('Error fetching full courses:', error);
+    throw error;
+  }
+};
+
 // 按需下载课程手册PDF（仅在用户点击时请求）
 export const downloadCourseHandbook = async (courseId) => {
   try {
