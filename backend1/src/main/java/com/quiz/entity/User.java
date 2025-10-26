@@ -31,9 +31,9 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
-    // 新增：公寓/院系字段用于课程分配或组织归属
-    @Column(name = "apartment")
-    private String apartment;
+    // 部门字段用于组织归属和课程分配
+    @Column(name = "department")
+    private String department;
 
     @Enumerated(EnumType.STRING)
     private Role role = Role.STUDENT;

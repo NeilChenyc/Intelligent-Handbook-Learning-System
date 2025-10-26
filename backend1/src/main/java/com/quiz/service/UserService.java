@@ -47,14 +47,18 @@ public class UserService {
     public User updateUser(Long id, User userDetails) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-        user.setFullName(userDetails.getFullName());
+        
+        user.setUsername(userDetails.getUsername());
         user.setEmail(userDetails.getEmail());
+        user.setFullName(userDetails.getFullName());
         user.setRole(userDetails.getRole());
-        // 支持更新 apartment 字段
-        user.setApartment(userDetails.getApartment());
+        
+        // 支持更新部门字段
+        if (userDetails.getDepartment() != null) {
+            user.setDepartment(userDetails.getDepartment());
+        }
+        
         user.setUpdatedAt(LocalDateTime.now());
-
         return userRepository.save(user);
     }
 
