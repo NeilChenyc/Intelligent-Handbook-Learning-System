@@ -30,4 +30,7 @@ public interface QuestionOptionRepository extends JpaRepository<QuestionOption, 
     @Transactional
     @Query("DELETE FROM QuestionOption qo WHERE qo.question.id = :questionId")
     void deleteByQuestionId(@Param("questionId") Long questionId);
+    
+    @Query("SELECT qo FROM QuestionOption qo WHERE qo.question.id IN :questionIds ORDER BY qo.question.id ASC, qo.orderIndex ASC")
+    List<QuestionOption> findByQuestionIdsOrderByQuestionAndOrder(@Param("questionIds") List<Long> questionIds);
 }

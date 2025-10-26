@@ -97,13 +97,62 @@ public class WrongQuestionService {
     public List<WrongQuestionDTO> getUserWrongQuestions(Long userId) {
         try {
             log.info("Getting wrong questions for user: {}", userId);
-            List<WrongQuestion> wrongQuestions = wrongQuestionRepository.findByUserIdAndIsRedoneFalse(userId);
-            log.info("Found {} wrong questions for user {}", wrongQuestions.size(), userId);
-            
-            List<WrongQuestionDTO> dtos = wrongQuestions.stream()
-                    .map(this::convertToDTO)
+            // 使用轻量投影查询，避免抓取重量级实体字段
+            List<com.quiz.dto.WrongQuestionLiteDto> rows = wrongQuestionRepository.findLiteByUserIdAndIsRedoneFalse(userId);
+            log.info("Found {} wrong questions (lite) for user {}", rows.size(), userId);
+
+            // 批量获取所有题目的选项，避免N+1查询
+            List<Long> questionIds = rows.stream()
+                    .map(com.quiz.dto.WrongQuestionLiteDto::getQuestionId)
+                    .distinct()
                     .collect(Collectors.toList());
-            log.info("Successfully converted {} wrong questions to DTOs", dtos.size());
+
+            Map<Long, List<QuestionOption>> optionsByQuestion = questionIds.isEmpty()
+                    ? Map.of()
+                    : questionOptionRepository.findByQuestionIdsOrderByQuestionAndOrder(questionIds).stream()
+                        .collect(Collectors.groupingBy(opt -> opt.getQuestion().getId()));
+
+            // 组装为前端期望的 WrongQuestionDTO 结构
+            List<WrongQuestionDTO> dtos = rows.stream().map(row -> {
+                WrongQuestionDTO dto = new WrongQuestionDTO();
+                dto.setWrongQuestionId(row.getWrongQuestionId());
+                dto.setUserId(row.getUserId());
+                dto.setUserName(row.getUserName());
+                dto.setQuizAttemptId(row.getQuizAttemptId());
+                dto.setCreatedAt(row.getCreatedAt());
+                dto.setIsRedone(row.getIsRedone());
+                dto.setRedoneAt(row.getRedoneAt());
+                dto.setUpdatedAt(row.getUpdatedAt());
+
+                // Question
+                WrongQuestionDTO.QuestionDTO qdto = new WrongQuestionDTO.QuestionDTO();
+                qdto.setId(row.getQuestionId());
+                qdto.setText(row.getQuestionText());
+                qdto.setType(row.getQuestionType() != null ? row.getQuestionType().name() : null);
+                qdto.setExplanation(row.getExplanation());
+
+                // Options
+                List<QuestionOption> opts = optionsByQuestion.getOrDefault(row.getQuestionId(), List.of());
+                List<WrongQuestionDTO.OptionDTO> optDtos = opts.stream()
+                        .map(o -> new WrongQuestionDTO.OptionDTO(o.getId(), o.getOptionText(), o.getIsCorrect()))
+                        .collect(Collectors.toList());
+                qdto.setOptions(optDtos);
+
+                // Quiz & Course
+                WrongQuestionDTO.QuizDTO quizDto = new WrongQuestionDTO.QuizDTO();
+                quizDto.setId(row.getQuizId());
+                quizDto.setTitle(row.getQuizTitle());
+                WrongQuestionDTO.CourseDTO courseDto = new WrongQuestionDTO.CourseDTO();
+                courseDto.setId(row.getCourseId());
+                courseDto.setTitle(row.getCourseTitle());
+                quizDto.setCourse(courseDto);
+                qdto.setQuiz(quizDto);
+
+                dto.setQuestion(qdto);
+                return dto;
+            }).collect(Collectors.toList());
+
+            log.info("Successfully built {} WrongQuestionDTOs for user {}", dtos.size(), userId);
             return dtos;
         } catch (Exception e) {
             log.error("Error getting user wrong questions for user {}", userId, e);

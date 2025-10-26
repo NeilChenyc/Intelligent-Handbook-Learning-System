@@ -4,6 +4,7 @@ import com.quiz.entity.WrongQuestion;
 import com.quiz.entity.User;
 import com.quiz.entity.Question;
 import com.quiz.entity.QuizAttempt;
+import com.quiz.dto.WrongQuestionLiteDto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,16 +24,9 @@ public interface WrongQuestionRepository extends JpaRepository<WrongQuestion, Lo
     List<WrongQuestion> findByUserAndIsRedoneFalse(User user);
     
     // 根据用户ID查找未重做的错题（包含必要的关联以避免懒加载）
-    @Query("SELECT DISTINCT wq FROM WrongQuestion wq " +
-           "LEFT JOIN FETCH wq.user " +
-           "LEFT JOIN FETCH wq.question q " +
-           "LEFT JOIN FETCH q.options " +
-           "LEFT JOIN FETCH q.quiz quiz " +
-           "LEFT JOIN FETCH quiz.course " +
-           "LEFT JOIN FETCH wq.quizAttempt " +
-           "WHERE wq.user.id = :userId AND wq.isRedone = false " +
-           "ORDER BY wq.createdAt DESC")
-    List<WrongQuestion> findByUserIdAndIsRedoneFalse(@Param("userId") Long userId);
+    @EntityGraph(attributePaths = {"user", "question", "question.quiz", "question.quiz.course", "quizAttempt"})
+    @Query("SELECT new com.quiz.dto.WrongQuestionLiteDto(\n    wq.wrongQuestionId,\n    wq.user.id,\n    wq.user.username,\n    wq.quizAttempt.id,\n    wq.createdAt,\n    wq.isRedone,\n    wq.redoneAt,\n    wq.updatedAt,\n    q.id,\n    q.questionText,\n    q.type,\n    q.explanation,\n    quiz.id,\n    quiz.title,\n    course.id,\n    course.title\n)\nFROM WrongQuestion wq\nJOIN wq.question q\nJOIN q.quiz quiz\nJOIN quiz.course course\nJOIN wq.quizAttempt attempt\nWHERE wq.user.id = :userId AND wq.isRedone = false\nORDER BY wq.createdAt DESC")
+    List<WrongQuestionLiteDto> findLiteByUserIdAndIsRedoneFalse(@Param("userId") Long userId);
     
     // 查找特定用户和题目的错题记录
     Optional<WrongQuestion> findByUserAndQuestionAndIsRedoneFalse(User user, Question question);
@@ -44,27 +39,13 @@ public interface WrongQuestionRepository extends JpaRepository<WrongQuestion, Lo
     Long countByUserIdAndIsRedoneFalse(@Param("userId") Long userId);
     
     // 查找用户在特定课程下的错题（预抓取所有必要关联）
-    @Query("SELECT DISTINCT wq FROM WrongQuestion wq " +
-           "LEFT JOIN FETCH wq.user " +
-           "LEFT JOIN FETCH wq.question q " +
-           "LEFT JOIN FETCH q.options " +
-           "LEFT JOIN FETCH q.quiz quiz " +
-           "LEFT JOIN FETCH quiz.course " +
-           "LEFT JOIN FETCH wq.quizAttempt " +
-           "WHERE wq.user.id = :userId AND quiz.course.id = :courseId AND wq.isRedone = false " +
-           "ORDER BY wq.createdAt DESC")
+    @EntityGraph(attributePaths = {"user", "question", "question.quiz", "question.quiz.course", "quizAttempt"})
+    @Query("SELECT wq FROM WrongQuestion wq WHERE wq.user.id = :userId AND wq.isRedone = false AND wq.question.quiz.course.id = :courseId ORDER BY wq.createdAt DESC")
     List<WrongQuestion> findByUserIdAndCourseIdAndIsRedoneFalse(@Param("userId") Long userId, @Param("courseId") Long courseId);
     
     // 查找用户在特定小测下的错题（预抓取所有必要关联）
-    @Query("SELECT DISTINCT wq FROM WrongQuestion wq " +
-           "LEFT JOIN FETCH wq.user " +
-           "LEFT JOIN FETCH wq.question q " +
-           "LEFT JOIN FETCH q.options " +
-           "LEFT JOIN FETCH q.quiz quiz " +
-           "LEFT JOIN FETCH quiz.course " +
-           "LEFT JOIN FETCH wq.quizAttempt " +
-           "WHERE wq.user.id = :userId AND quiz.id = :quizId AND wq.isRedone = false " +
-           "ORDER BY wq.createdAt DESC")
+    @EntityGraph(attributePaths = {"user", "question", "question.quiz", "question.quiz.course", "quizAttempt"})
+    @Query("SELECT wq FROM WrongQuestion wq WHERE wq.user.id = :userId AND wq.isRedone = false AND wq.question.quiz.id = :quizId ORDER BY wq.createdAt DESC")
     List<WrongQuestion> findByUserIdAndQuizIdAndIsRedoneFalse(@Param("userId") Long userId, @Param("quizId") Long quizId);
     
     // 检查是否已存在相同的错题记录
