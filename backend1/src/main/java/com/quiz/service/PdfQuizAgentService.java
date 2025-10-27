@@ -91,7 +91,7 @@ public class PdfQuizAgentService {
                   "questions": [
                     {
                       "text": "题目内容",
-                      "type": "MULTIPLE_CHOICE",
+                      "type": "SINGLE_CHOICE",
                       "options": [
                         {"text": "选项A", "isCorrect": false},
                         {"text": "选项B", "isCorrect": true},
@@ -725,11 +725,11 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
             questionRequired.add("points");
             com.fasterxml.jackson.databind.node.ObjectNode questionProps = questionItems.putObject("properties");
             questionProps.putObject("text").put("type", "string");
-            // 题目类型限定为 MULTIPLE_CHOICE
+            // 题目类型限定为 SINGLE_CHOICE
             com.fasterxml.jackson.databind.node.ObjectNode qTypeProp = questionProps.putObject("type");
             qTypeProp.put("type", "string");
             com.fasterxml.jackson.databind.node.ArrayNode qTypeEnum = qTypeProp.putArray("enum");
-            qTypeEnum.add("MULTIPLE_CHOICE");
+            qTypeEnum.add("SINGLE_CHOICE");
             // options 数组 - 固定4个选项
             com.fasterxml.jackson.databind.node.ObjectNode optionsProp = questionProps.putObject("options");
             optionsProp.put("type", "array");

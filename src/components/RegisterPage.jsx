@@ -80,7 +80,7 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
 
     try {
       // 调用后端注册API
-      const response = await fetch('http://localhost:8080/api/users/register', {
+      const response = await fetch('http://localhost:8080/users/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
