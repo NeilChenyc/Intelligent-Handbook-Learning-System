@@ -24,7 +24,6 @@ public class PdfQuizAgent {
 
     public List<Quiz> generateQuizzesFromPdf(MultipartFile pdfFile, Course course, String difficulty, int numberOfQuestions) {
         try {
-            // For MVP, we'll simulate PDF text extraction
             String extractedText = extractTextFromPdf(pdfFile);
             
             // Analyze content first

@@ -131,9 +131,9 @@ const QuestionManagementPage = ({ course, onBack }) => {
   const getTypeLabel = (type) => {
     switch (type) {
       case 'SINGLE_CHOICE':
-        return '单选题';
+        return 'Single Choice';
       case 'MULTIPLE_CHOICE':
-        return '多选题';
+        return 'Multiple Choice';
       case 'TRUE_FALSE':
         return '判断题';
       case 'ESSAY':

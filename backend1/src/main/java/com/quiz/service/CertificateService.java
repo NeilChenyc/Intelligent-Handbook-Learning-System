@@ -35,7 +35,7 @@ public class CertificateService {
      */
     @Transactional
     public Certificate createCertificateForCourse(Long courseId, String certificateName, String issuer, 
-                                                 String description, String skills, String level, 
+                                                 String description, String level, 
                                                  Integer validityMonths, Integer passingScore) {
         log.info("Creating certificate for course ID: {}", courseId);
         
@@ -52,7 +52,6 @@ public class CertificateService {
         certificate.setCertificateName(certificateName != null ? certificateName : course.getTitle() + " Certificate");
         certificate.setIssuer(issuer != null ? issuer : "Internal Learning System");
         certificate.setDescription(description);
-        certificate.setSkills(skills);
         certificate.setCertificateLevel(level != null ? level : "Intermediate");
         certificate.setValidityPeriodMonths(validityMonths);
         certificate.setPassingScoreThreshold(passingScore != null ? passingScore : 80);
@@ -118,7 +117,7 @@ public class CertificateService {
      */
     @Transactional
     public Certificate updateCertificate(Long certificateId, String certificateName, String issuer,
-                                       String description, String skills, String level,
+                                       String description, String level,
                                        Integer validityMonths, Integer passingScore) {
         Certificate certificate = certificateRepository.findById(certificateId)
             .orElseThrow(() -> new RuntimeException("Certificate not found with ID: " + certificateId));
@@ -126,7 +125,6 @@ public class CertificateService {
         if (certificateName != null) certificate.setCertificateName(certificateName);
         if (issuer != null) certificate.setIssuer(issuer);
         if (description != null) certificate.setDescription(description);
-        if (skills != null) certificate.setSkills(skills);
         if (level != null) certificate.setCertificateLevel(level);
         if (validityMonths != null) certificate.setValidityPeriodMonths(validityMonths);
         if (passingScore != null) certificate.setPassingScoreThreshold(passingScore);

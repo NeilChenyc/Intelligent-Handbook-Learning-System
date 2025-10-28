@@ -90,7 +90,6 @@ public class CourseService {
                 null, // 使用课程标题作为证书名
                 null, // 默认发行方
                 request.getDescription(), // 证书描述沿用课程描述
-                null, // 技能
                 null, // 等级默认
                 null, // 有效期默认
                 null  // 通过分数默认
@@ -149,7 +148,6 @@ public class CourseService {
                 null,
                 null,
                 request.getDescription(),
-                null,
                 null,
                 null,
                 null

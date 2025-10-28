@@ -33,9 +33,6 @@ public class Certificate {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "skills", columnDefinition = "TEXT")
-    private String skills; // JSON string storing skill tags
-
     @Column(name = "certificate_level", length = 50)
     private String certificateLevel; // e.g., "Beginner", "Intermediate", "Advanced"
 

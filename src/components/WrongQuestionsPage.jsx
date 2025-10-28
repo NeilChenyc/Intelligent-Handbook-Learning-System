@@ -349,7 +349,7 @@ const WrongQuestionsPage = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <AlertCircle className="w-5 h-5 text-orange-500" />
-                <span className="font-medium">Remaining Wrong Questions: {wrongQuestions.length} 道</span>
+                <span className="font-medium">Remaining Wrong Questions: {wrongQuestions.length} </span>
               </div>
               <div className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-blue-500" />
@@ -359,7 +359,7 @@ const WrongQuestionsPage = () => {
             <div className="flex items-center space-x-2">
               <BookOpen className="w-5 h-5 text-purple-500" />
               <span className="text-sm text-gray-600">
-                所属课程：{currentQuestion?.courseName || 'Unknown Course'}
+                Course：{currentQuestion?.courseName || 'Unknown Course'}
               </span>
             </div>
           </div>
@@ -478,7 +478,7 @@ const WrongQuestionsPage = () => {
       {wrongQuestionsCount > 0 && (
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-500">
-            Total Wrong Questions: {wrongQuestionsCount} 道
+            Total Wrong Questions: {wrongQuestionsCount} 
           </p>
         </div>
       )}

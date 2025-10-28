@@ -159,8 +159,8 @@ public class AgentController {
     }
 
     /**
-     * 获取AI Agent配置信息
-     * @return 配置信息
+     * Get AI Agent configuration information
+     * @return configuration information
      */
     @GetMapping("/config")
     public ResponseEntity<Map<String, Object>> getAgentConfig() {

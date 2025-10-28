@@ -101,7 +101,7 @@ public class CertificateController {
             Integer passingScore = (Integer) request.get("passingScore");
 
             Certificate certificate = certificateService.updateCertificate(
-                    certificateId, certificateName, issuer, description,
+                    certificateId, certificateName, issuer, description, 
                     level, validityMonths, passingScore);
             
             return ResponseEntity.ok(certificate);

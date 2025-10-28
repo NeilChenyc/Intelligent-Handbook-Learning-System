@@ -97,7 +97,6 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
 
   const handleCorrectAnswerChange = (index) => {
     if (formData.type === 'SINGLE_CHOICE') {
-      // 单选题：只能选择一个正确答案
       setFormData(prev => ({
         ...prev,
         options: prev.options.map((option, i) => ({
