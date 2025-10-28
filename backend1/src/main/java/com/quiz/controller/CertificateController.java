@@ -24,12 +24,19 @@ public class CertificateController {
     private final CertificateService certificateService;
 
     /**
-     * Get all active certificates
+     * Get all certificates (with department visibility logic)
      */
     @GetMapping
-    public ResponseEntity<List<Certificate>> getAllCertificates() {
+    public ResponseEntity<List<Certificate>> getAllCertificates(@RequestParam(value = "userId", required = false) Long userId) {
         try {
-            List<Certificate> certificates = certificateService.getAllActiveCertificates();
+            List<Certificate> certificates;
+            if (userId != null) {
+                // Get certificates visible to specific user based on department
+                certificates = certificateService.getCertificatesVisibleToUser(userId);
+            } else {
+                // Get all active certificates (for admin)
+                certificates = certificateService.getAllActiveCertificates();
+            }
             return ResponseEntity.ok(certificates);
         } catch (Exception e) {
             log.error("Error fetching certificates", e);
@@ -41,7 +48,7 @@ public class CertificateController {
      * Get certificate by course ID
      */
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<Certificate> getCertificateByCourseId(@PathVariable Long courseId) {
+    public ResponseEntity<Certificate> getCertificateByCourseId(@PathVariable("courseId") Long courseId) {
         try {
             Optional<Certificate> certificate = certificateService.getCertificateByCourseId(courseId);
             return certificate.map(ResponseEntity::ok)
@@ -57,19 +64,18 @@ public class CertificateController {
      */
     @PostMapping("/course/{courseId}")
     public ResponseEntity<Certificate> createCertificateForCourse(
-            @PathVariable Long courseId,
+            @PathVariable("courseId") Long courseId,
             @RequestBody Map<String, Object> request) {
         try {
             String certificateName = (String) request.get("certificateName");
             String issuer = (String) request.get("issuer");
             String description = (String) request.get("description");
-            String skills = (String) request.get("skills");
             String level = (String) request.get("level");
             Integer validityMonths = (Integer) request.get("validityMonths");
             Integer passingScore = (Integer) request.get("passingScore");
 
             Certificate certificate = certificateService.createCertificateForCourse(
-                    courseId, certificateName, issuer, description, skills, 
+                    courseId, certificateName, issuer, description, 
                     level, validityMonths, passingScore);
             
             return ResponseEntity.ok(certificate);
@@ -84,19 +90,18 @@ public class CertificateController {
      */
     @PutMapping("/{certificateId}")
     public ResponseEntity<Certificate> updateCertificate(
-            @PathVariable Long certificateId,
+            @PathVariable("certificateId") Long certificateId,
             @RequestBody Map<String, Object> request) {
         try {
             String certificateName = (String) request.get("certificateName");
             String issuer = (String) request.get("issuer");
             String description = (String) request.get("description");
-            String skills = (String) request.get("skills");
             String level = (String) request.get("level");
             Integer validityMonths = (Integer) request.get("validityMonths");
             Integer passingScore = (Integer) request.get("passingScore");
 
             Certificate certificate = certificateService.updateCertificate(
-                    certificateId, certificateName, issuer, description, skills,
+                    certificateId, certificateName, issuer, description,
                     level, validityMonths, passingScore);
             
             return ResponseEntity.ok(certificate);
@@ -110,7 +115,7 @@ public class CertificateController {
      * Get user's certificates
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<UserCertificate>> getUserCertificates(@PathVariable Long userId) {
+    public ResponseEntity<List<UserCertificate>> getUserCertificates(@PathVariable("userId") Long userId) {
         try {
             List<UserCertificate> certificates = certificateService.getUserCertificates(userId);
             return ResponseEntity.ok(certificates);
@@ -124,7 +129,7 @@ public class CertificateController {
      * Get user's active certificates
      */
     @GetMapping("/user/{userId}/active")
-    public ResponseEntity<List<UserCertificate>> getUserActiveCertificates(@PathVariable Long userId) {
+    public ResponseEntity<List<UserCertificate>> getUserActiveCertificates(@PathVariable("userId") Long userId) {
         try {
             List<UserCertificate> certificates = certificateService.getUserActiveCertificates(userId);
             return ResponseEntity.ok(certificates);
@@ -139,10 +144,10 @@ public class CertificateController {
      */
     @PostMapping("/award")
     public ResponseEntity<UserCertificate> awardCertificate(
-            @RequestParam Long userId,
-            @RequestParam Long courseId,
-            @RequestParam Integer finalScore,
-            @RequestParam Integer completionPercentage) {
+            @RequestParam("userId") Long userId,
+            @RequestParam("courseId") Long courseId,
+            @RequestParam("finalScore") Integer finalScore,
+            @RequestParam("completionPercentage") Integer completionPercentage) {
         try {
             UserCertificate userCertificate = certificateService.awardCertificateToUser(
                     userId, courseId, finalScore, completionPercentage);
@@ -157,7 +162,7 @@ public class CertificateController {
      * Get certificate by certificate number
      */
     @GetMapping("/number/{certificateNumber}")
-    public ResponseEntity<UserCertificate> getCertificateByCertificateNumber(@PathVariable String certificateNumber) {
+    public ResponseEntity<UserCertificate> getCertificateByCertificateNumber(@PathVariable("certificateNumber") String certificateNumber) {
         try {
             Optional<UserCertificate> certificate = certificateService.getCertificateByCertificateNumber(certificateNumber);
             return certificate.map(ResponseEntity::ok)
@@ -172,16 +177,19 @@ public class CertificateController {
      * Download certificate as HTML
      */
     @GetMapping("/{userCertificateId}/download")
-    public ResponseEntity<String> downloadCertificate(@PathVariable Long userCertificateId) {
+    public ResponseEntity<String> downloadCertificate(@PathVariable("userCertificateId") Long userCertificateId) {
         try {
-            Optional<UserCertificate> userCertificateOpt = certificateService.getCertificateByCertificateNumber(
-                    userCertificateId.toString()); // This needs to be fixed - should get by ID
+            // Get user certificate by ID
+            Optional<UserCertificate> userCertificateOpt = certificateService.getUserCertificateById(userCertificateId);
             
             if (userCertificateOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
             UserCertificate userCertificate = userCertificateOpt.get();
+            
+            // Always regenerate HTML to apply latest template & formatting
+            String htmlContent = certificateService.generateCertificateHtml(userCertificate);
             
             // Update download count
             certificateService.updateDownloadCount(userCertificateId);
@@ -194,7 +202,7 @@ public class CertificateController {
             
             return ResponseEntity.ok()
                     .headers(headers)
-                    .body(userCertificate.getHtmlContent());
+                    .body(htmlContent);
         } catch (Exception e) {
             log.error("Error downloading certificate {}", userCertificateId, e);
             return ResponseEntity.badRequest().build();
@@ -206,9 +214,9 @@ public class CertificateController {
      */
     @GetMapping("/eligible")
     public ResponseEntity<Boolean> checkEligibility(
-            @RequestParam Long userId,
-            @RequestParam Long courseId,
-            @RequestParam Integer userScore) {
+            @RequestParam("userId") Long userId,
+            @RequestParam("courseId") Long courseId,
+            @RequestParam("userScore") Integer userScore) {
         try {
             boolean eligible = certificateService.isUserEligibleForCertificate(userId, courseId, userScore);
             return ResponseEntity.ok(eligible);

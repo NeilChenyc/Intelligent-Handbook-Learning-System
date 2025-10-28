@@ -11,13 +11,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CertificateTemplateService {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("MMMM dd, yyyy");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("MMMM dd, yyyy", Locale.ENGLISH);
 
     /**
      * Generate HTML certificate content from template
@@ -93,12 +94,18 @@ public class CertificateTemplateService {
         
         // Dates
         result = result.replace("{{EARNED_DATE}}", userCertificate.getEarnedDate().format(DATE_FORMATTER));
+        String validityText;
         if (userCertificate.getExpiryDate() != null) {
-            result = result.replace("{{EXPIRY_DATE}}", userCertificate.getExpiryDate().format(DATE_FORMATTER));
+            String expiry = userCertificate.getExpiryDate().format(DATE_FORMATTER);
+            result = result.replace("{{EXPIRY_DATE}}", expiry);
+            validityText = " | Valid Until: " + expiry;
+        } else {
+            validityText = " | Valid Permanently";
         }
+        result = result.replace("{{VALIDITY_TEXT}}", validityText);
         
-        // Skills handling
-        String skills = userCertificate.getCertificate().getSkills();
+        // Skills handling（当前证书实体不包含skills字段，跳过该段渲染）
+        String skills = null;
         if (skills != null && !skills.trim().isEmpty()) {
             // Handle skills as comma-separated values
             String[] skillsArray = skills.split(",");

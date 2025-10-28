@@ -212,11 +212,7 @@
         
         <div class="certificate-number">
             Certificate Number: {{CERTIFICATE_NUMBER}}
-            {{#if EXPIRY_DATE}}
-            | Valid Until: {{EXPIRY_DATE}}
-            {{else}}
-            | Valid Permanently
-            {{/if}}
+            {{VALIDITY_TEXT}}
         </div>
     </div>
 </body>

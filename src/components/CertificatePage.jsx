@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Award, Clock, Star, Calendar, Shield, FileText, Download, Eye, CheckCircle, Building } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllCertificates, getUserCertificates, downloadCertificate, getCertificateByCertificateNumber } from '../api/certificateApi';
+import { getCertificates, getUserCertificates, downloadCertificate, downloadCertificateAsFile } from '../api/certificateApi';
 
 const CertificatePage = () => {
   const [activeTab, setActiveTab] = useState('obtained');
@@ -21,7 +21,7 @@ const CertificatePage = () => {
       try {
         setLoading(true);
         const [allCertificates, userCerts] = await Promise.all([
-          getAllCertificates(),
+          getCertificates(user.id),
           getUserCertificates(user.id)
         ]);
         
@@ -39,19 +39,9 @@ const CertificatePage = () => {
   }, [user?.id]);
 
   // Handle certificate download
-  const handleDownload = async (certificateNumber) => {
+  const handleDownload = async (userCertificateId, certificateNumber) => {
     try {
-      const response = await downloadCertificate(certificateNumber);
-      // Handle download response
-      const blob = new Blob([response], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `certificate-${certificateNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await downloadCertificateAsFile(userCertificateId, `certificate-${certificateNumber}.html`);
     } catch (error) {
       console.error('Error downloading certificate:', error);
       alert('Failed to download certificate');
@@ -59,13 +49,15 @@ const CertificatePage = () => {
   };
 
   // Handle certificate view
-  const handleView = async (certificateNumber) => {
+  const handleView = async (userCertificateId) => {
     try {
-      const response = await downloadCertificate(certificateNumber);
-      // Open certificate in new window/tab
-      const blob = new Blob([response], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const htmlContent = await downloadCertificate(userCertificateId);
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.open();
+        win.document.write(htmlContent);
+        win.document.close();
+      }
     } catch (error) {
       console.error('Error viewing certificate:', error);
       alert('Failed to view certificate');
@@ -247,29 +239,21 @@ const CertificatePage = () => {
                           {userCert.status === 'ACTIVE' ? 'Valid' : userCert.status}
                         </span>
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded">
-                          {userCert.certificate.course.department || 'General'}
+                          {userCert?.certificate?.course?.department || 'General'}
                         </span>
                       </div>
 
-                      {userCert.certificate.skills && (
-                        <div className="mb-4">
-                          <p className="text-sm text-gray-500 mb-2">Skills</p>
-                          <div className="flex flex-wrap gap-2">
-                            {userCert.certificate.skills.split(',').map((skill, index) => (
-                              <span key={index} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded">
-                                {skill.trim()}
-                              </span>
-                            ))}
-                          </div>
+                      <div className="mb-4">
+                          <p className="text-sm text-gray-500 mb-2">Description</p>
+                          <p className="text-gray-700">{userCert.certificate.description || 'No description available'}</p>
                         </div>
-                      )}
                     </div>
 
                     <div className="flex flex-col space-y-2 ml-6">
                       <Button 
                         size="sm" 
                         className="flex items-center space-x-1"
-                        onClick={() => handleView(userCert.certificateNumber)}
+                        onClick={() => handleView(userCert.id)}
                       >
                         <Eye className="w-4 h-4" />
                         <span>View</span>
@@ -278,7 +262,7 @@ const CertificatePage = () => {
                         variant="outline" 
                         size="sm" 
                         className="flex items-center space-x-1"
-                        onClick={() => handleDownload(userCert.certificateNumber)}
+                        onClick={() => handleDownload(userCert.id, userCert.certificateNumber)}
                       >
                         <Download className="w-4 h-4" />
                         <span>Download</span>
@@ -324,11 +308,11 @@ const CertificatePage = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <p className="text-sm text-gray-500">Course</p>
-                          <p className="font-medium">{cert.course.courseName}</p>
+                          <p className="font-medium">{cert?.course?.courseName || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Department</p>
-                          <p className="font-medium">{cert.course.department || 'General'}</p>
+                          <p className="font-medium">{cert?.course?.department || 'General'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Level</p>
@@ -345,22 +329,14 @@ const CertificatePage = () => {
                           {cert.certificateLevel || 'Intermediate'}
                         </span>
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded">
-                          {cert.course.department || 'General'}
+                          {cert?.course?.department || 'General'}
                         </span>
                       </div>
 
-                      {cert.skills && (
-                        <div className="mb-4">
-                          <p className="text-sm text-gray-500 mb-2">Skills you'll learn</p>
-                          <div className="flex flex-wrap gap-2">
-                            {cert.skills.split(',').map((skill, index) => (
-                              <span key={index} className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
-                                {skill.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <div className="mb-4">
+                        <p className="text-sm text-gray-500 mb-2">Description</p>
+                        <p className="text-gray-700">{cert.description || 'No description available'}</p>
+                      </div>
 
                       {cert.requirements && (
                         <div className="mb-4">
@@ -374,8 +350,8 @@ const CertificatePage = () => {
                       <Button 
                         className="flex items-center space-x-1"
                         onClick={() => {
-                          // Navigate to course or enrollment
-                          window.location.href = `/courses/${cert.course.id}`;
+                          const courseId = cert?.course?.id;
+                          window.location.href = courseId ? `/courses/${courseId}` : '/courses';
                         }}
                       >
                         <Star className="w-4 h-4" />

@@ -2,11 +2,12 @@
 const API_BASE_URL = 'http://localhost:8080';
 
 /**
- * Get all active certificates
+ * Get all certificates with user visibility logic
  */
-export const getAllCertificates = async () => {
+export const getCertificates = async (userId = null) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/certificates`, {
+    const url = userId ? `${API_BASE_URL}/certificates?userId=${userId}` : `${API_BASE_URL}/certificates`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -389,7 +390,7 @@ export const generateCertificateHtml = (userCertificate, user) => {
                 <p><strong>Issuer:</strong> ${userCertificate.certificate.issuer}</p>
                 <p><strong>Department:</strong> ${userCertificate.certificate.course.department || 'General'}</p>
                 <p><strong>Level:</strong> ${userCertificate.certificate.certificateLevel}</p>
-                ${userCertificate.certificate.skills ? `<p><strong>Skills Acquired:</strong> ${userCertificate.certificate.skills}</p>` : ''}
+                <p><strong>Description:</strong> ${userCertificate.certificate.description || 'No description available'}</p>
             </div>
             
             <div class="score">
