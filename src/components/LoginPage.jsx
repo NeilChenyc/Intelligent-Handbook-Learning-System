@@ -16,13 +16,13 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
       username: 'admin',
       password: 'admin123',
       role: 'admin',
-      name: '系统管理员'
+      name: 'System Administrator'
     },
     student: {
       username: 'student',
       password: 'student123', 
       role: 'student',
-      name: '学员用户'
+      name: 'Student User'
     }
   };
 
@@ -32,7 +32,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
       ...prev,
       [name]: value
     }));
-    setError(''); // 清除错误信息
+    setError(''); // Clear error message
   };
 
   const handleUserTypeChange = (type) => {
@@ -96,16 +96,16 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        {/* Logo和标题 */}
+        {/* Logo and title */}
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">智能手册学习系统</h1>
-          <p className="text-gray-600">请选择身份类型并登录</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Intelligent Handbook Learning System</h1>
+          <p className="text-gray-600">Please select your identity type and login</p>
         </div>
 
-        {/* 身份类型选择 */}
+        {/* Identity type selection */}
         <div className="mb-6">
           <div className="flex rounded-lg bg-gray-100 p-1">
             <button
@@ -118,7 +118,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
               }`}
             >
               <GraduationCap className="w-4 h-4 mr-2" />
-              学员登录
+              Student Login
             </button>
             <button
               type="button"
@@ -130,12 +130,12 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
               }`}
             >
               <UserCheck className="w-4 h-4 mr-2" />
-              管理员登录
+              Administrator Login
             </button>
           </div>
         </div>
 
-        {/* 功能提示 */}
+        {/* Feature tips */}
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
@@ -144,20 +144,20 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
               </div>
             </div>
             <div>
-               <p className="text-blue-800 text-sm font-medium mb-1">功能体验提示</p>
-               <p className="text-blue-700 text-sm">
-                 请在管理员模式登录demo浏览完整功能，账号密码随便输即可
+               <p className="text-blue-800 text-sm font-medium mb-1">Feature Experience Tips</p>
+               <p>
+                 Please login in administrator mode to browse the complete features, any username and password will work
                </p>
              </div>
           </div>
         </div>
 
-        {/* 登录表单 */}
+        {/* Login form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 用户名输入 */}
+          {/* Username input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              用户名
+              Username
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -167,16 +167,16 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
                 value={formData.username}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder={formData.userType === 'admin' ? '请输入管理员用户名' : '请输入学员用户名'}
+                placeholder={formData.userType === 'admin' ? 'Please enter administrator username' : 'Please enter student username'}
                 required
               />
             </div>
           </div>
 
-          {/* 密码输入 */}
+          {/* Password input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              密码
+              Password
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -186,33 +186,33 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
                 value={formData.password}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder="请输入密码"
+                placeholder="Please enter password"
                 required
               />
             </div>
           </div>
 
-          {/* 错误信息 */}
+          {/* Error message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
-          {/* 登录链接 */}
+          {/* Registration link */}
           <div className="mt-6 text-center">
             <p className="text-gray-600 text-sm">
-              还没有账户？
+              Don't have an account?
               <button
                 onClick={onShowRegister}
                 className="text-blue-600 hover:text-blue-700 font-medium ml-1"
               >
-                立即注册
+                Register Now
               </button>
             </p>
           </div>
 
-          {/* 登录按钮 */}
+          {/* Login button */}
           <button
             type="submit"
             disabled={isLoading}
@@ -222,7 +222,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
                 : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
             } text-white`}
           >
-            {isLoading ? '登录中...' : '登录'}
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>

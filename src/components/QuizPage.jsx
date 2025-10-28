@@ -33,7 +33,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         }
       }
     } catch (error) {
-      console.error('获取下一个小测失败:', error);
+      console.error('Failed to get next quiz:', error);
     }
     return null;
   };
@@ -64,6 +64,16 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
 
       try {
         setLoading(true);
+        
+        // 重置所有状态，确保新测验的干净状态
+        setAnswers({});
+        setSubmitted(false);
+        setSubmitting(false);
+        setWrongQuestionsCount(0);
+        setQuizResult(null);
+        setAttemptId(null);
+        setError(null);
+        
         console.log('Debug: 开始初始化小测, quizId:', quizId, 'userId:', userId);
         
         // 开始小测尝试
@@ -91,19 +101,18 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
             : question.options
                 .map((opt, index) => opt.isCorrect ? String.fromCharCode(97 + index) : null)
                 .filter(Boolean),
-          explanation: question.explanation || '暂无解析'
+          explanation: question.explanation || 'No explanation available'
         }));
         
         console.log('Debug: 原始API数据', data);
         console.log('Debug: 转换后的题目数据', formattedQuestions);
         setQuestions(formattedQuestions);
         
-        setError(null);
       } catch (err) {
-        console.error('初始化小测失败:', err);
-        console.error('错误详情:', err.message);
-        console.error('错误堆栈:', err.stack);
-        setError(`加载题目失败: ${err.message || '请检查网络连接或联系管理员'}`);
+        console.error('Quiz initialization failed:', err);
+        console.error('Error details:', err.message);
+        console.error('Error stack:', err.stack);
+        setError(`Failed to load questions: ${err.message || 'Please check network connection or contact administrator'}`);
       } finally {
         setLoading(false);
       }
@@ -139,9 +148,9 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
     console.log('Debug: submitted:', submitted);
     
     if (!attemptId || submitting) {
-      console.log('Debug: 提交被阻止 - attemptId为空或正在提交中');
-      console.log('Debug: attemptId 是否为空:', !attemptId);
-      console.log('Debug: 是否正在提交:', submitting);
+      console.log('Debug: Submission blocked - attemptId is empty or submitting');
+      console.log('Debug: Is attemptId empty:', !attemptId);
+      console.log('Debug: Is submitting:', submitting);
       return;
     }
     
@@ -153,13 +162,13 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
     
     try {
       setSubmitting(true);
-      console.log('Debug: 开始提交小测');
+      console.log('Debug: Starting quiz submission');
       console.log('Debug: attemptId:', attemptId);
       console.log('Debug: formattedAnswers:', formattedAnswers);
       
       // 提交到后端
       const result = await submitQuizAnswers(attemptId, formattedAnswers);
-      console.log('Debug: 提交成功，结果:', result);
+      console.log('Debug: Submission successful, result:', result);
       
       // 设置提交状态
       setSubmitted(true);
@@ -188,7 +197,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         if (!isCorrect) {
           const wrongQuestion = {
             ...question,
-            courseName: courseName || '员工手册学习',
+            courseName: courseName || 'Employee Handbook Learning',
             userAnswer: userAnswer,
             timestamp: new Date().toISOString()
           };
@@ -216,8 +225,8 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       // 结果已保存，展示结果页由下方按钮控制导航
       
     } catch (error) {
-      console.error('提交小测失败:', error);
-      console.error('错误详情:', {
+      console.error('Quiz submission failed:', error);
+      console.error('Error details:', {
         message: error.message,
         stack: error.stack,
         response: error.response,
@@ -226,12 +235,12 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       });
       
       // 更详细的错误信息
-      let errorMessage = '提交失败，请重试';
+      let errorMessage = 'Submission failed, please try again';
       if (error.message) {
-        errorMessage = `提交失败: ${error.message}`;
+        errorMessage = `Submission failed: ${error.message}`;
       }
       if (error.response) {
-        errorMessage = `提交失败 (${error.response.status}): ${error.response.statusText}`;
+        errorMessage = `Submission failed (${error.response.status}): ${error.response.statusText}`;
       }
       
       setError(errorMessage);
@@ -251,324 +260,401 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
     }
   };
 
-  const getScore = () => {
-    let correct = 0;
-    questions.forEach(question => {
-      if (isCorrectAnswer(question, answers[question.id])) {
-        correct++;
-      }
-    });
-    return { correct, total: questions.length };
+  const getAnswerStatus = (question, userAnswer) => {
+    if (!submitted) return null;
+    return isCorrectAnswer(question, userAnswer) ? 'correct' : 'incorrect';
   };
 
-  const score = submitted ? getScore() : null;
+  const handleRetry = () => {
+    setAnswers({});
+    setSubmitted(false);
+    setSubmitting(false);
+    setError(null);
+    setQuizResult(null);
+    setWrongQuestionsCount(0);
+  };
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-6">
-        <Button 
-          onClick={onBack}
-          variant="outline"
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          返回课程
-        </Button>
-      </div>
+  const handleNextQuiz = () => {
+    if (nextQuizId && onQuizComplete) {
+      // 计算当前测验的分数和通过状态
+      const score = quizResult?.score !== undefined ? quizResult.score : calculateScore();
+      const passed = quizResult?.passed !== undefined ? quizResult.passed : isQuizPassed();
+      
+      // 调用父组件的回调，传递当前测验ID、分数、通过状态和下一个测验ID
+      onQuizComplete(quizId, score, passed, nextQuizId);
+    }
+  };
 
-      {loading && (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-gray-600">正在加载题目...</p>
-        </div>
-      )}
+  const handleBackToCourseList = () => {
+    if (onBack) {
+      onBack();
+    }
+  };
 
-      {error && (
-        <Card className="mb-6 border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <XCircle className="w-5 h-5 text-red-500" />
-              <span className="text-red-700">加载题目失败：{error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  const calculateScore = () => {
+    const totalQuestions = questions.length;
+    const correctAnswers = questions.filter(question => {
+      const userAnswer = answers[question.id];
+      return isCorrectAnswer(question, userAnswer);
+    }).length;
+    
+    return totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+  };
 
-      {!loading && !error && questions.length === 0 && (
-        <Card className="mb-6 border-yellow-200 bg-yellow-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <FileText className="w-5 h-5 text-yellow-600" />
-              <span className="text-yellow-700">该测验暂无题目</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  const isQuizPassed = () => {
+    return calculateScore() >= 80; // 80分及格
+  };
 
-      {!loading && !error && questions.length > 0 && (
-        <>
-          <div className="mb-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <FileText className="w-8 h-8 text-blue-600" />
-              <h2 className="text-3xl font-bold text-gray-900">
-                {courseName ? `${courseName} - 小测` : '测验'}
-              </h2>
-            </div>
-            <p className="text-gray-600">请仔细阅读题目并选择正确答案，共 {questions.length} 道题</p>
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading questions...</p>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-      {submitted && (
-        <Card className="mb-6 border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-green-500" />
-              <span className="font-medium">
-                合规考核完成！得分：{quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined
-                  ? `${quizResult.score}/${quizResult.maxPossibleScore} (${Math.round((quizResult.score / quizResult.maxPossibleScore) * 100)}%)`
-                  : `${score.correct}/${score.total} (${Math.round((score.correct / score.total) * 100)}%)`
-                }
-                {quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined
-                  ? ((quizResult.score / quizResult.maxPossibleScore) >= 0.8 ? ' - 考核通过' : ' - 需要重新学习')
-                  : (score.correct / score.total >= 0.8 ? ' - 考核通过' : ' - 需要重新学习')
-                }
-              </span>
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Button 
+          variant="outline" 
+          onClick={onBack}
+          className="mb-4 flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </Button>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-2">Loading Failed</p>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Button 
+          variant="outline" 
+          onClick={onBack}
+          className="mb-4 flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </Button>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No question data available</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果已提交，显示结果页面
+  if (submitted) {
+    const score = calculateScore();
+    const passed = isQuizPassed();
+    const totalQuestions = questions.length;
+    const correctAnswers = totalQuestions - wrongQuestionsCount;
+
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        {/* 结果页面标题 */}
+        <div className="text-center mb-8">
+          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
+            passed ? 'bg-green-100' : 'bg-red-100'
+          }`}>
+            {passed ? (
+              <Trophy className="w-8 h-8 text-green-600" />
+            ) : (
+              <XCircle className="w-8 h-8 text-red-600" />
+            )}
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {passed ? 'Congratulations! Passed!' : 'Quiz Not Passed'}
+          </h1>
+          <p className="text-gray-600">
+            {passed ? 'You have successfully completed this quiz' : 'Please keep trying and attempt again'}
+          </p>
+        </div>
+
+        {/* 成绩统计 */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600 mb-2">{score}%</div>
+                <div className="text-sm text-gray-600">Total Score</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600 mb-2">{correctAnswers}</div>
+                <div className="text-sm text-gray-600">Correct Answers</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-red-600 mb-2">{wrongQuestionsCount}</div>
+                <div className="text-sm text-gray-600">Wrong Answers</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-gray-600 mb-2">{totalQuestions}</div>
+                <div className="text-sm text-gray-600">Total Questions</div>
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      <div className="space-y-6">
-        {questions.map((question, index) => {
-          const userAnswer = answers[question.id];
-          const isCorrect = submitted ? isCorrectAnswer(question, userAnswer) : null;
-
-          return (
-            <Card key={question.id} className={submitted ? (isCorrect ? 'border-green-200' : 'border-red-200') : ''}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                    第 {index + 1} 题
-                  </span>
-                  {submitted && (
-                    isCorrect ? 
-                      <CheckCircle className="w-5 h-5 text-green-500" /> : 
-                      <XCircle className="w-5 h-5 text-red-500" />
-                  )}
-                </CardTitle>
-                <p className="text-lg text-gray-800 mt-2">{question.questionText}</p>
-                {question.type === 'multiple' && (
-                  <p className="text-sm text-gray-500">（多选题）</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {question.options.map((option) => {
-                    const isSelected = question.type === 'multiple' 
-                      ? (userAnswer || []).includes(option.id)
-                      : userAnswer === option.id;
-                    
-                    const isCorrectOption = question.type === 'multiple'
-                      ? question.correctAnswer.includes(option.id)
-                      : question.correctAnswer === option.id;
-
-                    let optionClass = 'p-3 border rounded-lg cursor-pointer transition-colors ';
-                    
-                    if (submitted) {
-                      if (isCorrectOption) {
-                        optionClass += 'bg-green-100 border-green-300 text-green-800';
-                      } else if (isSelected && !isCorrectOption) {
-                        optionClass += 'bg-red-100 border-red-300 text-red-800';
-                      } else {
-                        optionClass += 'bg-gray-50 border-gray-200 text-gray-600';
-                      }
-                    } else {
-                      optionClass += isSelected 
-                        ? 'bg-blue-100 border-blue-300 text-blue-800' 
-                        : 'bg-white border-gray-200 hover:bg-gray-50';
-                    }
-
-                    return (
-                      <div
-                        key={option.id}
-                        className={optionClass}
-                        onClick={() => handleAnswerChange(question.id, option.id, question.type === 'multiple')}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-4 h-4 rounded ${question.type === 'multiple' ? 'rounded-sm' : 'rounded-full'} border-2 flex items-center justify-center`}>
-                            {isSelected && (
-                              <div className={`w-2 h-2 bg-current ${question.type === 'multiple' ? 'rounded-sm' : 'rounded-full'}`} />
-                            )}
-                          </div>
-                          <span className="font-medium">{option.id.toUpperCase()}.</span>
-                          <span>{option.optionText}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {submitted && (
-                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h4 className="font-medium text-yellow-800 mb-2">解析：</h4>
-                    <p className="text-yellow-700">{question.explanation}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {!submitted && (
-        <div className="mt-8 flex justify-center">
-          <Button 
-            onClick={handleSubmit}
-            size="lg"
-            className="px-8"
-            disabled={Object.keys(answers).length === 0}
-          >
-            提交考核
-          </Button>
-        </div>
-      )}
-
-      {submitted && (
-        <>
-          {/* 测验结果显示 */}
-          <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">测验结果</h3>
-              
-              {/* 成绩显示 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined
-                      ? `${quizResult.score}/${quizResult.maxPossibleScore}`
-                      : `${questions.length - wrongQuestionsCount}/${questions.length}`}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">总分/满分</div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="text-3xl font-bold text-green-600">
-                    {questions.length - wrongQuestionsCount}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">正确题数</div>
-                </div>
-                
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="text-3xl font-bold text-red-600">
-                    {wrongQuestionsCount}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">错误题数</div>
-                </div>
-              </div>
-              
-              {/* 通过情况 */}
-              <div className="mb-6">
-                {(() => {
-                  const hasBackendScores = quizResult?.score !== undefined && quizResult?.maxPossibleScore !== undefined;
-                  const percent = hasBackendScores && quizResult.maxPossibleScore > 0
-                    ? (quizResult.score / quizResult.maxPossibleScore) * 100
-                    : ((questions.length - wrongQuestionsCount) / questions.length) * 100;
-                  const passed = quizResult?.passed !== undefined
-                    ? quizResult.passed
-                    : percent >= 80;
-
-                  return (
-                    <div className={`inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold ${
-                      passed 
-                        ? 'bg-green-100 text-green-800 border border-green-200' 
-                        : 'bg-red-100 text-red-800 border border-red-200'
+        {/* 题目详情 */}
+        <div className="space-y-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-900">Answer Details</h2>
+          
+          {questions.map((question, index) => {
+            const userAnswer = answers[question.id];
+            const status = getAnswerStatus(question, userAnswer);
+            
+            return (
+              <Card key={question.id} className={`border-l-4 ${
+                status === 'correct' ? 'border-l-green-500' : 'border-l-red-500'
+              }`}>
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                      status === 'correct' ? 'bg-green-100' : 'bg-red-100'
                     }`}>
-                      {passed ? (
-                        <>
-                          <CheckCircle className="w-6 h-6 mr-2" />
-                          恭喜通过！得分比例: {percent.toFixed(1)}%
-                        </>
+                      {status === 'correct' ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
                       ) : (
-                        <>
-                          <XCircle className="w-6 h-6 mr-2" />
-                          未通过，得分比例: {percent.toFixed(1)}%
-                        </>
+                        <XCircle className="w-5 h-5 text-red-600" />
                       )}
                     </div>
-                  );
-                })()}
-              </div>
-              
-              {/* 提示信息 */}
-              <div className="text-gray-600 mb-4">
-                {wrongQuestionsCount === 0 
-                  ? "太棒了！全部答对了！" 
-                  : `还有 ${wrongQuestionsCount} 道题需要加强学习，请查看下方解析。`
-                }
-              </div>
-            </div>
-          </div>
+                    
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">
+                        Question {index + 1}: {question.questionText}
+                      </h3>
+                      
+                      <div className="space-y-2 mb-4">
+                        {question.options.map((option) => {
+                          const isCorrect = question.type === 'multiple' 
+                            ? question.correctAnswer.includes(option.id)
+                            : question.correctAnswer === option.id;
+                          const isSelected = question.type === 'multiple'
+                            ? (userAnswer || []).includes(option.id)
+                            : userAnswer === option.id;
+                          
+                          let optionClass = 'p-3 rounded-lg border ';
+                          if (isCorrect) {
+                            optionClass += 'bg-green-50 border-green-200 text-green-800';
+                          } else if (isSelected && !isCorrect) {
+                            optionClass += 'bg-red-50 border-red-200 text-red-800';
+                          } else {
+                            optionClass += 'bg-gray-50 border-gray-200 text-gray-700';
+                          }
+                          
+                          return (
+                            <div key={option.id} className={optionClass}>
+                              <div className="flex items-center space-x-3">
+                                <span className="font-medium">{option.id.toUpperCase()}.</span>
+                                <span>{option.optionText}</span>
+                                {isCorrect && (
+                                  <CheckCircle className="w-4 h-4 text-green-600 ml-auto" />
+                                )}
+                                {isSelected && !isCorrect && (
+                                  <XCircle className="w-4 h-4 text-red-600 ml-auto" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {question.explanation && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-start space-x-2">
+                            <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-blue-900 mb-1">Explanation</p>
+                              <p className="text-blue-800 text-sm">{question.explanation}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* 操作按钮 */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {passed && nextQuizId ? (
+            // 通过且有下一个测验，显示Next Quiz按钮
+            <Button 
+              onClick={handleNextQuiz}
+              className="flex items-center space-x-2"
+            >
+              <ArrowRight className="w-4 h-4" />
+              <span>Next Quiz</span>
+            </Button>
+          ) : (
+            // 未通过或没有下一个测验，显示Retake Quiz按钮
+            <Button 
+              variant="outline" 
+              onClick={handleRetry}
+              className="flex items-center space-x-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Retake Quiz</span>
+            </Button>
+          )}
           
-          <div className="mt-8 flex justify-center space-x-4">
-            {/* 判断是否通过并显示相应按钮 */}
-            {(() => {
-              const score = quizResult?.score !== undefined ? quizResult.score : Math.round((questions.length - wrongQuestionsCount) / questions.length * 100);
-              const passed = quizResult?.passed !== undefined ? quizResult.passed : (score >= 80);
+          <Button 
+            variant="outline" 
+            onClick={handleBackToCourseList}
+            className="flex items-center space-x-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Course List</span>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 正常的答题页面
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      {/* 页面标题和返回按钮 */}
+      <div className="flex items-center justify-between mb-6">
+        <Button 
+          variant="outline" 
+          onClick={onBack}
+          className="flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>返回</span>
+        </Button>
+        
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">{courseName || 'Quiz'}</h1>
+          <p className="text-gray-600">Total {questions.length} questions</p>
+        </div>
+        
+        <div className="flex items-center space-x-2 text-gray-600">
+          <Clock className="w-4 h-4" />
+          <span>No time limit</span>
+        </div>
+      </div>
+
+      {/* 进度条 */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium text-gray-700">Answer Progress</span>
+          <span className="text-sm text-gray-600">
+            {Object.keys(answers).length} / {questions.length}
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(Object.keys(answers).length / questions.length) * 100}%` }}
+          ></div>
+        </div>
+      </div>
+
+      {/* 题目列表 */}
+      <div className="space-y-6 mb-8">
+        {questions.map((question, index) => (
+          <Card key={question.id} className="border border-gray-200">
+            <CardContent className="p-6">
+              <div className="mb-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-blue-600">{index + 1}</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {question.questionText}
+                    </h3>
+                    <p className="text-sm text-blue-600 mb-3">
+                      ({question.type === 'multiple' ? 'Multiple Choice' : 'Single Choice'})
+                    </p>
+                  </div>
+                </div>
+              </div>
               
-              if (passed && nextQuizId) {
-                // 通过且有下一个小测，显示"下一个测验"按钮
-                return (
-                  <Button 
-                    onClick={() => {
-                      if (onQuizComplete) {
-                        const score = quizResult?.score !== undefined ? quizResult.score : Math.round((questions.length - wrongQuestionsCount) / questions.length * 100);
-                        const passed = quizResult?.passed !== undefined ? quizResult.passed : (score >= 80);
-                        onQuizComplete(quizId, score, passed);
-                      }
-                    }}
-                    size="lg"
-                    className="px-8"
-                  >
-                    <ArrowRight className="w-4 h-4 mr-2" />
-                    继续考核
-                  </Button>
-                );
-              } else if (passed && !nextQuizId) {
-                // 通过但没有下一个小测，显示"返回课程"按钮
-                return (
-                  <Button 
-                    onClick={onBack}
-                    size="lg"
-                    className="px-8"
-                  >
-                    返回课程
-                  </Button>
-                );
-              } else {
-                // 未通过，显示"重新考核"按钮
-                return (
-                  <Button 
-                    onClick={() => {
-                      setAnswers({});
-                      setSubmitted(false);
-                      setQuizResult(null);
-                      setWrongQuestionsCount(0);
-                      // 保留 nextQuizId，避免重新考核后丢失“继续考核”能力
-                    }}
-                    variant="outline"
-                    size="lg"
-                    className="px-8"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    重新考核
-                  </Button>
-                );
-              }
-            })()}
-          </div>
-        </>
-      )}
-        </>
-      )}
+              <div className="space-y-3">
+                {question.options.map((option) => {
+                  const isSelected = question.type === 'multiple'
+                    ? (answers[question.id] || []).includes(option.id)
+                    : answers[question.id] === option.id;
+                  
+                  return (
+                    <div
+                      key={option.id}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-blue-50 border-blue-300 text-blue-900'
+                          : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                      onClick={() => handleAnswerChange(question.id, option.id, question.type === 'multiple')}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {isSelected && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
+                        <span className="font-medium text-gray-700">{option.id.toUpperCase()}.</span>
+                        <span className="text-gray-900">{option.optionText}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* 提交按钮 */}
+      <div className="text-center">
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting || Object.keys(answers).length === 0}
+          className="px-8 py-3 text-lg"
+        >
+          {submitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Submitting...
+            </>
+          ) : (
+            'Submit Answers'
+          )}
+        </Button>
+        
+        {Object.keys(answers).length < questions.length && (
+          <p className="text-sm text-gray-600 mt-2">
+            {questions.length - Object.keys(answers).length} questions remaining
+          </p>
+        )}
+      </div>
     </div>
   );
 };

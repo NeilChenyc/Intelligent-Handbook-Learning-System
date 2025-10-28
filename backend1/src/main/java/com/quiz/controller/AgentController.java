@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * AI Agent Controller - 处理PDF自动生成测验的API端点
+ * AI Agent Controller 
  */
 @RestController
 @RequestMapping("/api/agent")

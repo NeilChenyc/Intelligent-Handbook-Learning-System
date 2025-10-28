@@ -14,14 +14,14 @@ const PlaceholderPage = ({ title, description }) => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Construction className="w-5 h-5 text-orange-500" />
-            <span>功能开发中</span>
+            <span>Feature Under Development</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12">
             <Construction className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">该功能正在开发中</h3>
-            <p className="text-gray-600">我们正在努力为您提供更好的学习体验，敬请期待！</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">This feature is under development</h3>
+            <p className="text-gray-600">We are working hard to provide you with a better learning experience. Stay tuned!</p>
           </div>
         </CardContent>
       </Card>

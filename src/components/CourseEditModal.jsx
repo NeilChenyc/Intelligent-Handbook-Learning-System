@@ -40,7 +40,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
     e.preventDefault();
     
     if (!formData.title.trim()) {
-      alert('请输入课程标题');
+      alert('Please enter course title');
       return;
     }
 
@@ -61,7 +61,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
         <div className="p-6">
           {/* 头部 */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">编辑课程信息</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Edit Course Information</h3>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -75,7 +75,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  课程标题 *
+                  Course Title *
                 </label>
                 <input
                   type="text"
@@ -83,14 +83,14 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
                   value={formData.title}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="请输入课程标题"
+                  placeholder="Please enter course title"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  课程描述
+                  Course Description
                 </label>
                 <textarea
                   name="description"
@@ -98,13 +98,13 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
                   onChange={handleInputChange}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
-                  placeholder="请输入课程描述"
+                  placeholder="Please enter course description"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  分配部门 *
+                  Assigned Department *
                 </label>
                 <select
                   name="department"
@@ -129,14 +129,13 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
                 variant="outline"
                 onClick={onClose}
               >
-                取消
+                Cancel
               </Button>
               <Button
                 type="submit"
-                className="flex items-center space-x-2"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                <Save className="w-4 h-4" />
-                <span>保存修改</span>
+                Save Changes
               </Button>
             </div>
           </form>

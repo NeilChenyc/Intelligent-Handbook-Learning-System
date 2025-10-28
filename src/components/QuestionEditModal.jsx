@@ -17,6 +17,17 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false); // 添加loading状态
+
+  // 添加clearError函数
+  const clearError = (field) => {
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: null
+      }));
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -72,12 +83,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
       [field]: value
     }));
     // 清除对应字段的错误
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: null
-      }));
-    }
+    clearError(field);
   };
 
   const handleOptionChange = (index, field, value) => {
@@ -132,32 +138,33 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
     const newErrors = {};
 
     if (!formData.questionText.trim()) {
-      newErrors.questionText = '题目内容不能为空';
+      newErrors.questionText = 'Question content cannot be empty';
     }
 
     if (!formData.quizId) {
-      newErrors.quizId = '请选择所属小测';
+      newErrors.quizId = 'Please select a quiz';
     }
 
-    if (formData.points <= 0) {
-      newErrors.points = '分值必须大于0';
+    if (!formData.points || formData.points <= 0) {
+      newErrors.points = 'Points must be greater than 0';
     }
 
+    // Check options for choice questions
     if (formData.type === 'SINGLE_CHOICE' || formData.type === 'MULTIPLE_CHOICE') {
-      // 检查选项
-      const validOptions = formData.options.filter(opt => opt.optionText.trim());
+      const validOptions = formData.options.filter(opt => opt.optionText && opt.optionText.trim());
       if (validOptions.length < 2) {
-        newErrors.options = '至少需要2个有效选项';
+        newErrors.options = 'At least 2 valid options are required';
       }
-
-      // 检查是否有正确答案
-      const correctOptions = formData.options.filter(opt => opt.isCorrect);
-      if (correctOptions.length === 0) {
-        newErrors.correctAnswer = '请选择正确答案';
+      
+      // Check if there is a correct answer
+      const correctAnswers = formData.options.filter(opt => opt.isCorrect);
+      if (correctAnswers.length === 0) {
+        newErrors.correctAnswer = 'Please select the correct answer';
       }
-
-      if (formData.type === 'SINGLE_CHOICE' && correctOptions.length > 1) {
-        newErrors.correctAnswer = '单选题只能有一个正确答案';
+      
+      // Single choice: only one correct answer
+      if (formData.type === 'SINGLE_CHOICE' && correctAnswers.length > 1) {
+        newErrors.correctAnswer = 'Single choice questions can only have one correct answer';
       }
     }
 
@@ -165,33 +172,41 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    // 准备提交数据
-    const submitData = {
-      questionText: formData.questionText.trim(),
-      type: formData.type,
-      points: parseInt(formData.points),
-      explanation: formData.explanation.trim(),
-      quizId: parseInt(formData.quizId)
-    };
+    setLoading(true); // 开始提交时设置loading为true
 
-    // 如果是选择题，添加选项数据
-    if (formData.type === 'SINGLE_CHOICE' || formData.type === 'MULTIPLE_CHOICE') {
-      submitData.options = formData.options
-        .filter(opt => opt.optionText.trim())
-        .map(opt => ({
-          optionText: opt.optionText.trim(),
-          isCorrect: opt.isCorrect
-        }));
+    try {
+      // 准备提交数据
+      const submitData = {
+        questionText: formData.questionText.trim(),
+        type: formData.type,
+        points: parseInt(formData.points),
+        explanation: formData.explanation.trim(),
+        quizId: parseInt(formData.quizId)
+      };
+
+      // 如果是选择题，添加选项数据
+      if (formData.type === 'SINGLE_CHOICE' || formData.type === 'MULTIPLE_CHOICE') {
+        submitData.options = formData.options
+          .filter(opt => opt.optionText.trim())
+          .map(opt => ({
+            optionText: opt.optionText.trim(),
+            isCorrect: opt.isCorrect
+          }));
+      }
+
+      await onSave(submitData);
+    } catch (error) {
+      console.error('Error saving question:', error);
+    } finally {
+      setLoading(false); // 无论成功还是失败都要重置loading状态
     }
-
-    onSave(submitData);
   };
 
   if (!isOpen) return null;
@@ -201,7 +216,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
-            {isAddMode ? '添加题目' : '编辑题目'}
+            {isAddMode ? 'Add Question' : 'Edit Question'}
           </h2>
           <button
             onClick={onClose}
@@ -212,183 +227,182 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* 基本信息 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+            
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                题目内容 *
+                Question Content *
               </label>
               <textarea
                 value={formData.questionText}
-                onChange={(e) => handleInputChange('questionText', e.target.value)}
+                onChange={(e) => {
+                  setFormData({...formData, questionText: e.target.value});
+                  clearError('questionText');
+                }}
+                placeholder="Please enter question content..."
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.questionText ? 'border-red-500' : 'border-gray-300'
                 }`}
                 rows={3}
-                placeholder="请输入题目内容..."
               />
-              {errors.questionText && (
-                <p className="mt-1 text-sm text-red-600">{errors.questionText}</p>
-              )}
+              {errors.questionText && <p className="text-red-500 text-sm mt-1">{errors.questionText}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                题目类型 *
+                Question Type *
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => handleInputChange('type', e.target.value)}
+                onChange={(e) => setFormData({...formData, type: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="SINGLE_CHOICE">单选题</option>
-                <option value="MULTIPLE_CHOICE">多选题</option>
+                <option value="SINGLE_CHOICE">Single Choice</option>
+                <option value="MULTIPLE_CHOICE">Multiple Choice</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                所属小测 *
+                Quiz *
               </label>
               <select
                 value={formData.quizId}
-                onChange={(e) => handleInputChange('quizId', e.target.value)}
+                onChange={(e) => {
+                  setFormData({...formData, quizId: e.target.value});
+                  clearError('quizId');
+                }}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.quizId ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
-                <option value="">请选择小测</option>
-                {Array.isArray(quizzes) && quizzes.length > 0
+                <option value="">Please select a quiz</option>
+                {quizzes && quizzes.length > 0 
                   ? quizzes.map((quiz, idx) => (
                       <option key={quiz.id} value={quiz.id}>
-                        {quiz.title ? `测验${idx + 1}：${quiz.title}` : `测验 ${quiz.id}`}
+                        {quiz.title ? `Quiz ${idx + 1}: ${quiz.title}` : `Quiz ${quiz.id}`}
                       </option>
                     ))
-                  : <option value="" disabled>该课程暂无小测</option>}
+                  : <option value="" disabled>No quizzes available for this course</option>}
               </select>
-              {errors.quizId && (
-                <p className="mt-1 text-sm text-red-600">{errors.quizId}</p>
-              )}
+              {errors.quizId && <p className="text-red-500 text-sm mt-1">{errors.quizId}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                分值 *
+                Points *
               </label>
               <input
                 type="number"
                 value={formData.points}
-                onChange={(e) => handleInputChange('points', e.target.value)}
+                onChange={(e) => {
+                  setFormData({...formData, points: parseInt(e.target.value) || 0});
+                  clearError('points');
+                }}
+                min="1"
+                max="100"
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.points ? 'border-red-500' : 'border-gray-300'
                 }`}
-                min="1"
-                max="100"
               />
-              {errors.points && (
-                <p className="mt-1 text-sm text-red-600">{errors.points}</p>
-              )}
+              {errors.points && <p className="text-red-500 text-sm mt-1">{errors.points}</p>}
             </div>
           </div>
 
-          {/* 选项设置 */}
-          {(formData.type === 'SINGLE_CHOICE' || formData.type === 'MULTIPLE_CHOICE') && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  选项设置 *
-                </label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addOption}
-                  disabled={formData.options.length >= 6}
-                  className="flex items-center space-x-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>添加选项</span>
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {formData.options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <div className="flex items-center">
-                      <input
-                        type={formData.type === 'SINGLE_CHOICE' ? 'radio' : 'checkbox'}
-                        name="correctAnswer"
-                        checked={option.isCorrect}
-                        onChange={() => handleCorrectAnswerChange(index)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm font-medium text-gray-700 min-w-[20px]">
-                        {String.fromCharCode(65 + index)}.
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      value={option.optionText}
-                      onChange={(e) => handleOptionChange(index, 'optionText', e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder={`选项 ${String.fromCharCode(65 + index)}`}
-                    />
-                    {formData.options.length > 2 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeOption(index)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {errors.options && (
-                <p className="mt-1 text-sm text-red-600">{errors.options}</p>
-              )}
-              {errors.correctAnswer && (
-                <p className="mt-1 text-sm text-red-600">{errors.correctAnswer}</p>
-              )}
-
-              <p className="mt-2 text-sm text-gray-500">
-                {formData.type === 'SINGLE_CHOICE' 
-                  ? '请选择一个正确答案' 
-                  : '可以选择多个正确答案'
-                }
-              </p>
+          {/* Option Settings */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Option Settings *</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addOption}
+                className="flex items-center space-x-1"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Option</span>
+              </Button>
             </div>
-          )}
 
-          {/* 解析 */}
+            <div className="space-y-3">
+              {formData.options.map((option, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className="flex items-center">
+                    <input
+                      type={formData.type === 'SINGLE_CHOICE' ? 'radio' : 'checkbox'}
+                      name="correctAnswer"
+                      checked={option.isCorrect}
+                      onChange={() => handleCorrectAnswerChange(index)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm font-medium text-gray-700 min-w-[20px]">
+                      {String.fromCharCode(65 + index)}.
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={option.optionText}
+                    onChange={(e) => handleOptionChange(index, 'optionText', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                  />
+                  {formData.options.length > 2 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeOption(index)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {errors.options && (
+              <p className="mt-1 text-sm text-red-600">{errors.options}</p>
+            )}
+            {errors.correctAnswer && (
+              <p className="mt-1 text-sm text-red-600">{errors.correctAnswer}</p>
+            )}
+
+            <p className="mt-2 text-sm text-gray-500">
+              {formData.type === 'SINGLE_CHOICE' 
+                ? 'Please select one correct answer'
+                : 'You can select multiple correct answers'
+            }
+            </p>
+          </div>
+
+          {/* Explanation */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              题目解析
+              Question Explanation
             </label>
             <textarea
               value={formData.explanation}
-              onChange={(e) => handleInputChange('explanation', e.target.value)}
+              onChange={(e) => setFormData({...formData, explanation: e.target.value})}
+              placeholder="Please enter question explanation (optional)..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
-              placeholder="请输入题目解析（可选）..."
             />
           </div>
-
-          {/* 操作按钮 */}
-          <div className="flex items-center justify-end space-x-4 pt-6 border-t">
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
             >
-              取消
+              Cancel
             </Button>
-            <Button type="submit">
-              {isAddMode ? '添加题目' : '保存修改'}
+            <Button type="submit" disabled={loading}>
+              {isAddMode ? 'Add Question' : 'Save Changes'}
             </Button>
           </div>
         </form>

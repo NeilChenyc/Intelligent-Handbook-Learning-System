@@ -16,7 +16,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     department: 'Everyone'
   });
 
-  // 部门选项
+  // Department options
   const departments = [
     { value: 'Everyone', label: 'Everyone' },
     { value: 'Engineering', label: 'Engineering' },
@@ -32,7 +32,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
   
-  // AI Agent 相关状态
+  // AI Agent related states
   const [enableAI, setEnableAI] = useState(true);
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiProgress, setAiProgress] = useState(0);
@@ -79,7 +79,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     if (selectedFile && selectedFile.type === 'application/pdf') {
       setFile(selectedFile);
     } else {
-      alert('请选择PDF文件');
+      alert('Please select a PDF file');
     }
   };
 
@@ -94,12 +94,12 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     e.preventDefault();
     
     if (!file) {
-      alert('请选择要上传的PDF文件');
+      alert('Please select a PDF file to upload');
       return;
     }
 
     if (!formData.title.trim()) {
-      alert('请输入课程标题');
+      alert('Please enter course title');
       return;
     }
 
@@ -107,51 +107,51 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     setUploadProgress(0);
 
     try {
-      // 创建FormData对象
+      // Create FormData object
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description || '');
       formDataToSend.append('department', formData.department || 'Everyone');
-      formDataToSend.append('teacherId', '1'); // 暂时硬编码教师ID
+      formDataToSend.append('teacherId', '1'); // Temporarily hardcode teacher ID
       formDataToSend.append('handbookFile', file);
 
-      // 调用后端API
+      // Call backend API
       const response = await fetch('http://localhost:8080/courses/upload', {
         method: 'POST',
         body: formDataToSend,
       });
 
       if (!response.ok) {
-        throw new Error('上传失败');
+        throw new Error('Upload failed');
       }
 
       const courseData = await response.json();
       setUploadProgress(100);
 
-      // 如果启用了AI功能，触发AI处理
+      // If AI is enabled, trigger AI processing
       if (enableAI) {
         await handleAIProcessing(courseData.id);
       } else {
-        // 直接完成上传流程
+        // Complete upload process directly
         completeUpload(courseData);
       }
 
     } catch (error) {
-      console.error('上传失败:', error);
-      alert('上传失败，请重试');
+      console.error('Upload failed:', error);
+      alert('Upload failed, please try again');
       setUploading(false);
       setUploadProgress(0);
     }
   };
 
-  // AI处理函数
+  // AI processing function
   const handleAIProcessing = async (courseId) => {
     try {
       setAiProcessing(true);
-      setAiStatus('正在启动AI分析...');
+      setAiStatus('Starting AI analysis...');
       setAiProgress(10);
 
-      // 构建AI处理请求
+      // Build AI processing request
       const agentRequest = {
         courseId: courseId,
         processingMode: agentConfig.processingMode,
@@ -159,10 +159,10 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
         questionsPerQuiz: agentConfig.questionsPerQuiz,
         difficulty: agentConfig.difficulty,
         overwriteExisting: true,
-        additionalInstructions: '请根据PDF内容生成高质量的测验题目'
+        additionalInstructions: 'Please generate high-quality quiz questions based on PDF content'
       };
 
-      // 调用AI处理API
+      // Call AI processing API
       const aiResponse = await fetch(`http://localhost:8080/api/agent/process-course/${courseId}/async`, {
         method: 'POST',
         headers: {
@@ -172,47 +172,47 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       });
 
       if (!aiResponse.ok) {
-        throw new Error('AI处理启动失败');
+        throw new Error('Failed to start AI processing');
       }
 
       const aiData = await aiResponse.json();
       setAiTaskId(aiData.taskId);
-      setAiStatus('AI正在分析PDF内容...');
+      setAiStatus('AI is analyzing PDF content...');
       setAiProgress(30);
 
-      // 轮询检查AI处理状态
+      // Poll AI processing status
       await pollAIStatus(aiData.taskId, courseId);
 
     } catch (error) {
-      console.error('AI处理失败:', error);
-      setAiStatus('AI处理失败，但课程已成功上传');
+      console.error('AI processing failed:', error);
+      setAiStatus('AI processing failed, but course uploaded successfully');
       setAiProcessing(false);
       
-      // 即使AI失败，也要完成基本的上传流程
+      // Complete basic upload process even if AI fails
       setTimeout(() => {
         completeUpload({ id: courseId });
       }, 2000);
     }
   };
 
-  // 轮询AI处理状态
+  // Poll AI processing status
   const pollAIStatus = async (taskId, courseId) => {
-    const maxAttempts = 60; // 最多轮询5分钟
+    const maxAttempts = 60; // Poll for maximum 5 minutes
     let attempts = 0;
 
     const poll = async () => {
       try {
         const statusResponse = await fetch(`http://localhost:8080/api/agent/status/${taskId}`);
         if (!statusResponse.ok) {
-          throw new Error('获取AI状态失败');
+          throw new Error('Failed to get AI status');
         }
 
         const statusData = await statusResponse.json();
-        setAiStatus(statusData.message || statusData.currentStep || '处理中...');
+        setAiStatus(statusData.message || statusData.currentStep || 'Processing...');
         setAiProgress(Math.min(30 + statusData.progress * 0.6, 90));
 
         if (statusData.status === 'COMPLETED') {
-          setAiStatus('AI分析完成！已生成测验题目');
+          setAiStatus('AI analysis completed! Quiz questions generated');
           setAiProgress(100);
           setAiResult(statusData);
           setAiProcessing(false);
@@ -224,20 +224,20 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
         }
 
         if (statusData.status === 'FAILED') {
-          throw new Error(statusData.errorMessage || 'AI处理失败');
+          throw new Error(statusData.errorMessage || 'AI processing failed');
         }
 
-        // 继续轮询
+        // Continue polling
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000); // 每5秒检查一次
+          setTimeout(poll, 5000); // Check every 5 seconds
         } else {
-          throw new Error('AI处理超时');
+          throw new Error('AI processing timeout');
         }
 
       } catch (error) {
-        console.error('AI状态检查失败:', error);
-        setAiStatus('AI处理遇到问题，但课程已成功上传');
+        console.error('AI status check failed:', error);
+        setAiStatus('AI processing encountered issues, but course uploaded successfully');
         setAiProcessing(false);
         
         setTimeout(() => {
@@ -246,16 +246,16 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       }
     };
 
-    // 开始轮询
+    // Start polling
     setTimeout(poll, 2000);
   };
 
-  // 完成上传流程
+  // Complete upload process
   const completeUpload = (courseData) => {
-    // 调用父组件的上传回调
+    // Call parent component's upload callback
     onUpload(courseData);
     
-    // 重置表单
+    // Reset form
     setFormData({
       title: '',
       description: '',
@@ -269,7 +269,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     setAiTaskId(null);
     setAiResult(null);
     
-    // 延迟关闭模态框
+    // Delay closing modal
     setTimeout(() => {
       setUploading(false);
       onClose();
@@ -290,9 +290,9 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          {/* 头部 */}
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-gray-900">上传新课程</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Upload New Course</h3>
             <button
               onClick={onClose}
               disabled={uploading || aiProcessing}
@@ -303,10 +303,10 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 文件上传区域 */}
+            {/* File upload area */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                课程手册 (PDF文件)
+                Course Handbook (PDF file)
               </label>
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
@@ -339,13 +339,13 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                 ) : (
                   <div>
                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-2">拖拽PDF文件到此处，或</p>
+                    <p className="text-gray-600 mb-2">Drag PDF file here, or</p>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      选择文件
+                      Select File
                     </Button>
                   </div>
                 )}
@@ -359,12 +359,12 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
               </div>
             </div>
 
-            {/* AI 自动生成设置 */}
+            {/* AI Auto-generation Settings */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <h4 className="text-sm font-medium text-blue-900">AI 智能生成测验</h4>
+                  <h4 className="text-sm font-medium text-blue-900">AI Smart Quiz Generation</h4>
                 </div>
                 <label className="flex items-center cursor-pointer">
                   <input
@@ -386,13 +386,13 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
               {enableAI && (
                 <div className="space-y-3">
                   <p className="text-xs text-blue-700">
-                    启用后，AI将自动分析PDF内容并生成个性化测验题目
+                    When enabled, AI will automatically analyze PDF content and generate personalized quiz questions
                   </p>
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-blue-800 mb-1">
-                        测验数量
+                        Number of Quizzes
                       </label>
                       <select
                         value={agentConfig.quizCount}
@@ -402,15 +402,15 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                         }))}
                         className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none"
                       >
-                        <option value={3}>3个测验</option>
-                        <option value={5}>5个测验</option>
-                        <option value={8}>8个测验</option>
+                        <option value={3}>3 Quizzes</option>
+                        <option value={5}>5 Quizzes</option>
+                        <option value={8}>8 Quizzes</option>
                       </select>
                     </div>
                     
                     <div>
                       <label className="block text-xs font-medium text-blue-800 mb-1">
-                        每个测验题目数
+                        Questions per Quiz
                       </label>
                       <select
                         value={agentConfig.questionsPerQuiz}
@@ -420,15 +420,15 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                         }))}
                         className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none"
                       >
-                        <option value={5}>5道题</option>
-                        <option value={8}>8道题</option>
-                        <option value={10}>10道题</option>
+                        <option value={5}>5 Questions</option>
+                        <option value={8}>8 Questions</option>
+                        <option value={10}>10 Questions</option>
                       </select>
                     </div>
                     
                     <div className="col-span-2">
                       <label className="block text-xs font-medium text-blue-800 mb-1">
-                        难度级别
+                        Difficulty Level
                       </label>
                       <select
                         value={agentConfig.difficulty}
@@ -438,9 +438,9 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                         }))}
                         className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent outline-none"
                       >
-                        <option value="EASY">简单</option>
-                        <option value="MEDIUM">中等</option>
-                        <option value="HARD">困难</option>
+                        <option value="EASY">Easy</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HARD">Hard</option>
                       </select>
                     </div>
                   </div>
@@ -448,11 +448,11 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
               )}
             </div>
 
-            {/* 课程信息表单 */}
+            {/* Course Information Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  课程标题 *
+                  Course Title *
                 </label>
                 <input
                   type="text"
@@ -460,14 +460,14 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                   value={formData.title}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="请输入课程标题"
+                  placeholder="Please enter course title"
                   required
                 />
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  课程描述
+                  Course Description
                 </label>
                 <textarea
                   name="description"
@@ -475,13 +475,13 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                   onChange={handleInputChange}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
-                  placeholder="请输入课程描述"
+                  placeholder="Please enter course description"
                 />
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  分配部门 *
+                  Assigned Department *
                 </label>
                 <select
                   name="department"
@@ -499,13 +499,13 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
               </div>
             </div>
 
-            {/* 上传进度 */}
+            {/* Upload Progress */}
             {uploading && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-2">
                   <Loader className="w-5 h-5 text-blue-600 animate-spin" />
                   <span className="text-sm font-medium text-blue-900">
-                    {uploadProgress < 100 ? '正在上传...' : aiProcessing ? 'AI正在处理...' : '上传完成'}
+                    {uploadProgress < 100 ? 'Uploading...' : aiProcessing ? 'AI Processing...' : 'Upload Complete'}
                   </span>
                 </div>
                 <div className="w-full bg-blue-200 rounded-full h-2">
@@ -516,14 +516,14 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
                   {uploadProgress < 100 
-                    ? `${Math.round(uploadProgress)}% - 上传中，请勿关闭页面`
-                    : '文件上传成功'
+                    ? `${Math.round(uploadProgress)}% - Uploading, please do not close the page`
+                    : 'File uploaded successfully'
                   }
                 </p>
               </div>
             )}
 
-            {/* AI 处理进度 */}
+            {/* AI Processing Progress */}
             {aiProcessing && (
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-2">
@@ -531,7 +531,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                     <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
                   </div>
                   <span className="text-sm font-medium text-purple-900">
-                    AI 智能分析中
+                    AI Smart Analysis in Progress
                   </span>
                 </div>
                 <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
@@ -541,43 +541,43 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                   />
                 </div>
                 <p className="text-xs text-purple-700">
-                  {aiStatus || '正在分析PDF内容并生成测验题目...'}
+                  {aiStatus || 'Analyzing PDF content and generating quiz questions...'}
                 </p>
                 {aiResult && (
                   <div className="mt-2 p-2 bg-white bg-opacity-50 rounded text-xs">
                     <p className="text-green-700 font-medium">
-                      ✅ 已生成 {aiResult.completedQuizzes || agentConfig.quizCount} 个测验，
-                      共 {(aiResult.completedQuizzes || agentConfig.quizCount) * agentConfig.questionsPerQuiz} 道题目
+                      ✅ Generated {aiResult.completedQuizzes || agentConfig.quizCount} quizzes,
+                      totaling {(aiResult.completedQuizzes || agentConfig.quizCount) * agentConfig.questionsPerQuiz} questions
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* 提示信息 */}
+            {/* Instructions */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
                 <div className="text-sm text-yellow-800">
-                  <p className="font-medium mb-1">上传说明：</p>
+                  <p className="font-medium mb-1">Upload Instructions:</p>
                   <ul className="list-disc list-inside space-y-1 text-xs">
-                    <li>仅支持PDF格式的文件</li>
-                    <li>文件大小不超过50MB</li>
+                    <li>Only PDF format files are supported</li>
+                    <li>File size should not exceed 50MB</li>
                     {enableAI ? (
                       <>
-                        <li>启用AI后，系统将自动分析PDF内容并生成个性化测验题目</li>
-                        <li>AI分析过程可能需要2-5分钟，请耐心等待</li>
-                        <li>生成的题目可在课程管理页面中查看和编辑</li>
+                        <li>With AI enabled, the system will automatically analyze PDF content and generate personalized quiz questions</li>
+                        <li>AI analysis may take 2-5 minutes, please be patient</li>
+                        <li>Generated questions can be viewed and edited in the course management page</li>
                       </>
                     ) : (
-                      <li>上传后可手动创建测验题目</li>
+                      <li>After upload, you can manually create quiz questions</li>
                     )}
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* 按钮组 */}
+            {/* Button Group */}
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <Button
                 type="button"
@@ -585,7 +585,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                 onClick={onClose}
                 disabled={uploading || aiProcessing}
               >
-                取消
+                Cancel
               </Button>
               <Button
                 type="submit"
@@ -595,12 +595,12 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                 {uploading || aiProcessing ? (
                   <>
                     <Loader className="w-4 h-4 animate-spin" />
-                    <span>{uploading ? '上传中...' : 'AI处理中...'}</span>
+                    <span>{uploading ? 'Uploading...' : 'AI Processing...'}</span>
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4" />
-                    <span>{enableAI ? '上传并生成测验' : '上传课程'}</span>
+                    <span>{enableAI ? 'Upload and Generate Quiz' : 'Upload Course'}</span>
                   </>
                 )}
               </Button>

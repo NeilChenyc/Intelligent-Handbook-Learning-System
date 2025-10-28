@@ -257,7 +257,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
                     />
                     <input
                       type="text"
-                      value={option}
+                      value={typeof option === 'object' ? option.optionText || option.text : option}
                       onChange={(e) => handleOptionChange(index, e.target.value)}
                       placeholder={`选项 ${String.fromCharCode(65 + index)}`}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"

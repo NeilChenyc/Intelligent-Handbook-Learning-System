@@ -236,7 +236,7 @@ const QuizManagementPage = ({ course, onBack }) => {
                             >
                               <span className="font-medium">
                                 {String.fromCharCode(65 + optionIndex)}.
-                              </span> {option}
+                              </span> {typeof option === 'object' ? option.optionText || option.text : option}
                               {optionIndex === quiz.correctAnswer && (
                                 <CheckCircle className="w-4 h-4 text-green-600 inline ml-2" />
                               )}

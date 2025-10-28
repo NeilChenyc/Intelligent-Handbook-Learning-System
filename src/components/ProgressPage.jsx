@@ -1,29 +1,99 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Progress } from './ui/Progress';
 import { BookOpen, Clock, Award, Target, Shield, FileText, Building } from 'lucide-react';
+import { getUserLearningStats } from '../api/courseApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProgressPage = () => {
-  // 模拟公司制度学习进度数据
-  const progressData = {
-    overall: 75,
-    handbooks: [
-      { id: 1, name: '员工行为准则', progress: 100, totalSections: 8, completedSections: 8, category: 'employee', mandatory: true },
-      { id: 2, name: '考勤管理制度', progress: 100, totalSections: 6, completedSections: 6, category: 'employee', mandatory: true },
-      { id: 3, name: '薪酬福利制度', progress: 65, totalSections: 10, completedSections: 7, category: 'employee', mandatory: true },
-      { id: 4, name: '实验室安全操作规程', progress: 100, totalSections: 12, completedSections: 12, category: 'lab', mandatory: true },
-      { id: 5, name: '化学品管理手册', progress: 40, totalSections: 8, completedSections: 3, category: 'lab', mandatory: true },
-      { id: 6, name: '设备操作维护手册', progress: 0, totalSections: 15, completedSections: 0, category: 'lab', mandatory: true },
-      { id: 7, name: '消防安全管理制度', progress: 100, totalSections: 5, completedSections: 5, category: 'safety', mandatory: true },
-      { id: 8, name: 'ISO质量管理体系', progress: 75, totalSections: 20, completedSections: 15, category: 'quality', mandatory: true },
-      { id: 9, name: '数据保护与隐私政策', progress: 100, totalSections: 7, completedSections: 7, category: 'compliance', mandatory: true }
-    ],
-    stats: {
-      totalStudyTime: 89,
-      completedHandbooks: 4,
-      totalHandbooks: 9,
-      certifications: 3,
-      complianceRate: 78
+  const { user } = useAuth();
+  const [progressData, setProgressData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 获取用户学习进度数据
+  useEffect(() => {
+    const fetchProgressData = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const stats = await getUserLearningStats(user.id);
+        
+        // 转换数据格式以适配现有的UI组件
+        const formattedData = {
+          overall: stats.overallProgress,
+          handbooks: stats.courses.map((course, index) => ({
+            id: course.id,
+            name: course.title,
+            progress: course.progress,
+            totalSections: course.totalQuizzes,
+            completedSections: course.completedQuizzes,
+            category: getCategoryFromCourse(course),
+            mandatory: true // 假设所有课程都是必修的
+          })),
+          stats: {
+            totalStudyTime: Math.round(stats.completedQuizzes * 0.5), // 估算学习时间，每个quiz 0.5小时
+            completedHandbooks: stats.completedCourses,
+            totalHandbooks: stats.totalCourses,
+            certifications: stats.completedCourses, // 完成的课程数作为证书数
+            complianceRate: stats.complianceRate
+          }
+        };
+        
+        setProgressData(formattedData);
+      } catch (err) {
+        console.error('Failed to fetch progress data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProgressData();
+  }, [user?.id]);
+
+  // 根据课程信息推断分类
+  const getCategoryFromCourse = (course) => {
+    const title = course.title?.toLowerCase() || '';
+    if (title.includes('employee') || title.includes('员工') || title.includes('行为') || title.includes('考勤')) {
+      return 'employee';
+    } else if (title.includes('lab') || title.includes('实验') || title.includes('化学') || title.includes('设备')) {
+      return 'lab';
+    } else if (title.includes('safety') || title.includes('安全') || title.includes('消防')) {
+      return 'safety';
+    } else if (title.includes('quality') || title.includes('质量') || title.includes('iso')) {
+      return 'quality';
+    } else if (title.includes('compliance') || title.includes('合规') || title.includes('隐私') || title.includes('数据')) {
+      return 'compliance';
+    }
+    return 'employee'; // 默认分类
+  };
+
+  // 获取分类图标
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'employee': return <FileText className="w-5 h-5 text-blue-500" />;
+      case 'lab': return <Building className="w-5 h-5 text-green-500" />;
+      case 'safety': return <Shield className="w-5 h-5 text-red-500" />;
+      case 'quality': return <Award className="w-5 h-5 text-purple-500" />;
+      case 'compliance': return <Shield className="w-5 h-5 text-orange-500" />;
+      default: return <BookOpen className="w-5 h-5 text-gray-500" />;
+    }
+  };
+
+  // 获取分类名称
+  const getCategoryName = (category) => {
+    switch (category) {
+      case 'employee': return 'Employee Handbook';
+      case 'lab': return 'Laboratory Manual';
+      case 'safety': return 'Safety Standards';
+      case 'quality': return 'Quality Management';
+      case 'compliance': return 'Compliance Policy';
+      default: return 'Other';
     }
   };
 
@@ -65,35 +135,41 @@ const ProgressPage = () => {
     );
   };
 
-  // 获取分类图标
-  const getCategoryIcon = (category) => {
-    switch (category) {
-      case 'employee': return <FileText className="w-5 h-5 text-blue-500" />;
-      case 'lab': return <Building className="w-5 h-5 text-green-500" />;
-      case 'safety': return <Shield className="w-5 h-5 text-red-500" />;
-      case 'quality': return <Award className="w-5 h-5 text-purple-500" />;
-      case 'compliance': return <Shield className="w-5 h-5 text-orange-500" />;
-      default: return <BookOpen className="w-5 h-5 text-gray-500" />;
-    }
-  };
+  if (loading) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600">Loading progress data...</div>
+        </div>
+      </div>
+    );
+  }
 
-  // 获取分类名称
-  const getCategoryName = (category) => {
-    switch (category) {
-      case 'employee': return '员工手册';
-      case 'lab': return '实验室手册';
-      case 'safety': return '安全规范';
-      case 'quality': return '质量管理';
-      case 'compliance': return '合规制度';
-      default: return '其他';
-    }
-  };
+  if (error) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading progress data: {error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!progressData) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600">No progress data available</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">制度学习进度</h2>
-        <p className="text-gray-600">跟踪您的公司规章制度学习进展和合规状态</p>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Policy Learning Progress</h2>
+        <p className="text-gray-600">Track your company policy learning progress and compliance status</p>
       </div>
 
       {/* 总体进度卡片 */}
@@ -102,7 +178,7 @@ const ProgressPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Target className="w-5 h-5 text-blue-500" />
-              <span>总体进度</span>
+              <span>Overall Progress</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -112,7 +188,7 @@ const ProgressPage = () => {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>学习统计</CardTitle>
+            <CardTitle>Learning Statistics</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-6">
@@ -122,7 +198,7 @@ const ProgressPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{progressData.stats.totalStudyTime}h</p>
-                  <p className="text-sm text-gray-600">学习时长</p>
+                  <p className="text-sm text-gray-600">Study Hours</p>
                 </div>
               </div>
               
@@ -134,7 +210,7 @@ const ProgressPage = () => {
                   <p className="text-2xl font-bold text-gray-900">
                     {progressData.stats.completedHandbooks}/{progressData.stats.totalHandbooks}
                   </p>
-                  <p className="text-sm text-gray-600">完成制度</p>
+                  <p className="text-sm text-gray-600">Completed Policies</p>
                 </div>
               </div>
               
@@ -144,7 +220,7 @@ const ProgressPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{progressData.stats.certifications}</p>
-                  <p className="text-sm text-gray-600">获得认证</p>
+                  <p className="text-sm text-gray-600">Certifications Earned</p>
                 </div>
               </div>
               
@@ -154,7 +230,7 @@ const ProgressPage = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">{progressData.stats.complianceRate}%</p>
-                  <p className="text-sm text-gray-600">合规率</p>
+                  <p className="text-sm text-gray-600">Compliance Rate</p>
                 </div>
               </div>
             </div>
@@ -165,7 +241,7 @@ const ProgressPage = () => {
       {/* 制度手册进度列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>制度学习详情</CardTitle>
+          <CardTitle>Policy Learning Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -177,8 +253,8 @@ const ProgressPage = () => {
                     <div>
                       <h3 className="font-semibold text-gray-900">{handbook.name}</h3>
                       <p className="text-sm text-gray-600">
-                        {handbook.completedSections}/{handbook.totalSections} 章节完成 • {getCategoryName(handbook.category)}
-                        {handbook.mandatory && <span className="text-red-600 ml-2">必修</span>}
+                        {handbook.completedSections}/{handbook.totalSections} sections completed • {getCategoryName(handbook.category)}
+                        {handbook.mandatory && <span className="text-red-600 ml-2">Required</span>}
                       </p>
                     </div>
                   </div>
@@ -190,8 +266,8 @@ const ProgressPage = () => {
                 <Progress value={handbook.progress} className="h-3" />
                 
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>已完成 {handbook.completedSections} 章节</span>
-                  <span>还需 {handbook.totalSections - handbook.completedSections} 章节</span>
+                  <span>Completed {handbook.completedSections} sections</span>
+                  <span>Need {handbook.totalSections - handbook.completedSections} more sections</span>
                 </div>
               </div>
             ))}
@@ -199,19 +275,28 @@ const ProgressPage = () => {
         </CardContent>
       </Card>
 
-      {/* 学习建议 */}
+      {/* Learning recommendations */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>学习建议</CardTitle>
+          <CardTitle>Learning Recommendations</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">💡 个性化建议</h4>
-            <ul className="text-blue-800 space-y-1 text-sm">
-              <li>• 建议优先完成 "React 基础教程"，您已经完成了 85%</li>
-              <li>• "JavaScript 进阶" 课程进度良好，保持学习节奏</li>
-              <li>• 可以适当增加每日学习时长，目标是每天 2-3 小时</li>
-              <li>• 完成当前课程后，建议参加相关的小测练习巩固知识</li>
+            <h4 className="font-medium text-blue-900 mb-2">💡 Personalized Recommendations</h4>
+            <ul className="space-y-1 text-sm text-blue-800">
+              {progressData.handbooks.filter(h => h.progress > 0 && h.progress < 100).length > 0 ? (
+                <>
+                  <li>• Continue with courses in progress to maintain learning momentum</li>
+                  <li>• Focus on completing mandatory courses first</li>
+                  <li>• Consider taking quizzes to test your knowledge</li>
+                </>
+              ) : (
+                <>
+                  <li>• Great job on your learning progress!</li>
+                  <li>• Keep up the excellent work with your studies</li>
+                  <li>• Consider reviewing completed materials periodically</li>
+                </>
+              )}
             </ul>
           </div>
         </CardContent>

@@ -1,6 +1,9 @@
 // 课程相关API调用函数
 const API_BASE_URL = 'http://localhost:8080';
 
+// 导入getCourseQuizListCached函数
+import { getCourseQuizListCached } from './quizApi';
+
 // 获取所有活跃课程（后端已忽略PDF二进制字段）
 export const getAllCourses = async () => {
   try {
@@ -285,4 +288,93 @@ export const formatCourseForDisplay = (course) => {
     handbookContentType: course.handbookContentType,
     handbookFileSize: course.handbookFileSize,
   };
+};
+
+
+// 获取用户的课程学习进度
+export const getUserCourseProgress = async (userId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/courses/summaries`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const courses = await response.json();
+    
+    // 为每个课程获取进度信息
+    const coursesWithProgress = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          // 获取课程下的小测列表和用户通过情况
+          const { quizzes, passedQuizIds } = await getCourseQuizListCached(course.id, userId);
+          
+          // 计算进度
+          const totalQuizzes = quizzes.length;
+          const completedQuizzes = passedQuizIds.length;
+          const progress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
+          
+          return {
+            ...course,
+            totalQuizzes,
+            completedQuizzes,
+            progress,
+            status: progress === 100 ? 'completed' : progress > 0 ? 'in_progress' : 'not_started'
+          };
+        } catch (error) {
+          console.warn(`Failed to get progress for course ${course.id}:`, error);
+          return {
+            ...course,
+            totalQuizzes: 0,
+            completedQuizzes: 0,
+            progress: 0,
+            status: 'not_started'
+          };
+        }
+      })
+    );
+
+    return coursesWithProgress;
+  } catch (error) {
+    console.error('Error fetching user course progress:', error);
+    throw error;
+  }
+};
+
+// 获取用户学习统计信息
+export const getUserLearningStats = async (userId) => {
+  try {
+    const coursesWithProgress = await getUserCourseProgress(userId);
+    
+    const totalCourses = coursesWithProgress.length;
+    const completedCourses = coursesWithProgress.filter(course => course.status === 'completed').length;
+    const inProgressCourses = coursesWithProgress.filter(course => course.status === 'in_progress').length;
+    const totalQuizzes = coursesWithProgress.reduce((sum, course) => sum + course.totalQuizzes, 0);
+    const completedQuizzes = coursesWithProgress.reduce((sum, course) => sum + course.completedQuizzes, 0);
+    
+    // 计算总体进度
+    const overallProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
+    
+    // 计算合规率（完成课程的百分比）
+    const complianceRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
+    
+    return {
+      overallProgress,
+      totalCourses,
+      completedCourses,
+      inProgressCourses,
+      totalQuizzes,
+      completedQuizzes,
+      complianceRate,
+      courses: coursesWithProgress
+    };
+  } catch (error) {
+    console.error('Error fetching user learning stats:', error);
+    throw error;
+  }
 };

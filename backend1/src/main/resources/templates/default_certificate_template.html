@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate of Completion</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .certificate {
+            background: white;
+            padding: 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            border: 8px solid #f8f9fa;
+            position: relative;
+        }
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+        }
+        .header {
+            margin-bottom: 40px;
+        }
+        .title {
+            font-size: 48px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        .subtitle {
+            font-size: 24px;
+            color: #667eea;
+            margin-bottom: 40px;
+        }
+        .recipient {
+            font-size: 32px;
+            color: #2c3e50;
+            margin: 30px 0;
+            font-weight: bold;
+        }
+        .course-name {
+            font-size: 28px;
+            color: #667eea;
+            margin: 20px 0;
+            font-style: italic;
+        }
+        .details {
+            margin: 40px 0;
+            font-size: 16px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .score {
+            font-size: 20px;
+            color: #27ae60;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .signature {
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 2px solid #2c3e50;
+            width: 200px;
+            margin: 20px auto 10px;
+        }
+        .date {
+            font-size: 14px;
+            color: #666;
+        }
+        .certificate-number {
+            font-size: 12px;
+            color: #999;
+            margin-top: 20px;
+        }
+        .seal {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .logo {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .skills-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .skills-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .skill-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .certificate {
+                box-shadow: none;
+                border: 2px solid #2c3e50;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="header">
+            <div class="logo">SH</div>
+            <div class="title">Certificate</div>
+            <div class="subtitle">of Completion</div>
+        </div>
+        
+        <div class="content">
+            <p style="font-size: 18px; margin-bottom: 20px;">This is to certify that</p>
+            <div class="recipient">{{USER_FULL_NAME}}</div>
+            <p style="font-size: 18px; margin: 20px 0;">has successfully completed the course</p>
+            <div class="course-name">{{CERTIFICATE_NAME}}</div>
+            
+            <div class="details">
+                <p><strong>Issuer:</strong> {{ISSUER}}</p>
+                <p><strong>Department:</strong> {{DEPARTMENT}}</p>
+                <p><strong>Level:</strong> {{CERTIFICATE_LEVEL}}</p>
+                <p><strong>Description:</strong> {{DESCRIPTION}}</p>
+            </div>
+            
+            {{#if SKILLS}}
+            <div class="skills-section">
+                <div class="skills-title">Skills Acquired</div>
+                <div class="skills-list">
+                    {{#each SKILLS_ARRAY}}
+                    <span class="skill-tag">{{this}}</span>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+            
+            <div class="score">
+                Final Score: {{FINAL_SCORE}}% | Completion: {{COMPLETION_PERCENTAGE}}%
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div>Authorized Signature</div>
+                <div class="date">Date: {{EARNED_DATE}}</div>
+            </div>
+            
+            <div class="seal">
+                <div>CERTIFIED</div>
+            </div>
+        </div>
+        
+        <div class="certificate-number">
+            Certificate Number: {{CERTIFICATE_NUMBER}}
+            {{#if EXPIRY_DATE}}
+            | Valid Until: {{EXPIRY_DATE}}
+            {{else}}
+            | Valid Permanently
+            {{/if}}
+        </div>
+    </div>
+</body>
+</html>

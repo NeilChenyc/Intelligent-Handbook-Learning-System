@@ -40,7 +40,8 @@ const CourseManagementPage = () => {
       const coursesData = await getAllCourses();
       setCourses(coursesData.map(formatCourseForDisplay));
     } catch (err) {
-      console.error('Failed to fetch courses:', err);
+      console.log('Error fetching courses:', error);
+      setError('Failed to load courses');
       
       // 如果是网络错误且重试次数少于3次，自动重试
       if (retryCount < 3 && (err.name === 'AbortError' || err.message.includes('fetch'))) {
@@ -141,23 +142,23 @@ const CourseManagementPage = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">课程管理</h2>
-            <p className="text-gray-600">管理和上传课程手册，自动生成小测题目</p>
+            <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>
+            <p className="text-gray-600">Manage and upload course manuals, automatically generate quiz questions</p>
           </div>
           <div>
             <Button onClick={handleUploadClick} className="flex items-center space-x-2">
               <Plus className="w-4 h-4" />
-              <span>上传课程</span>
+              <span>Upload Course</span>
             </Button>
           </div>
         </div>
 
-        {/* 搜索和筛选 */}
+        {/* Search and filter */}
         <div className="flex items-center space-x-2 mb-4">
           <div className="relative flex-1">
             <input 
               type="text" 
-              placeholder="搜索课程..." 
+              placeholder="Search courses..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border rounded-lg px-3 py-2 pl-9"
@@ -166,30 +167,30 @@ const CourseManagementPage = () => {
           </div>
           <Button variant="outline" className="flex items-center space-x-2">
             <Filter className="w-4 h-4" />
-            <span>筛选</span>
+            <span>Filter</span>
           </Button>
         </div>
       </div>
 
-      {/* 课程列表 */}
+      {/* Course list */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <BookOpen className="w-5 h-5 text-blue-500" />
-            <span>课程列表</span>
+            <span>Course List</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">加载中...</span>
+              <span className="ml-2 text-gray-600">Loading...</span>
             </div>
           ) : error ? (
             <div className="text-center py-12">
               <p className="text-red-600 mb-4">{error}</p>
               <Button onClick={() => fetchCourses()} variant="outline">
-                重试
+                Retry
               </Button>
             </div>
           ) : courses.length === 0 ? (
@@ -197,11 +198,11 @@ const CourseManagementPage = () => {
               <div className="text-gray-400 mb-4">
                 <BookOpen className="w-12 h-12 mx-auto" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无课程</h3>
-              <p className="text-gray-500 mb-4">开始上传您的第一个课程手册</p>
-              <Button onClick={handleUploadClick} className="flex items-center space-x-2">
-                <Plus className="w-4 h-4" />
-                <span>上传课程</span>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
+              <p className="text-gray-500 mb-4">Start by uploading your first course manual</p>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Course
               </Button>
             </div>
           ) : (
@@ -213,7 +214,7 @@ const CourseManagementPage = () => {
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${course.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {course.isActive ? '已发布' : '未发布'}
+                          {course.isActive ? 'Published' : 'Unpublished'}
                         </span>
                       </div>
                       <p className="text-gray-600 mb-4">{course.description}</p>
@@ -221,15 +222,15 @@ const CourseManagementPage = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                         <div className="flex items-center space-x-1">
                           <Calendar className="w-4 h-4" />
-                          <span>创建时间: {new Date(course.createdAt).toLocaleDateString('zh-CN')}</span>
+                          <span>Created: {new Date(course.createdAt).toLocaleDateString('en-US')}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <FileText className="w-4 h-4" />
-                          <span>教师: {course.teacher?.fullName || course.teacher?.username || '未知'}</span>
+                          <span>Teacher: {course.teacher?.fullName || course.teacher?.username || 'Unknown'}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Tag className="w-4 h-4" />
-                          <span>部门: {course.department || 'Everyone'}</span>
+                          <span>Department: {course.department || 'Everyone'}</span>
                         </div>
                       </div>
                     </div>
@@ -243,7 +244,7 @@ const CourseManagementPage = () => {
                           onClick={() => handlePreviewCourse(course)}
                         >
                           <Eye className="w-4 h-4" />
-                          <span>预览</span>
+                          <span>Preview</span>
                         </Button>
                       )}
                       <Button 
@@ -253,7 +254,7 @@ const CourseManagementPage = () => {
                         onClick={() => handleEditCourse(course)}
                       >
                         <Edit className="w-4 h-4" />
-                        <span>编辑</span>
+                        <span>Edit</span>
                       </Button>
                       <Button 
                         size="sm" 
@@ -262,7 +263,7 @@ const CourseManagementPage = () => {
                         onClick={() => handleQuestionManagement(course)}
                       >
                         <Edit className="w-4 h-4" />
-                        <span>题目管理</span>
+                        <span>Question Management</span>
                       </Button>
                       {/* 新增：删除按钮 */}
                       <Button 
@@ -271,8 +272,8 @@ const CourseManagementPage = () => {
                         className="flex items-center space-x-1 text-red-600 border-red-200 hover:bg-red-50"
                         onClick={() => handleDeleteCourse(course)}
                       >
-                        <Trash2 className="w-4 h-4" />
-                        <span>删除</span>
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </div>
@@ -283,14 +284,14 @@ const CourseManagementPage = () => {
         </CardContent>
       </Card>
 
-      {/* 上传模态框 */}
+      {/* Upload modal */}
       <CourseUploadModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onUpload={() => fetchCourses()}
       />
 
-      {/* 编辑模态框 */}
+      {/* Edit modal */}
       {editingCourse && (
         <CourseEditModal
           isOpen={!!editingCourse}

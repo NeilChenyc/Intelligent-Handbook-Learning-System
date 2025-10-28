@@ -263,8 +263,8 @@ const ReportPage = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">组织合规报告</h2>
-        <p className="text-gray-600">管理员视角 - 查看组织内所有员工的合规完成情况</p>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Organization Compliance Report</h2>
+        <p className="text-gray-600">Administrator View - Monitor compliance completion status for all employees in the organization</p>
       </div>
 
       {/* 组织合规概览 */}
@@ -277,7 +277,7 @@ const ReportPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{organizationData.totalEmployees}</p>
-                <p className="text-sm text-gray-600">总员工数</p>
+                <p className="text-sm text-gray-600">Total Employees</p>
               </div>
             </div>
           </CardContent>
@@ -291,7 +291,7 @@ const ReportPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{organizationData.completedReports}</p>
-                <p className="text-sm text-gray-600">已完成报告</p>
+                <p className="text-sm text-gray-600">Completed Reports</p>
               </div>
             </div>
           </CardContent>
@@ -305,7 +305,7 @@ const ReportPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{organizationData.pendingReports}</p>
-                <p className="text-sm text-gray-600">待完成报告</p>
+                <p className="text-sm text-gray-600">Pending Reports</p>
               </div>
             </div>
           </CardContent>
@@ -319,7 +319,7 @@ const ReportPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{organizationData.overdueReports}</p>
-                <p className="text-sm text-gray-600">逾期报告</p>
+                <p className="text-sm text-gray-600">Overdue Reports</p>
               </div>
             </div>
           </CardContent>
@@ -331,7 +331,7 @@ const ReportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Building className="w-5 h-5 text-blue-500" />
-            <span>部门合规统计</span>
+            <span>Department Compliance Statistics</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -340,7 +340,7 @@ const ReportPage = () => {
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <h4 className="font-medium text-gray-900">{dept.name}</h4>
-                  <p className="text-sm text-gray-600">总人数: {dept.total} | 已完成: {dept.completed} | 待完成: {dept.pending} | 逾期: {dept.overdue}</p>
+                  <p className="text-sm text-gray-600">Total: {dept.total} | Completed: {dept.completed} | Pending: {dept.pending} | Overdue: {dept.overdue}</p>
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="w-32 bg-gray-200 rounded-full h-3">
@@ -364,7 +364,7 @@ const ReportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <TrendingUp className="w-5 h-5 text-blue-500" />
-            <span>组织月度合规趋势</span>
+            <span>Monthly Compliance Trend</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -392,7 +392,7 @@ const ReportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Shield className="w-5 h-5 text-green-500" />
-            <span>合规类别完成情况</span>
+            <span>Compliance Category Completion Status</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -403,14 +403,14 @@ const ReportPage = () => {
                   <h4 className="font-semibold text-gray-900">{category.category}</h4>
                   <div className="flex items-center space-x-2">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(category.status)}`}>
-                      {category.status === 'good' ? '良好' : category.status === 'warning' ? '需关注' : '严重'}
+                      {category.status === 'good' ? 'Good' : category.status === 'warning' ? 'Needs Attention' : 'Critical'}
                     </span>
                     <span className={`font-bold ${getRateColor(category.rate)}`}>{category.rate}%</span>
                   </div>
                 </div>
                 <p className="text-gray-600 text-sm mb-3">{category.description}</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">完成情况: {category.completed}/{category.totalEmployees}</span>
+                  <span className="text-gray-500">Completion Status: {category.completed}/{category.totalEmployees}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
                     <div 
                       className={`h-2 rounded-full transition-all duration-300 ${
@@ -432,7 +432,7 @@ const ReportPage = () => {
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center space-x-2">
               <Users className="w-5 h-5 text-blue-500" />
-              <span>员工报告详情</span>
+              <span>Employee Report Details</span>
             </CardTitle>
             <div className="flex items-center space-x-2">
               <select 
@@ -440,7 +440,7 @@ const ReportPage = () => {
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 className="border border-gray-300 rounded-md px-3 py-1 text-sm"
               >
-                <option value="all">所有部门</option>
+                <option value="all">All Departments</option>
                 {organizationData.departmentStats.map(dept => (
                   <option key={dept.name} value={dept.name}>{dept.name}</option>
                 ))}
@@ -453,12 +453,12 @@ const ReportPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">员工姓名</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">部门</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">状态</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">得分</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">提交日期</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">截止日期</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Department</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Severity</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Occurrence Time</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">Resolution Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -468,11 +468,11 @@ const ReportPage = () => {
                     <td className="py-3 px-4 text-gray-600">{report.department}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                        {report.status === 'completed' ? '已完成' : report.status === 'pending' ? '待完成' : '已逾期'}
+                        {report.status === 'completed' ? 'Completed' : report.status === 'pending' ? 'Pending' : 'Overdue'}
                       </span>
                     </td>
                     <td className="py-3 px-4 font-medium">
-                      {report.score ? `${report.score}分` : '-'}
+                      {report.score ? `${report.score} Points` : '-'}
                     </td>
                     <td className="py-3 px-4 text-gray-600">
                       {report.submitDate || '-'}
@@ -491,7 +491,7 @@ const ReportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <AlertTriangle className="w-5 h-5 text-red-500" />
-            <span>组织违规记录</span>
+            <span>Organization Violation Records</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -509,21 +509,21 @@ const ReportPage = () => {
                       violation.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-green-100 text-green-800'
                     }`}>
-                      {violation.severity === 'high' ? '高' : violation.severity === 'medium' ? '中' : '低'}
+                      {violation.severity === 'high' ? 'High' : violation.severity === 'medium' ? 'Medium' : 'Low'}
                     </span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       violation.status === 'resolved' ? 'bg-green-100 text-green-800' :
                       violation.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {violation.status === 'resolved' ? '已解决' : violation.status === 'in_progress' ? '处理中' : '待处理'}
+                      {violation.status === 'resolved' ? 'Resolved' : violation.status === 'in_progress' ? 'In Progress' : 'Pending'}
                     </span>
                   </div>
                 </div>
                 <p className="text-gray-600 text-sm mb-2">{violation.description}</p>
                 <div className="flex justify-between text-xs text-gray-500">
-                  <span>发生时间: {violation.date}</span>
-                  {violation.resolvedDate && <span>解决时间: {violation.resolvedDate}</span>}
+                  <span>Occurrence Time: {violation.date}</span>
+                  {violation.resolvedDate && <span>Resolution Time: {violation.resolvedDate}</span>}
                 </div>
               </div>
             ))}
@@ -536,7 +536,7 @@ const ReportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Lightbulb className="w-5 h-5 text-yellow-500" />
-            <span>管理改进建议</span>
+            <span>Management Improvement Recommendations</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -546,18 +546,18 @@ const ReportPage = () => {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h4 className="font-semibold text-gray-900">{rec.title}</h4>
-                    <p className="text-sm text-gray-500">目标部门: {rec.targetDepartment}</p>
+                    <p className="text-sm text-gray-500">Target Department: {rec.targetDepartment}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     rec.priority === 'high' ? 'bg-red-100 text-red-800' :
                     rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {rec.priority === 'high' ? '高优先级' : rec.priority === 'medium' ? '中优先级' : '低优先级'}
+                    {rec.priority === 'high' ? 'High Priority' : rec.priority === 'medium' ? 'Medium Priority' : 'Low Priority'}
                   </span>
                 </div>
                 <p className="text-gray-600 text-sm mb-2">{rec.description}</p>
-                <p className="text-blue-600 text-sm font-medium">预期效果: {rec.estimatedImpact}</p>
+                <p className="text-blue-600 text-sm font-medium">Expected Impact: {rec.estimatedImpact}</p>
               </div>
             ))}
           </div>

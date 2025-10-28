@@ -16,18 +16,18 @@ import { useAuth } from '../contexts/AuthContext';
 const Sidebar = ({ activeMenu, onMenuChange }) => {
   const { user, isAdmin, logout } = useAuth();
 
-  // 基础菜单项
+  // Base menu items
   const baseMenuItems = [
-    { id: 'tasks', label: '我的课程', icon: CheckSquare },
-    { id: 'retry', label: '错题重做', icon: RotateCcw },
-    { id: 'progress', label: '学习进度', icon: TrendingUp },
-    { id: 'certificate', label: '证书中心', icon: Award },
+    { id: 'tasks', label: 'My Courses', icon: CheckSquare },
+    { id: 'retry', label: 'Wrong Questions', icon: RotateCcw },
+    { id: 'progress', label: 'Learning Progress', icon: TrendingUp },
+    { id: 'certificate', label: 'Certificate Center', icon: Award },
   ];
 
-  // 管理员专用菜单项
+  // Admin-only menu items
   const adminMenuItems = [
-    { id: 'course-management', label: '课程管理', icon: BookOpen },
-    { id: 'report', label: '合规报告', icon: FileCheck },
+    { id: 'course-management', label: 'Course Management', icon: BookOpen },
+    { id: 'report', label: 'Compliance Report', icon: FileCheck },
   ];
 
   // 根据用户身份动态生成菜单项
@@ -65,7 +65,7 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
         </ul>
       </nav>
       
-      {/* 用户信息和登出按钮 */}
+      {/* User info and logout button */}
       <div className="p-4 border-t border-gray-200">
         <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
           <div className="flex items-center space-x-2">
@@ -76,10 +76,10 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.name || '用户'}
+                {user?.name || 'User'}
               </p>
               <p className="text-xs text-gray-500">
-                {user?.role === 'admin' ? '管理员' : '学员'}
+                {user?.role === 'admin' ? 'Administrator' : 'Student'}
               </p>
             </div>
           </div>
@@ -89,7 +89,7 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
           className="w-full flex items-center space-x-3 px-4 py-2 text-left rounded-lg transition-colors text-red-600 hover:bg-red-50"
         >
           <LogOut className="w-4 h-4" />
-          <span className="font-medium">退出登录</span>
+          <span className="font-medium">Logout</span>
         </button>
       </div>
     </aside>

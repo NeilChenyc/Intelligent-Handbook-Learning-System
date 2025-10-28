@@ -278,14 +278,14 @@ const WrongQuestionsPage = () => {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">错题重做</h2>
-          <p className="text-gray-600">正在加载错题数据...</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Wrong Questions Review</h2>
+          <p className="text-gray-600">Loading wrong questions data...</p>
         </div>
         <Card>
           <CardContent className="p-8">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">加载中...</p>
+              <p className="text-gray-600">Loading...</p>
             </div>
           </CardContent>
         </Card>
@@ -297,16 +297,16 @@ const WrongQuestionsPage = () => {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">错题重做</h2>
-          <p className="text-gray-600">重新练习之前做错的题目</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Wrong Questions Review</h2>
+          <p className="text-gray-600">Review and practice previously incorrect questions</p>
         </div>
         <Card>
           <CardContent className="p-8">
             <div className="text-center">
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">加载失败</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Failed</h3>
               <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>重新加载</Button>
+              <Button onClick={() => window.location.reload()}>Reload</Button>
             </div>
           </CardContent>
         </Card>
@@ -318,16 +318,16 @@ const WrongQuestionsPage = () => {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">错题重做</h2>
-          <p className="text-gray-600">重新练习之前做错的题目</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Wrong Questions Review</h2>
+          <p className="text-gray-600">Review and practice previously incorrect questions</p>
         </div>
 
         <Card>
           <CardContent className="p-8">
             <div className="text-center">
               <Trophy className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">恭喜！没有错题了</h3>
-              <p className="text-gray-600">您已经掌握了所有题目，继续保持！</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Congratulations! No Wrong Questions Left</h3>
+              <p className="text-gray-600">You have mastered all questions, keep it up!</p>
             </div>
           </CardContent>
         </Card>
@@ -338,8 +338,8 @@ const WrongQuestionsPage = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">错题重做</h2>
-        <p className="text-gray-600">重新练习之前做错的题目，做对一道少一道</p>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Wrong Questions Review</h2>
+        <p className="text-gray-600">Review and practice previously incorrect questions, correct one to remove one</p>
       </div>
 
       {/* 进度显示 */}
@@ -349,17 +349,17 @@ const WrongQuestionsPage = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <AlertCircle className="w-5 h-5 text-orange-500" />
-                <span className="font-medium">剩余错题：{wrongQuestions.length} 道</span>
+                <span className="font-medium">Remaining Wrong Questions: {wrongQuestions.length} 道</span>
               </div>
               <div className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-blue-500" />
-                <span>当前：第 {currentQuestionIndex + 1} 道</span>
+                <span>Current: Question {currentQuestionIndex + 1}</span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <BookOpen className="w-5 h-5 text-purple-500" />
               <span className="text-sm text-gray-600">
-                所属课程：{currentQuestion?.courseName || '未知课程'}
+                所属课程：{currentQuestion?.courseName || 'Unknown Course'}
               </span>
             </div>
           </div>
@@ -381,7 +381,7 @@ const WrongQuestionsPage = () => {
           </CardTitle>
           <p className="text-lg text-gray-800 mt-2">{currentQuestion?.question}</p>
           {currentQuestion?.type === 'multiple' && (
-            <p className="text-sm text-gray-500">（多选题）</p>
+            <p className="text-sm text-gray-500">(Multiple Choice)</p>
           )}
         </CardHeader>
         <CardContent>
@@ -434,7 +434,7 @@ const WrongQuestionsPage = () => {
           {showResult && (
             <div className={`mt-4 p-4 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
               <h4 className={`font-medium mb-2 ${isCorrect ? 'text-green-800' : 'text-yellow-800'}`}>
-                {isCorrect ? '回答正确！' : '解析：'}
+                {isCorrect ? 'Congratulations! You got it right! This question has been removed from the wrong questions list.' : currentQuestion?.explanation}
               </h4>
               <p className={isCorrect ? 'text-green-700' : 'text-yellow-700'}>
                 {isCorrect ? '恭喜您答对了！该题已从错题列表中移除。' : currentQuestion?.explanation}
@@ -453,7 +453,7 @@ const WrongQuestionsPage = () => {
               disabled={!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0) || submitting}
               className="px-8"
             >
-              {submitting ? '提交中...' : '确认答案'}
+              {submitting ? 'Submitting...' : 'Confirm Answer'}
             </Button>
             <Button 
               variant="outline" 
@@ -461,7 +461,7 @@ const WrongQuestionsPage = () => {
               disabled={submitting}
               className="px-8"
             >
-              重新选择
+              Reselect
             </Button>
           </>
         ) : (
@@ -469,7 +469,7 @@ const WrongQuestionsPage = () => {
             onClick={nextQuestion}
             className="px-8"
           >
-            {isCorrect ? '继续练习' : '下一题'}
+            {isCorrect ? 'Continue Practice' : 'Next Question'}
           </Button>
         )}
       </div>
@@ -478,7 +478,7 @@ const WrongQuestionsPage = () => {
       {wrongQuestionsCount > 0 && (
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-500">
-            总错题数量：{wrongQuestionsCount} 道
+            Total Wrong Questions: {wrongQuestionsCount} 道
           </p>
         </div>
       )}
@@ -490,13 +490,11 @@ const WrongQuestionsPage = () => {
             <FileText className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">错题重做说明：</p>
-            <ul className="space-y-1 text-blue-700">
-              <li>• 这里显示的是您在各个课程中答错的题目</li>
-              <li>• 每道题都标明了所属的课程名称</li>
-              <li>• 答对一道题，该题就会从错题列表中移除</li>
-              <li>• 建议反复练习直到掌握所有错题</li>
-            </ul>
+            <p className="font-medium mb-1">Wrong Questions Review Instructions:</p>
+            <li>• These are questions you answered incorrectly in various courses</li>
+            <li>• Each question shows its corresponding course name</li>
+            <li>• Answer a question correctly to remove it from the wrong questions list</li>
+            <li>• It's recommended to practice repeatedly until you master all wrong questions</li>
           </div>
         </div>
       </div>

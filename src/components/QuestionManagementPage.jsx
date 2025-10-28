@@ -69,12 +69,12 @@ const QuestionManagementPage = ({ course, onBack }) => {
   };
 
   const handleDeleteQuestion = async (questionId) => {
-    if (window.confirm('确定要删除这个题目吗？')) {
+    if (window.confirm('Are you sure you want to delete this question?')) {
       try {
         await deleteQuestion(questionId);
         await fetchQuestions(); // 重新获取题目列表
       } catch (err) {
-        alert('删除题目失败: ' + err.message);
+        alert('Failed to delete question: ' + err.message);
       }
     }
   };
@@ -84,11 +84,11 @@ const QuestionManagementPage = ({ course, onBack }) => {
       if (editingQuestion) {
         // 编辑模式
         await updateQuestion(editingQuestion.id, questionData);
-        setSuccessMessage('题目修改成功！');
+        setSuccessMessage('Question updated successfully!');
       } else {
         // 添加模式
         await createQuestion(questionData);
-        setSuccessMessage('题目添加成功！');
+        setSuccessMessage('Question added successfully!');
       }
 
       await fetchQuestions(); // 重新获取题目列表
@@ -101,7 +101,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         setShowSuccessMessage(false);
       }, 2000); // 减少显示时间从3秒到2秒
     } catch (err) {
-      alert((editingQuestion ? '更新题目失败: ' : '创建题目失败: ') + err.message);
+      alert((editingQuestion ? 'Failed to update question: ' : 'Failed to create question: ') + err.message);
     }
   };
 
@@ -145,7 +145,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
 
   const getQuizTitle = (quizId) => {
     const quiz = quizzes.find(q => q.id === quizId);
-    return quiz ? quiz.title : '未分配';
+    return quiz ? quiz.title : 'Unassigned';
   };
 
   if (loading) {
@@ -154,7 +154,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">加载中...</p>
+            <p className="text-gray-600">Loading...</p>
           </div>
         </div>
       </div>
@@ -168,7 +168,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={fetchQuestions}>重试</Button>
+            <Button onClick={fetchQuestions}>Retry</Button>
           </div>
         </div>
       </div>
@@ -194,23 +194,23 @@ const QuestionManagementPage = ({ course, onBack }) => {
             className="flex items-center space-x-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>返回课程管理</span>
+            <span>Back to Course Management</span>
           </Button>
         </div>
         
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              {course?.title} - 题目管理
+              {course?.title} - Question Management
             </h2>
-            <p className="text-gray-600">管理和编辑课程的题目库</p>
+            <p className="text-gray-600">Manage and edit course question bank</p>
           </div>
           <Button 
             onClick={handleAddQuiz}
             className="flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>添加小测</span>
+            <span>Add Quiz</span>
           </Button>
         </div>
       </div>
@@ -225,7 +225,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{questions.length}</p>
-                <p className="text-sm text-gray-600">总题目数</p>
+                <p className="text-sm text-gray-600">Total Questions</p>
               </div>
             </div>
           </CardContent>
@@ -241,7 +241,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
                 <p className="text-2xl font-bold text-gray-900">
                   {questions.filter(q => q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE').length}
                 </p>
-                <p className="text-sm text-gray-600">选择题</p>
+                <p className="text-sm text-gray-600">Multiple Choice</p>
               </div>
             </div>
           </CardContent>
@@ -255,7 +255,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{quizzes.length}</p>
-                <p className="text-sm text-gray-600">小测数量</p>
+                <p className="text-sm text-gray-600">Quiz Count</p>
               </div>
             </div>
           </CardContent>
@@ -271,7 +271,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
                 <p className="text-2xl font-bold text-gray-900">
                   {questions.reduce((sum, q) => sum + (q.points || 0), 0)}
                 </p>
-                <p className="text-sm text-gray-600">总分值</p>
+                <p className="text-sm text-gray-600">Total Points</p>
               </div>
             </div>
           </CardContent>
@@ -283,7 +283,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="w-5 h-5 text-blue-500" />
-            <span>题目列表</span>
+            <span>Question List</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -294,20 +294,20 @@ const QuestionManagementPage = ({ course, onBack }) => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-3">
                       <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded">
-                        题目 {index + 1}
+                        Question {index + 1}
                       </span>
                       <span className="bg-gray-100 text-gray-800 text-sm font-medium px-2 py-1 rounded">
                         {getTypeLabel(question.type)}
                       </span>
                       <span className="bg-green-100 text-green-800 text-sm font-medium px-2 py-1 rounded">
-                        {question.points || 0} 分
+                        {question.points || 0} Points
                       </span>
                       <span className="bg-purple-100 text-purple-800 text-sm font-medium px-2 py-1 rounded">
                         {getQuizTitle(question.quiz?.id)}
                       </span>
                       {!question.isActive && (
                         <span className="bg-red-100 text-red-800 text-sm font-medium px-2 py-1 rounded">
-                          已删除
+                          Deleted
                         </span>
                       )}
                     </div>
@@ -357,7 +357,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
                       className="flex items-center space-x-1"
                     >
                       <Edit className="w-4 h-4" />
-                      <span>编辑</span>
+                      <span>Edit</span>
                     </Button>
                     <Button 
                       size="sm" 
@@ -366,7 +366,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
                       className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span>删除</span>
+                      <span>Delete</span>
                     </Button>
                   </div>
                 </div>
@@ -379,11 +379,11 @@ const QuestionManagementPage = ({ course, onBack }) => {
               <div className="text-gray-400 mb-4">
                 <FileText className="w-12 h-12 mx-auto" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无题目</h3>
-              <p className="text-gray-500 mb-4">开始添加您的第一个题目</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Questions Yet</h3>
+              <p className="text-gray-500 mb-4">Start by adding your first question</p>
               <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2">
                  <Plus className="w-4 h-4" />
-                 <span>添加题目</span>
+                 <span>Add Question</span>
                </Button>
             </div>
           )}

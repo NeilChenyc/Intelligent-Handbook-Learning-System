@@ -8,7 +8,7 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
     confirmPassword: '',
     email: '',
     fullName: '',
-    role: 'STUDENT' // 默认为学生
+    role: 'STUDENT' // Default to student
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,8 +20,8 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
       ...prev,
       [name]: value
     }));
-    setError(''); // 清除错误信息
-    setSuccess(''); // 清除成功信息
+    setError(''); // Clear error message
+    setSuccess(''); // Clear success message
   };
 
   const handleRoleChange = (role) => {
@@ -34,35 +34,35 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
 
   const validateForm = () => {
     if (!formData.username.trim()) {
-      setError('请输入用户名');
+      setError('Please enter username');
       return false;
     }
     if (formData.username.length < 3) {
-      setError('用户名至少需要3个字符');
+      setError('Username must be at least 3 characters');
       return false;
     }
     if (!formData.email.trim()) {
-      setError('请输入邮箱地址');
+      setError('Please enter email address');
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError('请输入有效的邮箱地址');
+      setError('Please enter a valid email address');
       return false;
     }
     if (!formData.password.trim()) {
-      setError('请输入密码');
+      setError('Please enter password');
       return false;
     }
     if (formData.password.length < 6) {
-      setError('密码至少需要6个字符');
+      setError('Password must be at least 6 characters');
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      setError('两次输入的密码不一致');
+      setError('Passwords do not match');
       return false;
     }
     if (!formData.fullName.trim()) {
-      setError('请输入姓名');
+      setError('Please enter your name');
       return false;
     }
     return true;
@@ -97,17 +97,17 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('注册成功！请使用您的账号登录。');
-        // 3秒后自动跳转到登录页面
+        setSuccess('Registration successful! Please login with your account.');
+        // Auto redirect to login page after 3 seconds
         setTimeout(() => {
           onBackToLogin();
         }, 2000);
       } else {
-        setError(data.message || '注册失败，请重试');
+        setError(data.message || 'Registration failed, please try again');
       }
     } catch (error) {
       console.error('Register error:', error);
-      setError('网络错误，请稍后重试');
+      setError('Network error, please try again later');
     } finally {
       setIsLoading(false);
     }
@@ -116,27 +116,27 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        {/* 返回按钮 */}
+        {/* Back button */}
         <button
           onClick={onBackToLogin}
           className="flex items-center text-gray-600 hover:text-gray-800 mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          返回登录
+          Back to Login
         </button>
 
-        {/* Logo和标题 */}
+        {/* Logo and title */}
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">用户注册</h1>
-          <p className="text-gray-600">创建您的学习账户</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">User Registration</h1>
+          <p className="text-gray-600">Create your learning account</p>
         </div>
 
-        {/* 身份类型选择 */}
+        {/* Identity type selection */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">选择身份类型</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Select Identity Type</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -148,7 +148,7 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
               }`}
             >
               <UserCheck className="w-5 h-5 mx-auto mb-1" />
-              <span className="text-sm font-medium">学员</span>
+              <span className="text-sm font-medium">Student</span>
             </button>
             <button
               type="button"
@@ -160,17 +160,17 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
               }`}
             >
               <User className="w-5 h-5 mx-auto mb-1" />
-              <span className="text-sm font-medium">管理员</span>
+              <span className="text-sm font-medium">Administrator</span>
             </button>
           </div>
         </div>
 
-        {/* 注册表单 */}
+        {/* Registration form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 用户名输入 */}
+          {/* Username input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              用户名 *
+              Username *
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -180,16 +180,16 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 value={formData.username}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder="请输入用户名（至少3个字符）"
+                placeholder="Please enter username (at least 3 characters)"
                 required
               />
             </div>
           </div>
 
-          {/* 邮箱输入 */}
+          {/* Email input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              邮箱地址 *
+              Email Address *
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -199,16 +199,16 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder="请输入邮箱地址"
+                placeholder="Please enter email address"
                 required
               />
             </div>
           </div>
 
-          {/* 姓名输入 */}
+          {/* Name input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              姓名 *
+              Full Name *
             </label>
             <div className="relative">
               <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -218,16 +218,16 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 value={formData.fullName}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder="请输入真实姓名"
+                placeholder="Please enter your real name"
                 required
               />
             </div>
           </div>
 
-          {/* 密码输入 */}
+          {/* Password input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              密码 *
+              Password *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -237,16 +237,16 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 value={formData.password}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder="请输入密码（至少6个字符）"
+                placeholder="Please enter password (at least 6 characters)"
                 required
               />
             </div>
           </div>
 
-          {/* 确认密码输入 */}
+          {/* Confirm password input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              确认密码 *
+              Confirm Password *
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -256,27 +256,27 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
-                placeholder="请再次输入密码"
+                placeholder="Please enter password again"
                 required
               />
             </div>
           </div>
 
-          {/* 错误信息 */}
+          {/* Error message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
-          {/* 成功信息 */}
+          {/* Success message */}
           {success && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <p className="text-green-600 text-sm">{success}</p>
             </div>
           )}
 
-          {/* 注册按钮 */}
+          {/* Registration button */}
           <button
             type="submit"
             disabled={isLoading}
@@ -286,19 +286,19 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
             } text-white`}
           >
-            {isLoading ? '注册中...' : '立即注册'}
+            {isLoading ? 'Registering...' : 'Register Now'}
           </button>
         </form>
 
-        {/* 登录链接 */}
+        {/* Login link */}
         <div className="mt-6 text-center">
           <p className="text-gray-600 text-sm">
-            已有账户？
+            Already have an account?
             <button
               onClick={onBackToLogin}
               className="text-blue-600 hover:text-blue-700 font-medium ml-1"
             >
-              立即登录
+              Sign In Now
             </button>
           </p>
         </div>
