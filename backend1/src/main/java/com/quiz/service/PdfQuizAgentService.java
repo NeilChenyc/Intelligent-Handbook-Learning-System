@@ -247,6 +247,14 @@ public class PdfQuizAgentService {
     private QuizGenerationRequest.QuizGenerationResponse generateQuizzesWithAI(
             String pdfContent, Course course, AgentProcessRequest request, String taskId) {
         try {
+            // 环境变量回退：优先使用属性注入，其次尝试从环境变量读取
+            if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
+                String envKey = System.getenv("OPENAI_API_KEY");
+                if (envKey != null && !envKey.isBlank()) {
+                    openaiApiKey = envKey;
+                    log.info("OpenAI API密钥已从环境变量回退加载");
+                }
+            }
             if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
                 log.warn("OpenAI API密钥未配置或为默认值，终止任务");
                 updateTaskStatus(taskId, "FAILED", 42, "OpenAI密钥未配置，任务终止", request.getCourseId());
@@ -274,9 +282,9 @@ public class PdfQuizAgentService {
             updateTaskStatus(taskId, "IN_PROGRESS", 50, "调用OpenAI Responses...", request.getCourseId());
             String responseText = callOpenAIResponses(fileId, prompt, request);
             if (responseText == null || responseText.isBlank()) {
-                log.warn("Responses API返回为空，终止任务");
-                updateTaskStatus(taskId, "FAILED", 52, "Responses返回为空，任务终止", request.getCourseId());
-                throw new RuntimeException("Responses API返回为空");
+                log.warn("Responses API返回为空，切换到后备测验生成");
+                updateTaskStatus(taskId, "IN_PROGRESS", 52, "Responses为空，使用后备生成", request.getCourseId());
+                return generateFallbackQuizzes(course, request);
             }
             log.info("Responses 返回文本长度: {}", responseText.length());
             updateTaskStatus(taskId, "IN_PROGRESS", 60, "解析AI响应...", request.getCourseId());
@@ -808,18 +816,29 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
                     return null;
                 }
                 JsonNode node = objectMapper.readTree(respBody);
-                // Responses API统一输出文本字段
+                // Responses API 输出解析：支持 output_text 与 output_json
                 String output = null;
                 if (node.has("output_text")) {
                     output = node.get("output_text").asText();
-                } else if (node.has("output") && node.get("output").isArray() && node.get("output").size() > 0) {
-                    // 兼容可能的数组输出
+                }
+                if ((output == null || output.isBlank()) && node.has("output") && node.get("output").isArray() && node.get("output").size() > 0) {
                     JsonNode first = node.get("output").get(0);
                     if (first.has("content") && first.get("content").isArray()) {
                         for (JsonNode part : first.get("content")) {
-                            if (part.has("type") && "output_text".equals(part.get("type").asText()) && part.has("text")) {
-                                output = part.get("text").asText();
-                                break;
+                            if (part.has("type")) {
+                                String t = part.get("type").asText();
+                                if ("output_text".equals(t) && part.has("text")) {
+                                    output = part.get("text").asText();
+                                    break;
+                                } else if ("output_json".equals(t) && part.has("json")) {
+                                    try {
+                                        // 将 JSON 节点序列化为字符串
+                                        output = objectMapper.writeValueAsString(part.get("json"));
+                                        break;
+                                    } catch (Exception ignore) {
+                                        // 如果序列化失败，则继续尝试其他内容块
+                                    }
+                                }
                             }
                         }
                     }

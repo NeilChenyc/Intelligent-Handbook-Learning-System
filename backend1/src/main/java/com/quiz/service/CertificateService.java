@@ -74,6 +74,38 @@ public class CertificateService {
     }
 
     /**
+     * Get certificates visible to user based on department rules
+     */
+    @Transactional(readOnly = true)
+    public List<Certificate> getCertificatesVisibleToUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        List<Certificate> allCertificates = certificateRepository.findByIsActiveTrue();
+
+        return allCertificates.stream()
+                .filter(certificate -> {
+                    String courseDepartment = certificate.getCourse().getDepartment();
+
+                    // Visible to all if department not set
+                    if (courseDepartment == null) {
+                        return true;
+                    }
+
+                    // Normalize and handle common synonyms like "everyone"
+                    String normalized = courseDepartment.replaceAll("\\s+", "").toLowerCase();
+                    if (normalized.equals("everyone")) {
+                        return true;
+                    }
+
+                    // Match user's department (case-insensitive)
+                    String userDept = user.getDepartment();
+                    return userDept != null && courseDepartment.equalsIgnoreCase(userDept);
+                })
+                .toList();
+    }
+
+    /**
      * Get certificate by course ID
      */
     @Transactional(readOnly = true)
@@ -151,14 +183,20 @@ public class CertificateService {
         userCertificate.setCompletionPercentage(completionPercentage);
         userCertificate.setStatus("ACTIVE");
         
-        // Generate HTML content using template service
-        String htmlContent = certificateTemplateService.generateCertificateHtml(userCertificate, user);
-        userCertificate.setHtmlContent(htmlContent);
+        // HTML内容不持久化到数据库（PostgreSQL列为OID），下载时动态生成
         
         UserCertificate savedCertificate = userCertificateRepository.save(userCertificate);
         log.info("Certificate awarded successfully with number: {}", savedCertificate.getCertificateNumber());
         
         return savedCertificate;
+    }
+
+    /**
+     * Get user certificate by ID
+     */
+    @Transactional(readOnly = true)
+    public Optional<UserCertificate> getUserCertificateById(Long userCertificateId) {
+        return userCertificateRepository.findById(userCertificateId);
     }
 
     /**
@@ -183,6 +221,27 @@ public class CertificateService {
     @Transactional(readOnly = true)
     public Optional<UserCertificate> getCertificateByCertificateNumber(String certificateNumber) {
         return userCertificateRepository.findByCertificateNumber(certificateNumber);
+    }
+
+    /**
+     * Generate certificate HTML (regenerate on demand for download)
+     */
+    @Transactional(readOnly = true)
+    public String generateCertificateHtml(UserCertificate userCertificate) {
+        User user = userCertificate.getUser();
+        if (user == null || user.getId() == null) {
+            try {
+                Long uid = userCertificate.getUser() != null ? userCertificate.getUser().getId() : null;
+                if (uid != null) {
+                    user = userRepository.findById(uid).orElse(null);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (user != null) {
+            return certificateTemplateService.generateCertificateHtml(userCertificate, user);
+        }
+        return certificateTemplateService.generateSimpleCertificateHtml(userCertificate, new User());
     }
 
     /**

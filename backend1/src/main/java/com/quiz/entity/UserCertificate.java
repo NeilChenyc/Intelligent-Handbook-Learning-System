@@ -47,8 +47,8 @@ public class UserCertificate {
     @Column(name = "status", nullable = false, length = 20)
     private String status = "ACTIVE"; // ACTIVE, EXPIRED, REVOKED
 
-    @Column(name = "html_content", columnDefinition = "LONGTEXT")
-    private String htmlContent; // Generated HTML certificate content
+    @Column(name = "html_content", insertable = false, updatable = false)
+    private String htmlContent;
 
     @Column(name = "download_count")
     private Integer downloadCount = 0;
