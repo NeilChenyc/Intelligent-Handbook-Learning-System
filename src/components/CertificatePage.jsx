@@ -225,10 +225,12 @@ const CertificatePage = () => {
                           <p className="text-sm text-gray-500">Certificate Number</p>
                           <p className="font-medium">{userCert.certificateNumber}</p>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Final Score</p>
-                          <p className="font-medium">{userCert.finalScore}%</p>
-                        </div>
+                        {false && (
+                          <div>
+                            <p className="text-sm text-gray-500">Final Score</p>
+                            <p className="font-medium">{userCert.finalScore}%</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center space-x-4 mb-4">

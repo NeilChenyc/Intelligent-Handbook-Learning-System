@@ -30,6 +30,8 @@ public class CourseService {
     private final QuizAttemptRepository quizAttemptRepository;
     // 新增：引入AI预检服务
     private final PdfQuizAgentService pdfQuizAgentService;
+    // 新增：证书服务用于在课程创建后自动生成证书
+    private final CertificateService certificateService;
 
     @Transactional(readOnly = true)
     public List<Course> getAllActiveCourses() {
@@ -80,6 +82,23 @@ public class CourseService {
 
         Course savedCourse = courseRepository.save(course);
         log.info("Course created with id: {}", savedCourse.getId());
+
+        // 在课程创建完成后自动创建证书（使用默认模板与参数）
+        try {
+            certificateService.createCertificateForCourse(
+                savedCourse.getId(),
+                null, // 使用课程标题作为证书名
+                null, // 默认发行方
+                request.getDescription(), // 证书描述沿用课程描述
+                null, // 技能
+                null, // 等级默认
+                null, // 有效期默认
+                null  // 通过分数默认
+            );
+            log.info("Auto-created certificate for course id: {}", savedCourse.getId());
+        } catch (Exception e) {
+            log.warn("Failed to auto-create certificate for course {}: {}", savedCourse.getId(), e.getMessage());
+        }
         return savedCourse;
     }
 
@@ -122,6 +141,23 @@ public class CourseService {
 
         Course savedCourse = courseRepository.save(course);
         log.info("Course created with PDF handbook, id: {}", savedCourse.getId());
+
+        // 在上传PDF并创建课程后，自动创建证书以便在Available中显示
+        try {
+            certificateService.createCertificateForCourse(
+                savedCourse.getId(),
+                null,
+                null,
+                request.getDescription(),
+                null,
+                null,
+                null,
+                null
+            );
+            log.info("Auto-created certificate for course id: {} after PDF upload", savedCourse.getId());
+        } catch (Exception e) {
+            log.warn("Failed to auto-create certificate (PDF flow) for course {}: {}", savedCourse.getId(), e.getMessage());
+        }
         return savedCourse;
     }
 

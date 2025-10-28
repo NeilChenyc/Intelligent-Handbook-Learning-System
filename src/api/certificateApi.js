@@ -394,7 +394,7 @@ export const generateCertificateHtml = (userCertificate, user) => {
             </div>
             
             <div class="score">
-                Final Score: ${userCertificate.finalScore}% | Completion: ${userCertificate.completionPercentage}%
+                Completion: ${userCertificate.completionPercentage}%
             </div>
         </div>
         

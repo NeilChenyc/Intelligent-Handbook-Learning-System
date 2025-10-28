@@ -4,7 +4,9 @@ import com.quiz.dto.SubmitAnswerRequest;
 import com.quiz.dto.QuizSubmissionResult;
 import com.quiz.entity.*;
 import com.quiz.repository.*;
+import com.quiz.service.CertificateService;
 import com.quiz.util.AnswerValidationUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class QuizAttemptService {
 
     @Autowired
@@ -37,6 +40,9 @@ public class QuizAttemptService {
 
     @Autowired
     private WrongQuestionService wrongQuestionService;
+
+    @Autowired
+    private CertificateService certificateService;
 
     public List<QuizAttempt> getAttemptsByUser(Long userId) {
         User user = userRepository.findById(userId)
@@ -174,6 +180,38 @@ public class QuizAttemptService {
         boolean isPassed = maxPossibleScore > 0 && ((double) totalScore / (double) maxPossibleScore) >= 0.8;
         attempt.setIsPassed(isPassed);
         quizAttemptRepository.save(attempt);
+
+        // 如果该提交导致用户在课程下所有小测均通过，则自动颁发证书
+        try {
+            Long userId = attempt.getUser().getId();
+            Long courseId = attempt.getQuiz().getCourse().getId();
+
+            // 课程下激活的小测总数
+            Long totalActiveQuizzes = quizRepository.countActiveByCourseId(courseId);
+            // 用户在该课程下已通过的小测数量（去重）
+            List<Long> passedQuizIds = quizAttemptRepository.findPassedQuizIdsByUserIdAndCourseId(userId, courseId);
+            int passedCount = passedQuizIds != null ? passedQuizIds.size() : 0;
+
+            int completionPercentage = (totalActiveQuizzes != null && totalActiveQuizzes > 0)
+                    ? (int) Math.round((double) passedCount * 100.0 / (double) totalActiveQuizzes)
+                    : 0;
+
+            // 当所有激活小测均通过时，自动颁发证书
+            if (totalActiveQuizzes != null && totalActiveQuizzes > 0 && passedCount >= totalActiveQuizzes) {
+                // 这里将最终分数视为课程完成度分数（100），以满足证书通过阈值
+                int finalScoreForCertificate = 100;
+                try {
+                    log.info("Auto-award certificate: userId={}, courseId={}, completion={}%, totalQuizzes={}, passedCount={}",
+                            userId, courseId, completionPercentage, totalActiveQuizzes, passedCount);
+                    certificateService.awardCertificateToUser(userId, courseId, finalScoreForCertificate, completionPercentage);
+                } catch (Exception awardEx) {
+                    // 可能的情况：证书已存在或阈值未达到等，这里记录日志但不影响提交结果返回
+                    log.warn("Auto-award certificate failed: {}", awardEx.getMessage());
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Post-submit auto-award check failed: {}", ex.getMessage());
+        }
         
         // 返回提交结果
         return new QuizSubmissionResult(
@@ -186,7 +224,7 @@ public class QuizAttemptService {
             questionResults,
             wrongQuestions
         );
-     }
+    }
 
      /**
       * 判断答案是否正确
