@@ -36,7 +36,7 @@ const ReportPage = () => {
   // 导出报告功能
   const exportReport = () => {
     const reportData = {
-      organizationData,
+      organizationReport: organizationData,
       departmentStats,
       employeeReports: filteredEmployeeReports,
       complianceCategories,
@@ -50,6 +50,15 @@ const ReportPage = () => {
 
   // 生成报告HTML模板
   const generateReportHTML = (data) => {
+    // 添加数据验证和调试信息
+    console.log('Export data:', data);
+    
+    // 确保数据存在，提供默认值
+    const orgData = data.organizationReport || {};
+    const deptStats = data.departmentStats || [];
+    const empReports = data.employeeReports || [];
+    const compCategories = data.complianceCategories || [];
+    
     return `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -66,39 +75,37 @@ const ReportPage = () => {
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.7;
-            color: #2d3748;
-            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            line-height: 1.6;
+            color: #1a202c;
+            background: #ffffff;
             min-height: 100vh;
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 3rem 2rem;
         }
         
         .header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 4rem;
             padding: 3rem 2rem;
-            background: linear-gradient(135deg, #4299e1 0%, #3182ce 50%, #2b77cb 100%);
-            color: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(66, 153, 225, 0.3);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             position: relative;
-            overflow: hidden;
         }
         
-        .header::before {
+        .header::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="20" cy="80" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            pointer-events: none;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 2px;
+            background: #2d3748;
         }
         
         .header-content {
@@ -107,110 +114,98 @@ const ReportPage = () => {
         }
         
         .header h1 {
-            font-size: 2.75rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.025em;
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            color: #1a202c;
+            letter-spacing: -0.02em;
         }
         
         .header .subtitle {
-            font-size: 1.125rem;
-            opacity: 0.9;
-            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            color: #4a5568;
+            margin-bottom: 1rem;
             font-weight: 400;
         }
         
         .header .timestamp {
-            font-size: 0.95rem;
-            opacity: 0.8;
+            font-size: 0.875rem;
+            color: #718096;
             font-weight: 300;
         }
         
         .overview {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 3rem;
+            gap: 2rem;
+            margin-bottom: 4rem;
         }
         
         .metric-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            transition: all 0.3s ease;
+            background: #ffffff;
+            padding: 2.5rem 2rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.2s ease;
             position: relative;
-            overflow: hidden;
-        }
-        
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #4299e1, #3182ce);
         }
         
         .metric-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            border-color: #cbd5e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
         
         .metric-card h3 {
-            font-size: 0.875rem;
-            font-weight: 600;
+            font-size: 0.75rem;
+            font-weight: 500;
             color: #718096;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.75rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
         }
         
         .metric-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 0.25rem;
+            font-size: 3rem;
+            font-weight: 200;
+            color: #1a202c;
+            margin-bottom: 0.5rem;
             line-height: 1;
         }
         
         .metric-label {
-            font-size: 1rem;
+            font-size: 0.875rem;
             color: #4a5568;
-            font-weight: 500;
+            font-weight: 400;
         }
         
         .section {
-            background: white;
-            margin-bottom: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid rgba(226, 232, 240, 0.8);
+            background: #ffffff;
+            margin-bottom: 3rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             overflow: hidden;
         }
         
         .section-header {
-            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+            padding: 2rem;
+            border-bottom: 1px solid #f7fafc;
         }
         
         .section-header h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #2d3748;
+            font-size: 1.125rem;
+            font-weight: 400;
+            color: #1a202c;
             display: flex;
             align-items: center;
         }
         
         .section-icon {
-            width: 8px;
-            height: 8px;
-            background: #4299e1;
+            width: 6px;
+            height: 6px;
+            background: #2d3748;
             border-radius: 50%;
-            margin-right: 0.75rem;
+            margin-right: 1rem;
         }
         
         .section-content {
@@ -221,140 +216,132 @@ const ReportPage = () => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-            border-radius: 12px;
-            border-left: 4px solid #48bb78;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid #f7fafc;
             transition: all 0.2s ease;
         }
         
         .dept-item:hover {
-            transform: translateX(4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: #f8fafc;
+            margin: 0 -2rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
         }
         
         .dept-item:last-child {
-            margin-bottom: 0;
+            border-bottom: none;
         }
         
         .dept-info h4 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #2d3748;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #1a202c;
             margin-bottom: 0.25rem;
         }
         
         .dept-info p {
             font-size: 0.875rem;
             color: #718096;
-            line-height: 1.5;
         }
         
         .dept-stats {
             text-align: right;
-            min-width: 140px;
         }
         
-        .dept-percentage {
+        .completion-rate {
             font-size: 1.25rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 0.5rem;
+            font-weight: 300;
+            color: #1a202c;
+            margin-bottom: 0.25rem;
         }
         
-        .progress-container {
+        .progress-bar {
             width: 120px;
-            height: 8px;
-            background: #e2e8f0;
-            border-radius: 4px;
+            height: 4px;
+            background: #f7fafc;
+            border-radius: 2px;
             overflow: hidden;
             margin-left: auto;
         }
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #48bb78, #38a169);
-            border-radius: 4px;
-            transition: width 0.6s ease;
+            background: #2d3748;
+            transition: width 0.3s ease;
         }
         
-        .data-table {
+        .table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
         }
         
-        .data-table th {
-            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-            padding: 1rem 1.25rem;
+        .table th {
+            background: #f8fafc;
+            padding: 1rem;
             text-align: left;
-            font-weight: 600;
-            color: #4a5568;
+            font-weight: 500;
             font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .data-table td {
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.9375rem;
             color: #4a5568;
+            border-bottom: 1px solid #e2e8f0;
         }
         
-        .data-table tr:hover {
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f7fafc;
+            font-size: 0.875rem;
+            color: #2d3748;
+        }
+        
+        .table tr:hover {
             background: #f8fafc;
         }
         
         .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.375rem 0.75rem;
-            border-radius: 20px;
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
         
         .status-completed {
-            background: linear-gradient(135deg, #c6f6d5, #9ae6b4);
+            background: #f0fff4;
             color: #22543d;
+            border: 1px solid #c6f6d5;
         }
         
         .status-pending {
-            background: linear-gradient(135deg, #fef5e7, #fed7aa);
-            color: #c05621;
+            background: #fffbf0;
+            color: #744210;
+            border: 1px solid #fbd38d;
+        }
+        
+        .status-overdue {
+            background: #fff5f5;
+            color: #742a2a;
+            border: 1px solid #fed7d7;
         }
         
         .footer {
             text-align: center;
-            margin-top: 3rem;
+            margin-top: 4rem;
             padding: 2rem;
+            border-top: 1px solid #e2e8f0;
             color: #718096;
             font-size: 0.875rem;
-            line-height: 1.6;
         }
         
-        .footer p {
-            margin-bottom: 0.5rem;
+        .footer strong {
+            color: #2d3748;
+            font-weight: 500;
         }
         
-        .footer p:last-child {
-            margin-bottom: 0;
-        }
-        
-        /* 响应式设计 */
         @media (max-width: 768px) {
             .container {
-                padding: 1rem;
-            }
-            
-            .header {
-                padding: 2rem 1.5rem;
-                margin-bottom: 2rem;
+                padding: 2rem 1rem;
             }
             
             .header h1 {
@@ -366,14 +353,6 @@ const ReportPage = () => {
                 gap: 1rem;
             }
             
-            .metric-card {
-                padding: 1.5rem;
-            }
-            
-            .section-content {
-                padding: 1.5rem;
-            }
-            
             .dept-item {
                 flex-direction: column;
                 align-items: flex-start;
@@ -381,42 +360,29 @@ const ReportPage = () => {
             }
             
             .dept-stats {
-                align-self: stretch;
                 text-align: left;
+                width: 100%;
             }
             
-            .progress-container {
-                width: 100%;
+            .progress-bar {
                 margin-left: 0;
             }
         }
         
-        /* 打印样式 */
         @media print {
             body {
                 background: white;
-                color: #000;
             }
             
             .container {
                 max-width: none;
-                padding: 0;
+                padding: 1rem;
             }
             
-            .header {
-                background: #4299e1 !important;
-                box-shadow: none;
-                page-break-inside: avoid;
-            }
-            
-            .section, .metric-card {
+            .metric-card,
+            .section {
                 box-shadow: none;
                 border: 1px solid #e2e8f0;
-                page-break-inside: avoid;
-            }
-            
-            .dept-item:hover {
-                transform: none;
             }
         }
     </style>
@@ -426,31 +392,32 @@ const ReportPage = () => {
         <div class="header">
             <div class="header-content">
                 <h1>Organization Compliance Report</h1>
-                <p class="subtitle">Administrator View - Monitor compliance completion status for all employees</p>
-                <p class="timestamp">Generated on: ${data.exportDate}</p>
+                <p class="subtitle">Administrator View - Monitor compliance completion status for all employees in the organization</p>
+                <p class="timestamp">Generated on ${new Date().toLocaleDateString('zh-CN', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</p>
             </div>
         </div>
 
         <div class="overview">
             <div class="metric-card">
                 <h3>Total Employees</h3>
-                <div class="metric-number">${data.organizationData?.totalEmployees || 0}</div>
+                <div class="metric-number">${orgData.totalEmployees || 0}</div>
                 <div class="metric-label">Active Users</div>
             </div>
             <div class="metric-card">
                 <h3>Completed Reports</h3>
-                <div class="metric-number">${data.organizationData?.completedReports || 0}</div>
-                <div class="metric-label">Finished Tasks</div>
+                <div class="metric-number">${orgData.completedReports || 0}</div>
+                <div class="metric-label">Submissions</div>
             </div>
             <div class="metric-card">
                 <h3>Pending Reports</h3>
-                <div class="metric-number">${data.organizationData?.pendingReports || 0}</div>
-                <div class="metric-label">Awaiting Completion</div>
-            </div>
-            <div class="metric-card">
-                <h3>Completion Rate</h3>
-                <div class="metric-number">${data.organizationData?.completionRate || 0}%</div>
-                <div class="metric-label">Overall Progress</div>
+                <div class="metric-number">${orgData.pendingReports || 0}</div>
+                <div class="metric-label">Outstanding</div>
             </div>
         </div>
 
@@ -459,20 +426,20 @@ const ReportPage = () => {
                 <h2><span class="section-icon"></span>Department Compliance Statistics</h2>
             </div>
             <div class="section-content">
-                ${data.departmentStats.map(dept => `
+                ${deptStats.length > 0 ? deptStats.map(dept => `
                     <div class="dept-item">
                         <div class="dept-info">
-                            <h4>${dept.name}</h4>
-                            <p>Total: ${dept.total} employees • Completed: ${dept.completed} • Pending: ${dept.pending}</p>
+                            <h4>${dept.department || dept.name || 'Unknown Department'}</h4>
+                            <p>${dept.totalEmployees || dept.total || 0} employees</p>
                         </div>
                         <div class="dept-stats">
-                            <div class="dept-percentage">${dept.rate}%</div>
-                            <div class="progress-container">
-                                <div class="progress-fill" style="width: ${dept.rate}%"></div>
+                            <div class="completion-rate">${dept.completionRate || dept.rate || 0}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${dept.completionRate || dept.rate || 0}%"></div>
                             </div>
                         </div>
                     </div>
-                `).join('')}
+                `).join('') : '<p>No department data available</p>'}
             </div>
         </div>
 
@@ -481,30 +448,28 @@ const ReportPage = () => {
                 <h2><span class="section-icon"></span>Employee Report Details</h2>
             </div>
             <div class="section-content">
-                <table class="data-table">
+                <table class="table">
                     <thead>
                         <tr>
                             <th>Employee Name</th>
                             <th>Department</th>
-                            <th>Status</th>
-                            <th>Score</th>
-                            <th>Submit Date</th>
+                            <th>Completion Status</th>
+                            <th>Last Updated</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.employeeReports.map(report => `
+                        ${empReports.length > 0 ? empReports.map(emp => `
                             <tr>
-                                <td><strong>${report.name}</strong></td>
-                                <td>${report.department}</td>
+                                <td>${emp.employeeName || emp.name || 'Unknown'}</td>
+                                <td>${emp.department || 'Unknown'}</td>
                                 <td>
-                                    <span class="status-badge ${report.status === 'completed' ? 'status-completed' : 'status-pending'}">
-                                        ${report.status === 'completed' ? 'Completed' : 'Pending'}
+                                    <span class="status-badge status-${(emp.status || 'pending').toLowerCase()}">
+                                        ${emp.status || 'Pending'}
                                     </span>
                                 </td>
-                                <td>${report.score ? '<strong>' + report.score + '</strong> Points' : '—'}</td>
-                                <td>${report.submitDate || '—'}</td>
+                                <td>${emp.lastUpdated ? new Date(emp.lastUpdated).toLocaleDateString('zh-CN') : (emp.submitDate || 'N/A')}</td>
                             </tr>
-                        `).join('')}
+                        `).join('') : '<tr><td colspan="4">No employee data available</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -512,35 +477,34 @@ const ReportPage = () => {
 
         <div class="section">
             <div class="section-header">
-                <h2><span class="section-icon"></span>Compliance Categories Overview</h2>
+                <h2><span class="section-icon"></span>Compliance Categories</h2>
             </div>
             <div class="section-content">
-                ${data.complianceCategories.map(category => `
+                ${compCategories.length > 0 ? compCategories.map(category => `
                     <div class="dept-item">
                         <div class="dept-info">
-                            <h4>${category.category}</h4>
-                            <p>${category.description}</p>
-                            <p><strong>Progress:</strong> ${category.completed} of ${category.totalEmployees} employees completed</p>
+                            <h4>${category.category || category.name || 'Unknown Category'}</h4>
+                            <p>${category.description || 'No description available'}</p>
                         </div>
                         <div class="dept-stats">
-                            <div class="dept-percentage">${category.rate}%</div>
-                            <div class="progress-container">
-                                <div class="progress-fill" style="width: ${category.rate}%"></div>
+                            <div class="completion-rate">${category.completionRate || category.rate || 0}%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${category.completionRate || category.rate || 0}%"></div>
                             </div>
                         </div>
                     </div>
-                `).join('')}
+                `).join('') : '<p>No compliance category data available</p>'}
             </div>
         </div>
 
         <div class="footer">
-            <p><strong>Compliance Management System</strong></p>
-            <p>This report was automatically generated and contains confidential information.</p>
-            <p>For questions or concerns, please contact the system administrator.</p>
+            <p><strong>Intelligent Handbook Learning System</strong></p>
+            <p>This report contains confidential information. Please handle with appropriate care.</p>
         </div>
     </div>
 </body>
-</html>`;
+</html>
+    `;
   };
 
   // 下载HTML文件
@@ -873,7 +837,6 @@ const ReportPage = () => {
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Department</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Severity</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Occurrence Time</th>
                 </tr>
@@ -887,9 +850,6 @@ const ReportPage = () => {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
                         {report.status === 'completed' ? 'Completed' : 'Pending'}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 font-medium">
-                      {report.score ? `${report.score} Points` : '-'}
                     </td>
                     <td className="py-3 px-4 text-gray-600">
                       {report.submitDate || '-'}
