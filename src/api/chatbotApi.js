@@ -170,8 +170,8 @@ const availableTools = {
   }
 };
 
-// 模拟AI响应函数（MVP版本使用规则引擎）
-const generateAIResponse = async (userMessage, toolResults = null, contextSummary = '') => {
+// 后端AI响应函数：调用后端并返回完整响应对象（包含 toolsUsed）
+const generateAIResponse = async (userMessage) => {
   try {
     // 调用后端的OpenAI API
     const response = await fetch(`${API_BASE_URL}/chatbot/chat`, {
@@ -180,9 +180,7 @@ const generateAIResponse = async (userMessage, toolResults = null, contextSummar
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: userMessage,
-        toolResults: toolResults,
-        contextSummary: contextSummary
+        message: userMessage
       })
     });
 
@@ -191,13 +189,14 @@ const generateAIResponse = async (userMessage, toolResults = null, contextSummar
     }
 
     const data = await response.json();
-    return data.response || data.message || 'Sorry, I could not generate a response.';
+    // 返回完整对象，包含 message 与 toolsUsed
+    return data;
 
   } catch (error) {
     console.error('Error calling backend AI API:', error);
     
     // 如果后端API调用失败，使用本地后备响应
-    return generateFallbackResponse(userMessage, toolResults, contextSummary);
+    return { message: generateFallbackResponse(userMessage), toolsUsed: [], success: false };
   }
 };
 
@@ -400,28 +399,16 @@ const executeTools = async (toolNames, userId = null) => {
 // 主要的聊天接口
 export const sendChatMessage = async (userMessage, userId = null) => {
   try {
-    // 获取上下文摘要
-    const contextSummary = chatbotSession.getContextSummary();
-    
-    // 确定需要的工具
-    const requiredTools = determineRequiredTools(userMessage);
-    
-    let toolResults = null;
-    if (requiredTools.length > 0) {
-      // 执行工具调用
-      toolResults = await executeTools(requiredTools, userId);
-    }
-
-    // 生成AI响应
-    const botResponse = await generateAIResponse(userMessage, toolResults, contextSummary);
+    // 直接调用后端生成AI响应（包含 toolsUsed）
+    const backendResponse = await generateAIResponse(userMessage);
 
     // 添加到对话历史
-    chatbotSession.addToHistory(userMessage, botResponse);
+    chatbotSession.addToHistory(userMessage, backendResponse.message || backendResponse.response || '');
 
     return {
       success: true,
-      response: botResponse,
-      toolsUsed: requiredTools,
+      response: backendResponse.message || backendResponse.response || 'No response received',
+      toolsUsed: backendResponse.toolsUsed || [],
       timestamp: new Date().toISOString()
     };
 
