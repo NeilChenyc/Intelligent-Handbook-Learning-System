@@ -8,7 +8,8 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
     confirmPassword: '',
     email: '',
     fullName: '',
-    role: 'STUDENT' // Default to student
+    role: 'STUDENT', // Default to student
+    department: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -65,6 +66,12 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
       setError('Please enter your name');
       return false;
     }
+    // Department required and must be one of allowed values
+    const allowedDepts = ['Engineering', 'Human Resources', 'Marketing', 'Finance', 'Operations'];
+    if (!formData.department || !allowedDepts.includes(formData.department)) {
+      setError('Please select a valid department');
+      return false;
+    }
     return true;
   };
 
@@ -90,7 +97,8 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
           password: formData.password,
           email: formData.email,
           fullName: formData.fullName,
-          role: formData.role
+          role: formData.role,
+          department: formData.department
         })
       });
 
@@ -222,6 +230,27 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
                 required
               />
             </div>
+          </div>
+
+          {/* Department select */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Department *
+            </label>
+            <select
+              name="department"
+              value={formData.department}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+              required
+            >
+              <option value="" disabled>Select your department</option>
+              <option value="Engineering">Engineering</option>
+              <option value="Human Resources">Human Resources</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Finance">Finance</option>
+              <option value="Operations">Operations</option>
+            </select>
           </div>
 
           {/* Password input */}

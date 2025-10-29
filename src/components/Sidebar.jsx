@@ -9,7 +9,8 @@ import {
   FileCheck, 
   Award,
   LogOut,
-  BookOpen
+  BookOpen,
+  MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -21,6 +22,7 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
     { id: 'tasks', label: 'My Courses', icon: CheckSquare },
     { id: 'retry', label: 'Wrong Questions', icon: RotateCcw },
     { id: 'progress', label: 'Learning Progress', icon: TrendingUp },
+    { id: 'chatbot', label: 'AI Assistant', icon: MessageCircle },
     { id: 'certificate', label: 'Certificate Center', icon: Award },
   ];
 
@@ -32,7 +34,7 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
 
   // 根据用户身份动态生成菜单项
   const menuItems = isAdmin() 
-    ? [...baseMenuItems.slice(0, 3), ...adminMenuItems, baseMenuItems[3]] // 在证书中心前插入管理员菜单项
+    ? [...baseMenuItems.slice(0, 4), ...adminMenuItems, baseMenuItems[4]] // 在证书中心前插入管理员菜单项
     : baseMenuItems;
 
   const handleLogout = () => {

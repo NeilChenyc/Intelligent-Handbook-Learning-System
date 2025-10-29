@@ -1,8 +1,8 @@
-// 课程相关API调用函数
-const API_BASE_URL = 'http://localhost:8080';
-
 // 导入getCourseQuizListCached函数
 import { getCourseQuizListCached } from './quizApi';
+
+// 课程相关API调用函数
+const API_BASE_URL = 'http://localhost:8080';
 
 // 获取所有活跃课程（后端已忽略PDF二进制字段）
 export const getAllCourses = async () => {

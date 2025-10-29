@@ -73,6 +73,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
           email: data.user.email,
           fullName: data.user.fullName,
           role: data.user.role.toLowerCase(),
+          department: data.user.department || '',
           name: data.user.fullName || data.user.username,
           loginTime: new Date().toISOString()
         };

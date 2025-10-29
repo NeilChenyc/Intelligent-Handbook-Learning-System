@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +17,13 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private static final Set<String> ALLOWED_DEPARTMENTS = Set.of(
+            "Engineering",
+            "Human Resources",
+            "Marketing",
+            "Finance",
+            "Operations"
+    );
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -37,6 +45,10 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
+        // Department validation
+        if (user.getDepartment() == null || !ALLOWED_DEPARTMENTS.contains(user.getDepartment())) {
+            throw new RuntimeException("Invalid department. Must be one of: " + String.join(", ", ALLOWED_DEPARTMENTS));
+        }
         
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -53,8 +65,11 @@ public class UserService {
         user.setFullName(userDetails.getFullName());
         user.setRole(userDetails.getRole());
         
-        // 支持更新部门字段
+        // 支持更新部门字段并校验
         if (userDetails.getDepartment() != null) {
+            if (!ALLOWED_DEPARTMENTS.contains(userDetails.getDepartment())) {
+                throw new RuntimeException("Invalid department. Must be one of: " + String.join(", ", ALLOWED_DEPARTMENTS));
+            }
             user.setDepartment(userDetails.getDepartment());
         }
         

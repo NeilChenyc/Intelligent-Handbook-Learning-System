@@ -16,6 +16,7 @@ import CertificatePage from './components/CertificatePage';
 import CourseManagementPage from './components/CourseManagementPage';
 import QuizManagementPage from './components/QuizManagementPage';
 import TestQuizPage from './components/TestQuizPage';
+import ChatbotPage from './components/ChatbotPage';
 
 // 主应用内容组件
 const AppContent = () => {
@@ -254,6 +255,8 @@ const AppContent = () => {
         return <WrongQuestionsPage />;
       case 'progress':
         return <ProgressPage />;
+      case 'chatbot':
+        return <ChatbotPage />;
       case 'course-management':
         return <CourseManagementPage />;
       case 'report':
