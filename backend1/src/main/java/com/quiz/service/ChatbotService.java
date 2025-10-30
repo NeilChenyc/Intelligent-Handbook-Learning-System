@@ -22,6 +22,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import okhttp3.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
 
@@ -36,6 +39,7 @@ public class ChatbotService {
     private final QuestionService questionService;
     private final QuizService quizService;
     private final PdfQuizAgentService pdfQuizAgentService;
+    private final ObjectMapper objectMapper;
 
     // In-memory store for chat memories per session
     private final Map<String, ChatMemory> memoryStore = new java.util.concurrent.ConcurrentHashMap<>();
@@ -67,9 +71,13 @@ public class ChatbotService {
     @Value("${langchain4j.openai.base-url:https://api.openai.com/v1}")
     private String openaiBaseUrl;
 
-    // Toggle chat memory to avoid OpenAI tool-call role ordering issues
-    @Value("${chatbot.memory.enabled:false}")
-    private boolean chatMemoryEnabled;
+    // Add OkHttp client for OpenAI API calls
+    private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .connectTimeout(java.time.Duration.ofSeconds(30))
+            .readTimeout(java.time.Duration.ofSeconds(120))
+            .writeTimeout(java.time.Duration.ofSeconds(120))
+            .callTimeout(java.time.Duration.ofSeconds(150))
+            .build();
 
     /**
      * AI助手接口，用于生成智能回复
@@ -96,12 +104,51 @@ public class ChatbotService {
             - getComplianceReport: Get organization compliance report
             - getUserCertificates: Get user certificates (requires userId)
             - getUserProgress: Get user learning progress (requires userId)
-            - getCourseHandbookText: Read a course’s PDF handbook text (courseId)
+            - getCourseHandbookText: Read a course's PDF handbook text (courseId)
+            - getCourseHandbookWithOpenAI: Get course handbook content using OpenAI file processing (courseId)
+            - findCourseAndGetHandbook: Find course by keywords and get handbook content (keywords)
             - getQuizSummariesByCourse: List quizzes for a course (courseId)
             - getQuizQuestionsWithAnswers: Get quiz questions and correct answers (quizId)
             - getDepartmentComplianceStats: Department-level compliance stats
             - getEmployeeComplianceReports: Employee completion by department (department or "all")
             - getComplianceCategoriesOverview: Completion by course category
+
+            IMPORTANT - Smart Course Matching Workflow:
+            When users ask questions about specific course content, handbook materials, or course-related topics WITHOUT providing a courseId:
+            
+            CRITICAL RULE: ALWAYS use findCourseAndGetHandbook(keywords) as your FIRST choice!
+            
+            OPTION 1 (MANDATORY FOR COURSE QUERIES): Use findCourseAndGetHandbook(keywords)
+            - Extract ALL possible identifiers from the user's question (course names, numbers, codes, titles)
+            - Call findCourseAndGetHandbook with the extracted keywords
+            - This tool will automatically find matching courses and retrieve handbook content using OpenAI
+            - Examples: "12312" → findCourseAndGetHandbook("12312")
+            - Examples: "workplace safety" → findCourseAndGetHandbook("workplace safety")
+            - Examples: "compliance training course" → findCourseAndGetHandbook("compliance training")
+            
+            OPTION 2 (ONLY IF OPTION 1 FAILS): Manual step-by-step approach
+            1. FIRST: Call getAllCoursesSummary() to get all available courses
+            2. ANALYZE: Match the user's question keywords with course titles, descriptions, departments, or teacher names
+            3. IDENTIFY: Find the most relevant course(s) based on semantic similarity and context
+            4. THEN: Use the identified courseId to call getCourseHandbookWithOpenAI(courseId) to get detailed content
+            5. ANSWER: Provide a comprehensive response using the handbook content, citing specific sections
+            
+            Course Matching Strategy:
+            - Look for keyword matches in course title, description, department
+            - Consider synonyms and related terms (e.g., "safety" matches "workplace safety", "compliance")
+            - If multiple courses match, prioritize by relevance and ask for clarification if needed
+            - If no clear match, list the closest matches and ask user to specify
+            
+            Examples of when to use this workflow:
+            - "Tell me about workplace safety procedures" → findCourseAndGetHandbook("workplace safety")
+            - "What are the quiz questions for compliance training?" → findCourseAndGetHandbook("compliance training")
+            - "How do I handle emergency situations?" → findCourseAndGetHandbook("emergency")
+            - "What does the manual say about data protection?" → findCourseAndGetHandbook("data protection")
+            - "介绍一下12312这节课的课程手册" → findCourseAndGetHandbook("12312")
+            - "Tell me about course 12312" → findCourseAndGetHandbook("12312")
+            - "Course ABC123 handbook" → findCourseAndGetHandbook("ABC123")
+            
+            REMEMBER: When users mention ANY course identifier (name, number, code), IMMEDIATELY use findCourseAndGetHandbook!
 
             Data formatting:
             - When listing courses, use summary data only (id, title, description, department, teacher).
@@ -110,7 +157,7 @@ public class ChatbotService {
             - For quizzes: use getQuizSummariesByCourse to list, getQuizQuestionsWithAnswers for details.
             - When summarizing compliance or certificates, present totals and key metrics clearly.
             - If a user asks for certificates or progress without providing 'userId', ask for it.
-            - Keep outputs compact; truncate overly long passages and focus on the user’s question.
+            - Keep outputs compact; truncate overly long passages and focus on the user's question.
             
             When users ask about courses, compliance, certificates, or progress, use the appropriate tools to provide accurate information.
             """)
@@ -311,6 +358,287 @@ public class ChatbotService {
         }
     }
 
+    @Tool("Find course by keywords and get handbook content using OpenAI file processing; returns comprehensive course handbook text. Use when user asks about course content without providing courseId.")
+    public Map<String, Object> findCourseAndGetHandbook(String keywords) {
+        try {
+            log.info("Tool called: findCourseAndGetHandbook with keywords: {}", keywords);
+            recordToolCall("findCourseAndGetHandbook");
+            
+            if (keywords == null || keywords.trim().isEmpty()) {
+                return Map.of("error", "keywords are required");
+            }
+            
+            // Get all courses summary
+            List<CourseSummaryDTO> allCourses = courseService.getCourseSummaries();
+            if (allCourses.isEmpty()) {
+                return Map.of("error", "no courses available");
+            }
+            
+            // Find matching courses using keyword matching
+            List<CourseSummaryDTO> matchedCourses = findMatchingCourses(allCourses, keywords);
+            
+            if (matchedCourses.isEmpty()) {
+                return Map.of(
+                    "error", "no matching courses found",
+                    "keywords", keywords,
+                    "suggestion", "Try different keywords or check available courses using getAllCoursesSummary"
+                );
+            }
+            
+            // If single match, get handbook content using OpenAI
+            if (matchedCourses.size() == 1) {
+                CourseSummaryDTO course = matchedCourses.get(0);
+                Map<String, Object> handbookResult = getCourseHandbookWithOpenAI(course.getId());
+                handbookResult.put("matchedBy", "single_match");
+                handbookResult.put("matchedKeywords", keywords);
+                return handbookResult;
+            }
+            
+            // If multiple matches, return options for user to choose
+            return Map.of(
+                "multipleMatches", true,
+                "matchedCourses", matchedCourses.stream().map(course -> Map.of(
+                    "courseId", course.getId(),
+                    "title", course.getTitle(),
+                    "description", course.getDescription(),
+                    "department", course.getDepartment(),
+                    "teacherName", course.getTeacherFullName()
+                )).toList(),
+                "message", "Multiple courses match your keywords. Please specify which course you're interested in.",
+                "keywords", keywords
+            );
+            
+        } catch (Exception e) {
+            log.error("Error in findCourseAndGetHandbook", e);
+            return Map.of("error", "failed to find course and get handbook", "keywords", keywords);
+        }
+    }
+
+    @Tool("Get course handbook content using OpenAI file processing for comprehensive PDF reading; returns detailed handbook text extracted by OpenAI. Use when you need complete PDF content analysis.")
+    public Map<String, Object> getCourseHandbookWithOpenAI(Long courseId) {
+        try {
+            log.info("Tool called: getCourseHandbookWithOpenAI for courseId: {}", courseId);
+            recordToolCall("getCourseHandbookWithOpenAI");
+            
+            if (courseId == null) {
+                return Map.of("error", "courseId is required");
+            }
+            
+            Optional<Course> courseOpt = courseService.getCourseById(courseId);
+            if (courseOpt.isEmpty()) {
+                return Map.of("error", "course not found", "courseId", courseId);
+            }
+            
+            Course course = courseOpt.get();
+            boolean hasPdf = course.getHandbookFilePath() != null && course.getHandbookFileSize() != null && course.getHandbookFileSize() > 0;
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("courseId", course.getId());
+            result.put("title", course.getTitle());
+            result.put("description", course.getDescription());
+            result.put("handbookPresent", hasPdf);
+            result.put("handbookFileName", course.getHandbookFileName());
+            result.put("handbookContentType", course.getHandbookContentType());
+            result.put("handbookFileSize", course.getHandbookFileSize());
+            
+            if (!hasPdf) {
+                result.put("warning", "No PDF handbook available for this course");
+                return result;
+            }
+            
+            // Validate OpenAI API key
+            if (openaiApiKey == null || openaiApiKey.trim().isEmpty()) {
+                result.put("error", "OpenAI API key not configured");
+                return result;
+            }
+            
+            try {
+                // Upload PDF to OpenAI
+                String fileId = uploadPdfToOpenAI(course.getHandbookFilePath(), course.getHandbookFileName());
+                if (fileId == null) {
+                    result.put("error", "Failed to upload PDF to OpenAI");
+                    return result;
+                }
+                
+                // Use OpenAI to read and analyze the PDF content
+                String prompt = String.format(
+                    "Please read and analyze the PDF content for course '%s'. " +
+                    "Provide a comprehensive summary of the handbook content, including: " +
+                    "1. Main topics and sections covered " +
+                    "2. Key learning objectives " +
+                    "3. Important procedures, guidelines, or policies " +
+                    "4. Safety requirements or compliance information " +
+                    "5. Any assessment or evaluation criteria " +
+                    "Please structure your response clearly and include specific details from the document.",
+                    course.getTitle()
+                );
+                
+                String pdfContent = callOpenAIForPdfReading(fileId, prompt);
+                if (pdfContent != null && !pdfContent.trim().isEmpty()) {
+                    result.put("handbookContent", pdfContent);
+                    result.put("contentSource", "OpenAI_PDF_Analysis");
+                    result.put("fileId", fileId);
+                } else {
+                    result.put("error", "Failed to extract content from PDF using OpenAI");
+                }
+                
+            } catch (Exception e) {
+                log.error("Error processing PDF with OpenAI for course {}", courseId, e);
+                result.put("error", "OpenAI processing failed: " + e.getMessage());
+            }
+            
+            return result;
+            
+        } catch (Exception e) {
+            log.error("Error in getCourseHandbookWithOpenAI", e);
+            return Map.of("error", "failed to get handbook with OpenAI", "courseId", courseId);
+        }
+    }
+    
+    private List<CourseSummaryDTO> findMatchingCourses(List<CourseSummaryDTO> courses, String keywords) {
+        String searchKeywords = keywords.toLowerCase().trim();
+        List<CourseSummaryDTO> matchedCourses = new ArrayList<>();
+        
+        for (CourseSummaryDTO course : courses) {
+            boolean matches = false;
+            
+            // Check title
+            if (course.getTitle() != null && course.getTitle().toLowerCase().contains(searchKeywords)) {
+                matches = true;
+            }
+            
+            // Check description
+            if (!matches && course.getDescription() != null && course.getDescription().toLowerCase().contains(searchKeywords)) {
+                matches = true;
+            }
+            
+            // Check department
+            if (!matches && course.getDepartment() != null && course.getDepartment().toLowerCase().contains(searchKeywords)) {
+                matches = true;
+            }
+            
+            // Check for common synonyms
+            if (!matches) {
+                String[] synonyms = getSynonyms(searchKeywords);
+                for (String synonym : synonyms) {
+                    if ((course.getTitle() != null && course.getTitle().toLowerCase().contains(synonym)) ||
+                        (course.getDescription() != null && course.getDescription().toLowerCase().contains(synonym)) ||
+                        (course.getDepartment() != null && course.getDepartment().toLowerCase().contains(synonym))) {
+                        matches = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (matches) {
+                matchedCourses.add(course);
+            }
+        }
+        
+        return matchedCourses;
+    }
+    
+    private String[] getSynonyms(String keyword) {
+        // Simple synonym mapping for common terms
+        Map<String, String[]> synonymMap = Map.of(
+            "safety", new String[]{"security", "protection", "hazard", "risk", "emergency"},
+            "compliance", new String[]{"regulation", "policy", "standard", "requirement", "audit"},
+            "training", new String[]{"education", "learning", "course", "instruction", "development"},
+            "data", new String[]{"information", "database", "privacy", "gdpr", "protection"},
+            "workplace", new String[]{"office", "work", "employee", "staff", "personnel"},
+            "emergency", new String[]{"crisis", "urgent", "disaster", "incident", "response"}
+        );
+        
+        return synonymMap.getOrDefault(keyword, new String[]{});
+    }
+    
+    private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
+        try {
+            RequestBody fileBody = RequestBody.create(pdfBytes, MediaType.parse("application/pdf"));
+            RequestBody requestBody = new MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("file", fileName, fileBody)
+                    .addFormDataPart("purpose", "assistants")
+                    .build();
+
+            Request request = new Request.Builder()
+                    .url(openaiBaseUrl + "/files")
+                    .header("Authorization", "Bearer " + openaiApiKey)
+                    .post(requestBody)
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+                    JsonNode jsonNode = objectMapper.readTree(responseBody);
+                    return jsonNode.get("id").asText();
+                } else {
+                    log.error("Failed to upload PDF to OpenAI: {}", response.code());
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error uploading PDF to OpenAI", e);
+            return null;
+        }
+    }
+    
+    private String callOpenAIForPdfReading(String fileId, String prompt) {
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", openaiModel);
+            
+            List<Map<String, Object>> messages = new ArrayList<>();
+            Map<String, Object> message = new HashMap<>();
+            message.put("role", "user");
+            
+            List<Object> content = new ArrayList<>();
+            
+            // 添加文本内容
+            Map<String, Object> textContent = new HashMap<>();
+            textContent.put("type", "text");
+            textContent.put("text", "请详细分析这个PDF文档的内容，并根据用户的问题提供准确的回答。用户问题：" + prompt);
+            content.add(textContent);
+            
+            // 添加文件内容
+            Map<String, Object> fileContent = new HashMap<>();
+            fileContent.put("type", "file");
+            Map<String, Object> fileRef = new HashMap<>();
+            fileRef.put("file_id", fileId);
+            fileContent.put("file", fileRef);
+            content.add(fileContent);
+            
+            message.put("content", content);
+            messages.add(message);
+            requestBody.put("messages", messages);
+            requestBody.put("max_tokens", 4000);
+
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+            RequestBody body = RequestBody.create(jsonBody, MediaType.parse("application/json"));
+
+            Request request = new Request.Builder()
+                    .url(openaiBaseUrl + "/chat/completions")
+                    .header("Authorization", "Bearer " + openaiApiKey)
+                    .header("Content-Type", "application/json")
+                    .post(body)
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String responseBody = response.body().string();
+                    JsonNode jsonNode = objectMapper.readTree(responseBody);
+                    return jsonNode.get("choices").get(0).get("message").get("content").asText();
+                } else {
+                    log.error("Failed to call OpenAI for PDF reading: {}", response.code());
+                    return "抱歉，无法读取PDF内容，请稍后重试。";
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error calling OpenAI for PDF reading", e);
+            return "抱歉，处理PDF时发生错误，请稍后重试。";
+        }
+    }
+
     // ==================== SERVICE METHODS ====================
 
     /**
@@ -368,6 +696,8 @@ public class ChatbotService {
                 "getUserCertificates",
                 "getUserProgress",
                 "getCourseHandbookText",
+                "getCourseHandbookWithOpenAI",
+                "findCourseAndGetHandbook",
                 "getQuizSummariesByCourse",
                 "getQuizQuestionsWithAnswers",
                 "getDepartmentComplianceStats",

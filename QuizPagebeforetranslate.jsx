@@ -409,7 +409,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
 
                 {submitted && (
                   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h4 className="font-medium text-yellow-800 mb-2">解析：</h4>
+                    <h4 className="font-medium text-yellow-800 mb-2">Explanation:</h4>
                     <p className="text-yellow-700">{question.explanation}</p>
                   </div>
                 )}

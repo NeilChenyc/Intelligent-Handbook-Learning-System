@@ -8,6 +8,8 @@ import com.quiz.repository.CourseRepository;
 import com.quiz.repository.UserRepository;
 import com.quiz.repository.WrongQuestionRepository;
 import com.quiz.repository.QuizAttemptRepository;
+import com.quiz.repository.QuizRepository;
+import com.quiz.repository.CertificateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,8 @@ public class CourseService {
     private final UserRepository userRepository;
     private final WrongQuestionRepository wrongQuestionRepository;
     private final QuizAttemptRepository quizAttemptRepository;
+    private final QuizRepository quizRepository;
+    private final CertificateRepository certificateRepository;
     // 新增：引入AI预检服务
     private final PdfQuizAgentService pdfQuizAgentService;
     // 新增：证书服务用于在课程创建后自动生成证书
@@ -206,15 +210,33 @@ public class CourseService {
     }
 
     public List<CourseSummaryDTO> getCourseSummaries() {
-        return courseRepository.findActiveCourseSummaries();
+        List<CourseSummaryDTO> summaries = courseRepository.findActiveCourseSummaries();
+        // 为每个课程设置quiz数量
+        for (CourseSummaryDTO summary : summaries) {
+            Long quizCount = quizRepository.countActiveByCourseId(summary.getId());
+            summary.setQuizCount(quizCount.intValue());
+        }
+        return summaries;
     }
 
     public List<CourseSummaryDTO> getCourseSummariesByTeacher(Long teacherId) {
-        return courseRepository.findCourseSummariesByTeacherId(teacherId);
+        List<CourseSummaryDTO> summaries = courseRepository.findCourseSummariesByTeacherId(teacherId);
+        // 为每个课程设置quiz数量
+        for (CourseSummaryDTO summary : summaries) {
+            Long quizCount = quizRepository.countActiveByCourseId(summary.getId());
+            summary.setQuizCount(quizCount.intValue());
+        }
+        return summaries;
     }
 
     public List<CourseSummaryDTO> searchCourseSummaries(String title) {
-        return courseRepository.findCourseSummariesByTitleContainingAndIsActiveTrue(title);
+        List<CourseSummaryDTO> summaries = courseRepository.findCourseSummariesByTitleContainingAndIsActiveTrue(title);
+        // 为每个课程设置quiz数量
+        for (CourseSummaryDTO summary : summaries) {
+            Long quizCount = quizRepository.countActiveByCourseId(summary.getId());
+            summary.setQuizCount(quizCount.intValue());
+        }
+        return summaries;
     }
 
     public List<Course> searchCourses(String title) {
@@ -232,7 +254,7 @@ public class CourseService {
 
     /**
      * 级联硬删除课程及其关联数据
-     * 删除范围：课程、相关测验、测验下题目与选项、错题记录、测验提交与作答
+     * 删除范围：课程、相关测验、测验下题目与选项、错题记录、测验提交与作答、证书
      */
     @Transactional
     public void deleteCourseCascade(Long id) {
@@ -249,7 +271,13 @@ public class CourseService {
         quizAttemptRepository.deleteByCourseId(id);
         log.info("Deleted quiz attempts for course id {}", id);
 
-        // 3) 删除课程实体（级联删除其下测验、题目和选项）
+        // 3) 删除该课程关联的证书（必须在删除课程之前删除，避免外键约束冲突）
+        certificateRepository.findByCourseId(id).ifPresent(certificate -> {
+            certificateRepository.delete(certificate);
+            log.info("Deleted certificate for course id {}", id);
+        });
+
+        // 4) 删除课程实体（级联删除其下测验、题目和选项）
         courseRepository.delete(course);
         log.info("Cascade deleted course entity and related quizzes/questions/options for id {}", id);
     }

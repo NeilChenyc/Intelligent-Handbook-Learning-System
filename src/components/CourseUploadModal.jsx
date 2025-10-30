@@ -1,15 +1,28 @@
-import React, { useState, useRef } from 'react';
-import { Button } from './ui/Button';
-import { 
-  Upload, 
-  X, 
-  FileText, 
-  AlertCircle,
-  CheckCircle,
-  Loader
-} from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, X, FileText, Settings, Brain, CheckCircle, AlertCircle, Loader, Minimize2 } from 'lucide-react';
+import { useUploadProgress } from '../contexts/UploadProgressContext';
+
+const Button = ({ children, onClick, disabled, variant = 'primary', className = '', ...props }) => {
+  const baseClasses = 'px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const variants = {
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-gray-300',
+    outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500 disabled:bg-gray-100'
+  };
+  
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variants[variant]} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
 
 const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
+  const { createTask, updateTask, removeTask } = useUploadProgress();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -30,6 +43,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentTaskId, setCurrentTaskId] = useState(null);
   const fileInputRef = useRef(null);
   
   // AI Agent related states
@@ -106,6 +120,16 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     setUploading(true);
     setUploadProgress(0);
 
+    // Create background task
+     const createdTaskId = createTask({
+       title: formData.title,
+       type: 'course_upload',
+       status: 'uploading',
+       uploadProgress: 0,
+       enableAI: enableAI
+     });
+     setCurrentTaskId(createdTaskId);
+
     try {
       // Create FormData object
       const formDataToSend = new FormData();
@@ -115,22 +139,37 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       formDataToSend.append('teacherId', '1'); // Temporarily hardcode teacher ID
       formDataToSend.append('handbookFile', file);
 
-      // Call backend API
+      // Call backend API with progress simulation
+      setUploadProgress(10);
+      updateTask(createdTaskId, { uploadProgress: 10 });
+      
       const response = await fetch('http://localhost:8080/courses/upload', {
         method: 'POST',
         body: formDataToSend,
       });
 
+      setUploadProgress(50);
+      updateTask(createdTaskId, { uploadProgress: 50 });
+
       if (!response.ok) {
         throw new Error('Upload failed');
       }
 
+      setUploadProgress(80);
+      updateTask(createdTaskId, { uploadProgress: 80 });
+
       const courseData = await response.json();
       setUploadProgress(100);
+      
+      // Update task progress
+       updateTask(createdTaskId, {
+         uploadProgress: 100,
+         status: enableAI ? 'ai_processing' : 'completed'
+       });
 
       // If AI is enabled, trigger AI processing
       if (enableAI) {
-        await handleAIProcessing(courseData.id);
+        await handleAIProcessing(courseData.id, createdTaskId);
       } else {
         // Complete upload process directly
         completeUpload(courseData);
@@ -141,15 +180,30 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       alert('Upload failed, please try again');
       setUploading(false);
       setUploadProgress(0);
+      
+      // Update task status
+       if (createdTaskId) {
+         updateTask(createdTaskId, {
+           status: 'failed',
+           error: error.message
+         });
+       }
     }
   };
 
   // AI processing function
-  const handleAIProcessing = async (courseId) => {
+  const handleAIProcessing = async (courseId, taskId) => {
     try {
       setAiProcessing(true);
       setAiStatus('Starting AI analysis...');
       setAiProgress(10);
+      
+      // Update task for AI processing
+      updateTask(taskId, {
+        status: 'ai_processing',
+        aiStatus: 'Starting AI analysis...',
+        aiProgress: 10
+      });
 
       // Build AI processing request
       const agentRequest = {
@@ -180,8 +234,15 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       setAiStatus('AI is analyzing PDF content...');
       setAiProgress(30);
 
+      // Update task with AI task ID
+      updateTask(taskId, {
+        aiTaskId: aiData.taskId,
+        aiStatus: 'AI is analyzing PDF content...',
+        aiProgress: 30
+      });
+
       // Poll AI processing status
-      await pollAIStatus(aiData.taskId, courseId);
+      await pollAIStatus(aiData.taskId, courseId, taskId);
 
     } catch (error) {
       console.error('AI processing failed:', error);
@@ -190,26 +251,40 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       
       // Complete basic upload process even if AI fails
       setTimeout(() => {
-        completeUpload({ id: courseId });
+        completeUpload({ id: courseId }, taskId);
       }, 2000);
     }
   };
 
   // Poll AI processing status
-  const pollAIStatus = async (taskId, courseId) => {
+  const pollAIStatus = async (aiTaskId, courseId, frontendTaskId) => {
     const maxAttempts = 60; // Poll for maximum 5 minutes
     let attempts = 0;
 
     const poll = async () => {
       try {
-        const statusResponse = await fetch(`http://localhost:8080/api/agent/status/${taskId}`);
+        const statusResponse = await fetch(`http://localhost:8080/api/agent/status/${aiTaskId}`);
         if (!statusResponse.ok) {
           throw new Error('Failed to get AI status');
         }
 
         const statusData = await statusResponse.json();
+        console.log('AI Status Response:', statusData); // Debug log
+        console.log('Current frontend task ID:', frontendTaskId); // Debug log
         setAiStatus(statusData.message || statusData.currentStep || 'Processing...');
-        setAiProgress(Math.min(30 + statusData.progress * 0.6, 90));
+        
+        // Use progress directly from backend (0-100)
+        const aiProgressValue = Math.min(Math.max(statusData.progress || 0, 0), 100);
+        console.log('Setting AI Progress:', aiProgressValue, 'for frontend task:', frontendTaskId); // Debug log
+        setAiProgress(aiProgressValue);
+        
+        // Update task progress in context
+        console.log('About to update task with ID:', frontendTaskId, 'aiProgress:', aiProgressValue);
+        updateTask(frontendTaskId, {
+          aiStatus: statusData.message || statusData.currentStep || 'Processing...',
+          aiProgress: aiProgressValue
+        });
+        console.log('Task update called successfully');
 
         if (statusData.status === 'COMPLETED') {
           setAiStatus('AI analysis completed! Quiz questions generated');
@@ -217,8 +292,16 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
           setAiResult(statusData);
           setAiProcessing(false);
           
+          // Update task completion
+          updateTask(frontendTaskId, {
+            status: 'completed',
+            aiStatus: 'AI analysis completed! Quiz questions generated',
+            aiProgress: 100,
+            aiResult: statusData
+          });
+          
           setTimeout(() => {
-            completeUpload({ id: courseId });
+            completeUpload({ id: courseId }, frontendTaskId);
           }, 1500);
           return;
         }
@@ -241,7 +324,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
         setAiProcessing(false);
         
         setTimeout(() => {
-          completeUpload({ id: courseId });
+          completeUpload({ id: courseId }, frontendTaskId);
         }, 2000);
       }
     };
@@ -251,9 +334,17 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
   };
 
   // Complete upload process
-  const completeUpload = (courseData) => {
+  const completeUpload = (courseData, taskId = null) => {
     // Call parent component's upload callback
     onUpload(courseData);
+    
+    // Remove task from background
+    const taskIdToRemove = taskId || currentTaskId;
+    if (taskIdToRemove) {
+      setTimeout(() => {
+        removeTask(taskIdToRemove);
+      }, 3000);
+    }
     
     // Reset form
     setFormData({
@@ -268,6 +359,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     setAiStatus('');
     setAiTaskId(null);
     setAiResult(null);
+    setCurrentTaskId(null);
     
     // Delay closing modal
     setTimeout(() => {
@@ -293,13 +385,28 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">Upload New Course</h3>
-            <button
-              onClick={onClose}
-              disabled={uploading || aiProcessing}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {(uploading || aiProcessing) && (
+                <button
+                  onClick={() => {
+                    // Allow minimizing during upload
+                    onClose();
+                  }}
+                  className="text-blue-500 hover:text-blue-700 transition-colors flex items-center space-x-1"
+                  title="Minimize to background"
+                >
+                  <Minimize2 className="w-5 h-5" />
+                  <span className="text-sm">Minimize</span>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                disabled={false}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -583,9 +690,9 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                disabled={uploading || aiProcessing}
+                disabled={false}
               >
-                Cancel
+                {(uploading || aiProcessing) ? 'Minimize' : 'Cancel'}
               </Button>
               <Button
                 type="submit"

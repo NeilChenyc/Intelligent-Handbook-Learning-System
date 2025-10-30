@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { UploadProgressProvider } from './contexts/UploadProgressContext';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import Header from './components/Header';
@@ -17,6 +18,7 @@ import CourseManagementPage from './components/CourseManagementPage';
 import QuizManagementPage from './components/QuizManagementPage';
 import TestQuizPage from './components/TestQuizPage';
 import ChatbotPage from './components/ChatbotPage';
+import UploadProgressIndicator from './components/UploadProgressIndicator';
 
 // 主应用内容组件
 const AppContent = () => {
@@ -284,6 +286,9 @@ const AppContent = () => {
           {renderContent()}
         </main>
       </div>
+      
+      {/* 上传进度指示器 */}
+      <UploadProgressIndicator />
     </div>
   );
 };
@@ -291,7 +296,9 @@ const AppContent = () => {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <UploadProgressProvider>
+        <AppContent />
+      </UploadProgressProvider>
     </AuthProvider>
   );
 }

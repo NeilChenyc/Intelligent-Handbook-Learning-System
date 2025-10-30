@@ -19,6 +19,7 @@ public class CourseSummaryDTO {
     private String handbookContentType;
     private String department;
     private LocalDateTime createdAt;
+    private Integer quizCount;
 
     public CourseSummaryDTO(Long id, String title, String description, Boolean isActive,
                             Long teacherId, String teacherFullName,
@@ -31,6 +32,7 @@ public class CourseSummaryDTO {
         this.teacherFullName = teacherFullName;
         this.handbookFileName = handbookFileName;
         this.createdAt = createdAt;
+        this.quizCount = 0; // 默认值
     }
 
     // 新增构造函数，包含department字段
@@ -46,5 +48,6 @@ public class CourseSummaryDTO {
         this.handbookFileName = handbookFileName;
         this.department = department;
         this.createdAt = createdAt;
+        this.quizCount = 0; // 默认值
     }
 }

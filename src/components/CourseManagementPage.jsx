@@ -114,20 +114,19 @@ const CourseManagementPage = () => {
   // 新增：删除课程（级联硬删除）
   const handleDeleteCourse = async (course) => {
     const ok = window.confirm(
-      `确定要删除课程“${course.title}”吗？\n这将从数据库中删除该课程、所有关联测验、这些测验的题目与选项，以及错题记录与相关测验提交/作答。此操作不可恢复。`
+      `Are you sure you want to delete the course?“${course.title}”`
     );
     if (!ok) return;
 
     try {
       await deleteCourseCascade(course.id);
-      alert('课程及关联数据已删除');
+      alert('Courses and related data have been deleted.');
       fetchCourses();
     } catch (err) {
       alert('删除失败: ' + (err.message || '请检查后端服务'));
     }
   };
 
-  // 如果选中了课程进行题目管理，显示题目管理页面
   if (selectedCourseForQuestions) {
     return (
       <QuestionManagementPage 

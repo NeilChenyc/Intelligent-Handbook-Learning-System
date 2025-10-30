@@ -127,7 +127,7 @@ public class PdfQuizAgentService {
 
         try {
             // 更新任务状态
-            updateTaskStatus(taskId, "IN_PROGRESS", 10, "开始处理课程...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 10, "Starting course processing...", request.getCourseId());
 
             // 1. 获取课程信息
             Course course = courseRepository.findById(request.getCourseId())
@@ -137,7 +137,7 @@ public class PdfQuizAgentService {
                 throw new RuntimeException("课程未上传PDF文件");
             }
 
-            updateTaskStatus(taskId, "IN_PROGRESS", 20, "读取PDF内容...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 20, "Reading PDF content...", request.getCourseId());
 
             // 2. 读取PDF内容
             String pdfContent = readPdfContent(course.getHandbookFilePath());
@@ -145,19 +145,19 @@ public class PdfQuizAgentService {
                 log.warn("PDF文本读取失败或为空，继续使用文件输入进行AI处理");
             }
 
-            updateTaskStatus(taskId, "IN_PROGRESS", 40, "调用AI生成测验...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 40, "Calling AI to generate quizzes...", request.getCourseId());
 
             // 3. 调用OpenAI生成测验
             QuizGenerationRequest.QuizGenerationResponse generationResponse = 
                     generateQuizzesWithAI(pdfContent, course, request, taskId);
 
-            updateTaskStatus(taskId, "IN_PROGRESS", 70, "保存测验到数据库...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 70, "Saving quizzes to database...", request.getCourseId());
 
             // 4. 保存生成的测验到数据库
             List<AgentProcessResult.QuizSummary> quizSummaries = 
                     saveGeneratedQuizzes(course, generationResponse, request.getOverwriteExisting());
 
-            updateTaskStatus(taskId, "COMPLETED", 100, "处理完成", request.getCourseId());
+            updateTaskStatus(taskId, "COMPLETED", 100, "Processing completed", request.getCourseId());
 
             LocalDateTime endTime = LocalDateTime.now();
             long processingTime = java.time.Duration.between(startTime, endTime).toMillis();
@@ -167,7 +167,7 @@ public class PdfQuizAgentService {
                     .taskId(taskId)
                     .courseId(request.getCourseId())
                     .generatedQuizzes(quizSummaries)
-                    .processingLog("成功生成 " + quizSummaries.size() + " 个测验")
+                    .processingLog("Successfully generated " + quizSummaries.size() + " quizzes")
                     .startTime(startTime)
                     .endTime(endTime)
                     .processingTimeMs(processingTime)
@@ -176,7 +176,7 @@ public class PdfQuizAgentService {
         } catch (Exception e) {
             log.error("处理课程失败: courseId={}, error={}", request.getCourseId(), e.getMessage(), e);
             
-            updateTaskStatus(taskId, "FAILED", 0, "处理失败: " + e.getMessage(), request.getCourseId());
+            updateTaskStatus(taskId, "FAILED", 0, "Processing failed: " + e.getMessage(), request.getCourseId());
 
             return AgentProcessResult.builder()
                     .status("FAILED")
@@ -202,7 +202,7 @@ public class PdfQuizAgentService {
      * 异步处理课程（使用外部提供的 taskId）
      */
     public CompletableFuture<AgentProcessResult> processCourseAsync(AgentProcessRequest request, String taskId) {
-        updateTaskStatus(taskId, "PENDING", 0, "任务已创建，等待开始", request.getCourseId());
+        updateTaskStatus(taskId, "PENDING", 0, "Task created, waiting to start", request.getCourseId());
         return CompletableFuture.supplyAsync(() -> processCourseWithTaskId(request, taskId));
     }
 
@@ -257,21 +257,21 @@ public class PdfQuizAgentService {
             }
             if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
                 log.warn("OpenAI API密钥未配置或为默认值，终止任务");
-                updateTaskStatus(taskId, "FAILED", 42, "OpenAI密钥未配置，任务终止", request.getCourseId());
+                updateTaskStatus(taskId, "FAILED", 42, "OpenAI API key not configured, task terminated", request.getCourseId());
                 throw new RuntimeException("OpenAI API密钥未配置或无效");
             }
 
             // 上传PDF并调用Responses API
-            updateTaskStatus(taskId, "IN_PROGRESS", 45, "上传PDF到OpenAI...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 45, "Uploading PDF to OpenAI...", request.getCourseId());
             byte[] pdfBytes = course.getHandbookFilePath();
             String fileName = java.util.Optional.ofNullable(course.getHandbookFileName()).orElse("course.pdf");
             String fileId = uploadPdfToOpenAI(pdfBytes, fileName);
             if (fileId == null) {
                 log.warn("上传PDF到OpenAI失败，终止任务");
-                updateTaskStatus(taskId, "FAILED", 46, "上传PDF失败，任务终止", request.getCourseId());
+                updateTaskStatus(taskId, "FAILED", 46, "PDF upload failed, task terminated", request.getCourseId());
                 throw new RuntimeException("上传PDF到OpenAI失败");
             }
-            updateTaskStatus(taskId, "IN_PROGRESS", 48, "PDF上传成功", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 48, "PDF uploaded successfully", request.getCourseId());
 
             String prompt = buildPrompt(
                     (pdfContent == null || pdfContent.isBlank()) ? "（由OpenAI读取PDF内容）" : pdfContent,
@@ -279,23 +279,23 @@ public class PdfQuizAgentService {
                     request
             );
 
-            updateTaskStatus(taskId, "IN_PROGRESS", 50, "调用OpenAI Responses...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 50, "Calling OpenAI Responses...", request.getCourseId());
             String responseText = callOpenAIResponses(fileId, prompt, request);
             if (responseText == null || responseText.isBlank()) {
                 log.warn("Responses API返回为空，切换到后备测验生成");
-                updateTaskStatus(taskId, "IN_PROGRESS", 52, "Responses为空，使用后备生成", request.getCourseId());
+                updateTaskStatus(taskId, "IN_PROGRESS", 52, "Response empty, using fallback generation", request.getCourseId());
                 return generateFallbackQuizzes(course, request);
             }
             log.info("Responses 返回文本长度: {}", responseText.length());
-            updateTaskStatus(taskId, "IN_PROGRESS", 60, "解析AI响应...", request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 60, "Parsing AI response...", request.getCourseId());
 
             QuizGenerationRequest.QuizGenerationResponse r = parseAIResponse(responseText);
             int quizCountParsed = r.getQuizzes() != null ? r.getQuizzes().size() : 0;
-            updateTaskStatus(taskId, "IN_PROGRESS", 65, "解析完成，测验数: " + quizCountParsed, request.getCourseId());
+            updateTaskStatus(taskId, "IN_PROGRESS", 65, "Parsing completed, quiz count: " + quizCountParsed, request.getCourseId());
             return r;
         } catch (Exception e) {
             log.error("AI生成测验失败，任务终止", e);
-            updateTaskStatus(taskId, "FAILED", 55, "AI生成失败: " + e.getMessage(), request.getCourseId());
+            updateTaskStatus(taskId, "FAILED", 55, "AI generation failed: " + e.getMessage(), request.getCourseId());
             throw e;
         }
     }

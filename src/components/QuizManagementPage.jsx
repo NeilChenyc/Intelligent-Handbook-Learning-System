@@ -223,7 +223,7 @@ const QuizManagementPage = ({ course, onBack }) => {
                     
                     {quiz.type === 'multiple-choice' && quiz.options && (
                       <div className="mb-3">
-                        <p className="text-sm font-medium text-gray-700 mb-2">选项：</p>
+                        <p className="text-sm font-medium text-gray-700 mb-2">Options:</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {quiz.options.map((option, optionIndex) => (
                             <div 
@@ -248,7 +248,7 @@ const QuizManagementPage = ({ course, onBack }) => {
                     
                     {quiz.explanation && (
                       <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                        <p className="text-sm font-medium text-blue-900 mb-1">解析：</p>
+                        <p className="text-sm font-medium text-blue-900 mb-1">Explanation:</p>
                         <p className="text-sm text-blue-800">{quiz.explanation}</p>
                       </div>
                     )}

@@ -310,7 +310,7 @@ const CertificatePage = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <p className="text-sm text-gray-500">Course</p>
-                          <p className="font-medium">{cert?.course?.courseName || 'N/A'}</p>
+                          <p className="font-medium">{cert?.course?.title || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Department</p>

@@ -586,7 +586,7 @@ const ReportPage = () => {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg">加载中...</div>
+          <div className="text-lg">Loading...</div>
         </div>
       </div>
     );

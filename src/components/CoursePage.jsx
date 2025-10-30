@@ -311,7 +311,7 @@ const CoursePage = () => {
                       <div className="flex items-center space-x-2">
                         <CheckCircle className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-600">
-                          Quiz Count: {course.quizzes?.length || 0}
+                          Quiz Count: {course.quizCount || 0}
                         </span>
                       </div>
                     </div>
