@@ -21,15 +21,30 @@ const API_BASE_URL = 'http://localhost:8080';
 // Chatbot会话管理
 class ChatbotSession {
   constructor() {
+    this.HISTORY_TTL_MS = 10 * 60 * 1000; // 10分钟保留
     this.conversationHistory = this.loadConversationHistory();
     this.maxHistoryLength = 5; // 最多保存5轮对话
   }
 
-  // 从sessionStorage加载对话历史
+  // 从sessionStorage加载对话历史，并按10分钟TTL过滤
   loadConversationHistory() {
     try {
       const saved = sessionStorage.getItem('chatbot_conversation_history');
-      return saved ? JSON.parse(saved) : [];
+      const history = saved ? JSON.parse(saved) : [];
+      const now = Date.now();
+      // 仅保留10分钟内的记录
+      const filtered = Array.isArray(history)
+        ? history.filter(conv => {
+            if (!conv || !conv.timestamp) return false;
+            const ts = new Date(conv.timestamp).getTime();
+            return now - ts <= this.HISTORY_TTL_MS;
+          })
+        : [];
+      // 如果有过滤变化则写回
+      if (filtered.length !== (history?.length || 0)) {
+        sessionStorage.setItem('chatbot_conversation_history', JSON.stringify(filtered));
+      }
+      return filtered;
     } catch (error) {
       console.error('Error loading conversation history:', error);
       return [];
@@ -46,11 +61,12 @@ class ChatbotSession {
   }
 
   // 添加对话到历史记录
-  addToHistory(userMessage, botResponse) {
+  addToHistory(userMessage, botResponse, toolsUsed = []) {
     const conversation = {
       timestamp: new Date().toISOString(),
       userMessage,
-      botResponse
+      botResponse,
+      toolsUsed: Array.isArray(toolsUsed) ? toolsUsed : []
     };
 
     this.conversationHistory.push(conversation);
@@ -403,7 +419,11 @@ export const sendChatMessage = async (userMessage, userId = null) => {
     const backendResponse = await generateAIResponse(userMessage);
 
     // 添加到对话历史
-    chatbotSession.addToHistory(userMessage, backendResponse.message || backendResponse.response || '');
+    chatbotSession.addToHistory(
+      userMessage,
+      backendResponse.message || backendResponse.response || '',
+      backendResponse.toolsUsed || []
+    );
 
     return {
       success: true,

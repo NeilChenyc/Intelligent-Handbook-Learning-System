@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github.css';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Send, Bot, User, RefreshCw, MessageCircle, Trash2 } from 'lucide-react';
@@ -21,7 +25,27 @@ const ChatbotPage = () => {
   // 加载聊天历史
   const loadChatHistory = () => {
     const history = getChatHistory();
-    setMessages(history);
+    // 将会话历史（每条包含 userMessage/botResponse）转换为UI消息队列
+    const reconstructed = [];
+    (history || []).forEach((conv, idx) => {
+      const baseTs = conv.timestamp || new Date().toISOString();
+      // 用户消息
+      reconstructed.push({
+        id: `${baseTs}-u-${idx}`,
+        type: 'user',
+        content: conv.userMessage || '',
+        timestamp: baseTs
+      });
+      // 助手消息
+      reconstructed.push({
+        id: `${baseTs}-a-${idx}`,
+        type: 'assistant',
+        content: conv.botResponse || '',
+        timestamp: baseTs,
+        toolsUsed: Array.isArray(conv.toolsUsed) ? conv.toolsUsed : []
+      });
+    });
+    setMessages(reconstructed);
   };
 
   // 清空聊天历史
@@ -181,7 +205,48 @@ const ChatbotPage = () => {
                         <User size={16} className="text-white" />
                       )}
                       <div className="flex-1">
-                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        {message.type === 'assistant' ? (
+                          <div className="text-sm leading-relaxed break-words">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              rehypePlugins={[rehypeHighlight]}
+                              components={{
+                                a: ({node, ...props}) => (
+                                  <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" />
+                                ),
+                                code: ({inline, className, children, ...props}) => {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  return inline ? (
+                                    <code className="bg-gray-200 rounded px-1 py-0.5" {...props}>{children}</code>
+                                  ) : (
+                                    <pre className="bg-gray-900 text-gray-100 rounded p-3 overflow-auto">
+                                      <code className={className || (match ? `language-${match[1]}` : '')} {...props}>{children}</code>
+                                    </pre>
+                                  );
+                                },
+                                table: ({node, ...props}) => (
+                                  <table {...props} className="w-full border-collapse my-2" />
+                                ),
+                                thead: ({node, ...props}) => (
+                                  <thead {...props} className="bg-gray-50" />
+                                ),
+                                th: ({node, ...props}) => (
+                                  <th {...props} className="border px-3 py-1 text-left align-top" />
+                                ),
+                                td: ({node, ...props}) => (
+                                  <td {...props} className="border px-3 py-1 align-top" />
+                                ),
+                                img: ({node, ...props}) => (
+                                  <img {...props} alt={props.alt || ''} className="rounded max-w-full" />
+                                )
+                              }}
+                            >
+                              {renderAssistantContent(message.content)}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        )}
                         {message.toolsUsed && message.toolsUsed.length > 0 && (
                           <div className="mt-2 text-xs opacity-75">
                             <p>Tools used: {message.toolsUsed.join(', ')}</p>
@@ -247,3 +312,49 @@ const ChatbotPage = () => {
 };
 
 export default ChatbotPage;
+  // 将“用空格列对齐”的文本转换为 Markdown 表格（GFM）
+  const convertTextTablesToMarkdown = (text) => {
+    if (!text || typeof text !== 'string') return text;
+
+    const lines = text.split('\n');
+    const isHeaderLike = (line) => {
+      const tokens = line.trim().split(/\s{2,}/).filter(Boolean);
+      const hasHeaderWords = /(课程|标题|描述|部门|老师|教师)/.test(line);
+      return tokens.length >= 3 && hasHeaderWords;
+    };
+
+    let startIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (isHeaderLike(lines[i])) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    if (startIndex === -1) return text;
+
+    const headerTokens = lines[startIndex].trim().split(/\s{2,}/).filter(Boolean);
+    const rows = [];
+    for (let i = startIndex + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line || !line.trim()) break;
+      const cells = line.trim().split(/\s{2,}/).filter(Boolean);
+      // 至少两列才算有效数据行
+      if (cells.length < 2) break;
+      rows.push(cells);
+    }
+
+    if (rows.length === 0) return text;
+
+    const header = `| ${headerTokens.join(' | ')} |`;
+    const sep = `| ${headerTokens.map(() => '---').join(' | ')} |`;
+    const body = rows.map(r => `| ${r.join(' | ')} |`).join('\n');
+
+    const before = lines.slice(0, startIndex).join('\n');
+    const after = lines.slice(startIndex + 1 + rows.length).join('\n');
+    const table = `${header}\n${sep}\n${body}`;
+
+    return [before, table, after].filter(Boolean).join('\n\n');
+  };
+
+  const renderAssistantContent = (text) => convertTextTablesToMarkdown(text);
