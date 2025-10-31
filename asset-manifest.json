@@ -1,11 +1,11 @@
 {
   "files": {
     "main.css": "/Intelligent-Handbook-Learning-System/static/css/main.278aa7cc.css",
-    "main.js": "/Intelligent-Handbook-Learning-System/static/js/main.72073f5f.js",
+    "main.js": "/Intelligent-Handbook-Learning-System/static/js/main.15f14776.js",
     "index.html": "/Intelligent-Handbook-Learning-System/index.html"
   },
   "entrypoints": [
     "static/css/main.278aa7cc.css",
-    "static/js/main.72073f5f.js"
+    "static/js/main.15f14776.js"
   ]
 }
