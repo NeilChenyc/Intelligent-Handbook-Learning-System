@@ -23,7 +23,9 @@ public class CorsConfig implements WebMvcConfigurer {
                     "https://*.azurewebsites.net",
                     "https://*.ngrok-free.app",
                     "https://neilchenyc.github.io",
-                    "https://*.github.io"
+                    "https://*.github.io",
+                    "https://3hl20s25-8080.aue.devtunnels.ms",
+                    "https://*.devtunnels.ms"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
@@ -41,7 +43,9 @@ public class CorsConfig implements WebMvcConfigurer {
             "https://*.azurewebsites.net",
             "https://*.ngrok-free.app",
             "https://neilchenyc.github.io",
-            "https://*.github.io"
+            "https://*.github.io",
+            "https://3hl20s25-8080.aue.devtunnels.ms",
+            "https://*.devtunnels.ms"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

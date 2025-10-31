@@ -18,7 +18,9 @@ import java.util.Optional;
 @RequestMapping("/certificates")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {
+    "http://localhost:3000"
+}, allowCredentials = "true", maxAge = 3600)
 public class CertificateController {
 
     private final CertificateService certificateService;
