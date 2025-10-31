@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:8080';
 
-// 获取课程下的所有题目
+// Get all questions under course
 export const getQuestionsByCourse = async (courseId) => {
   const response = await fetch(`${API_BASE_URL}/questions/course/${courseId}`);
   if (!response.ok) {
@@ -9,9 +9,9 @@ export const getQuestionsByCourse = async (courseId) => {
   return response.json();
 };
 
-// 创建新题目
+// Create new question
 export const createQuestion = async (questionData) => {
-  // 构建请求数据，匹配后端DTO格式
+  // Build request data to match backend DTO format
   const requestData = {
     text: questionData.questionText,
     type: questionData.type,
@@ -39,9 +39,9 @@ export const createQuestion = async (questionData) => {
   return response.json();
 };
 
-// 更新题目
+// Update question
 export const updateQuestion = async (questionId, questionData) => {
-  // 构建请求数据，确保quiz对象格式正确
+  // Build request data, ensure quiz object format is correct
   const requestData = {
     questionText: questionData.questionText,
     type: questionData.type,
@@ -69,7 +69,7 @@ export const updateQuestion = async (questionId, questionData) => {
   return response.json();
 };
 
-// 删除题目
+// Delete question
 export const deleteQuestion = async (questionId) => {
   const response = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
     method: 'DELETE',
@@ -82,7 +82,7 @@ export const deleteQuestion = async (questionId) => {
   return response.json();
 };
 
-// 批量分配题目到小测
+// Batch assign questions to quiz
 export const assignQuestionsToQuiz = async (questionIds, quizId) => {
   const response = await fetch(`${API_BASE_URL}/questions/assign-to-quiz`, {
     method: 'POST',
@@ -101,7 +101,7 @@ export const assignQuestionsToQuiz = async (questionIds, quizId) => {
   return response.json();
 };
 
-// 批量移动题目到小测
+// Batch move questions to quiz
 export const moveQuestionsToQuiz = async (questionIds, fromQuizId, toQuizId) => {
   const response = await fetch(`${API_BASE_URL}/questions/move-to-quiz`, {
     method: 'POST',

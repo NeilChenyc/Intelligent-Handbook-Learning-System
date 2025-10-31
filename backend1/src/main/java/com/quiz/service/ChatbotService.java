@@ -41,7 +41,7 @@ public class ChatbotService {
     private final PdfQuizAgentService pdfQuizAgentService;
     private final ObjectMapper objectMapper;
 
-    // In-memory store for chat memories per session
+    // TODO: Translate - In-memory store for chat memories per session
     private final Map<String, ChatMemory> memoryStore = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Per-request tool call tracking for frontend display
@@ -79,9 +79,7 @@ public class ChatbotService {
             .callTimeout(java.time.Duration.ofSeconds(150))
             .build();
 
-    /**
-     * AI助手接口，用于生成智能回复
-     */
+    /* * * AIHelperAPI，Used forGenerateIntelligentReply */
     public interface ChatAssistant {
         @SystemMessage("""
             You are an AI Learning Assistant for an educational platform. Your role is to help users with:
@@ -234,7 +232,7 @@ public class ChatbotService {
                 log.warn("UserId is null, cannot retrieve progress");
                 return Map.of("error", "User ID is required");
             }
-            // 这里可以实现具体的用户进度逻辑
+            // Specific user progress logic can be implemented here
             Map<String, Object> progress = new HashMap<>();
             progress.put("userId", userId);
             progress.put("message", "User progress feature is under development");
@@ -594,13 +592,13 @@ public class ChatbotService {
             
             List<Object> content = new ArrayList<>();
             
-            // 添加文本内容
+            // Add text content
             Map<String, Object> textContent = new HashMap<>();
             textContent.put("type", "text");
             textContent.put("text", "请详细分析这个PDF文档的内容，并根据用户的问题提供准确的回答。用户问题：" + prompt);
             content.add(textContent);
             
-            // 添加文件内容
+            // Add file content
             Map<String, Object> fileContent = new HashMap<>();
             fileContent.put("type", "file");
             Map<String, Object> fileRef = new HashMap<>();
@@ -641,9 +639,7 @@ public class ChatbotService {
 
     // ==================== SERVICE METHODS ====================
 
-    /**
-     * 处理用户消息并生成AI回复
-     */
+    /* * * ProcessUserMessage并GenerateAIReply */
     public ChatbotResponse processMessage(ChatbotRequest request) {
         try {
             log.info("Processing chatbot message: {}", request.getMessage());
@@ -652,7 +648,7 @@ public class ChatbotService {
             // Initialize per-request tool calls tracking
             toolCallsContext.set(new java.util.ArrayList<>());
             
-            // 生成AI回复（AI会自主决定是否调用工具）
+            // Generate AI reply (AI will autonomously decide whether to call tools)
             String response = generateResponse(request.getMessage(), request.getSessionId());
             
             boolean isFallback = isFallbackResponse(response);
@@ -684,12 +680,10 @@ public class ChatbotService {
         }
     }
 
-    /**
-     * 获取当前已注册的工具列表（用于前端展示/调试）
-     */
+    /* * * Get当前已Register的ToolList（Used for前端展示/Debugging） */
     public List<String> getAvailableTools() {
         try {
-            // 显式返回在本服务中通过 @Tool 暴露的工具名称
+            // Explicitly return tool names exposed through @Tool in this service
             List<String> tools = List.of(
                 "getAllCoursesSummary",
                 "getComplianceReport",
@@ -712,9 +706,7 @@ public class ChatbotService {
         }
     }
 
-    /**
-     * 获取课程手册内容与元数据，供AI上下文或前端调试使用
-     */
+    /* * * GetCourseManualContent与元Data，供AIContext或前端Debugging使用 */
     public Map<String, Object> getCourseHandbookContent(Long courseId) {
         try {
             if (courseId == null) {
@@ -737,7 +729,7 @@ public class ChatbotService {
             boolean hasHandbook = course.getHandbookFilePath() != null && course.getHandbookFileSize() != null && course.getHandbookFileSize() > 0;
             result.put("handbookPresent", hasHandbook);
 
-            // 提供一个受限长度的Base64预览，避免传输过大
+            // Provide a limited-length Base64 preview to avoid oversized transmission
             if (hasHandbook) {
                 String base64 = course.getHandbookContent();
                 if (base64 != null) {
@@ -845,9 +837,7 @@ public class ChatbotService {
         }
     }
 
-    /**
-     * OpenAI 健康检查：快速验证模型能否返回内容
-     */
+    /* * * OpenAI 健康Check：快速ValidateModel能否ReturnContent */
     public java.util.Map<String, Object> pingOpenAI() {
         java.util.Map<String, Object> result = new java.util.HashMap<>();
         try {
@@ -883,9 +873,7 @@ public class ChatbotService {
         }
     }
 
-    /**
-     * 生成后备回复
-     */
+    /* * * Generate后备Reply */
     private String generateFallbackResponse(String userMessage) {
         String message = userMessage.toLowerCase().trim();
         

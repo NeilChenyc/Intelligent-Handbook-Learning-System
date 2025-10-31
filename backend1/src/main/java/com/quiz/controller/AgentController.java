@@ -23,12 +23,10 @@ public class AgentController {
 
     private final PdfQuizAgentService pdfQuizAgentService;
 
-    /**
-     * 触发AI处理课程PDF，自动生成测验
-     * @param courseId 课程ID
-     * @param request 处理请求参数
-     * @return 处理结果
-     */
+    /* * * 触发AIProcessCoursePDF，自动生成测验
+     * @param courseId CourseID
+     * @param request ProcessRequestParameter
+     * @return ProcessResult */
     @PostMapping("/process-course/{courseId}")
     public ResponseEntity<AgentProcessResult> processCourse(
             @PathVariable("courseId") Long courseId,
@@ -36,10 +34,10 @@ public class AgentController {
         try {
             log.info("Received AI processing request for course: {}, request: {}", courseId, request);
             
-            // 设置课程ID
+            // Set course ID
             request.setCourseId(courseId);
             
-            // 执行AI处理
+            // Execute AI processing
             AgentProcessResult result = pdfQuizAgentService.processCourse(request);
             
             log.info("AI processing completed for course: {}, status: {}", courseId, result.getStatus());
@@ -66,12 +64,10 @@ public class AgentController {
         }
     }
 
-    /**
-     * 异步触发AI处理课程PDF
-     * @param courseId 课程ID
-     * @param request 处理请求参数
-     * @return 任务ID和初始状态
-     */
+    /* * * Asynchronous触发AIProcessCoursePDF
+     * @param courseId CourseID
+     * @param request ProcessRequestParameter
+     * @return TaskID和初始Status */
     @PostMapping("/process-course/{courseId}/async")
     public ResponseEntity<Map<String, Object>> processCourseAsync(
             @PathVariable("courseId") Long courseId,
@@ -79,10 +75,10 @@ public class AgentController {
         try {
             log.info("Received async AI processing request for course: {}", courseId);
             
-            // 设置课程ID
+            // Set course ID
             request.setCourseId(courseId);
             
-            // 异步执行AI处理，确保Controller与Service使用同一taskId
+            // Asynchronously execute AI processing, ensure Controller and Service use same taskId
             String taskId = java.util.UUID.randomUUID().toString();
             pdfQuizAgentService.processCourseAsync(request, taskId);
             
@@ -103,11 +99,9 @@ public class AgentController {
         }
     }
 
-    /**
-     * 获取AI处理任务状态
-     * @param taskId 任务ID
-     * @return 处理状态
-     */
+    /* * * GetAIProcessTaskStatus
+     * @param taskId TaskID
+     * @return ProcessStatus */
     @GetMapping("/status/{taskId}")
     public ResponseEntity<ProcessingStatus> getProcessingStatus(@PathVariable("taskId") String taskId) {
         try {
@@ -134,10 +128,8 @@ public class AgentController {
         }
     }
 
-    /**
-     * 健康检查端点
-     * @return 服务状态
-     */
+    /* * * 健康Check端点
+     * @return ServiceStatus */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         try {

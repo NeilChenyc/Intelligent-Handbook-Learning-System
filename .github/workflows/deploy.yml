@@ -25,6 +25,10 @@ jobs:
       
     - name: Build
       run: npm run build
+      env:
+        REACT_APP_API_BASE_URL: https://5620-gpgthzarcqduh2fe.australiaeast-01.azurewebsites.net
+        REACT_APP_ENVIRONMENT: production
+        GENERATE_SOURCEMAP: false
       
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3

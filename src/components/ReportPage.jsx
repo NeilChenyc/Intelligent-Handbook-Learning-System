@@ -14,7 +14,7 @@ const ReportPage = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState('current');
   
-  // 固定的部门列表，与其他组件保持一致
+  // TODO: Translate - Fixed department list, consistent with other components
   const departments = [
     { value: 'all', label: 'All Departments' },
     { value: 'Engineering', label: 'Engineering' },
@@ -24,7 +24,7 @@ const ReportPage = () => {
     { value: 'Operations', label: 'Operations' }
   ];
   
-  // 状态管理 - 从API获取的数据
+  // State management - data from API
   const [organizationData, setOrganizationData] = useState(null);
   const [departmentStats, setDepartmentStats] = useState([]);
   const [employeeReports, setEmployeeReports] = useState([]);
@@ -33,7 +33,7 @@ const ReportPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 导出报告功能
+  // Export report functionality
   const exportReport = () => {
     const reportData = {
       organizationReport: organizationData,
@@ -48,12 +48,12 @@ const ReportPage = () => {
     downloadHTML(htmlTemplate, `Compliance_Report_${new Date().toISOString().split('T')[0]}.html`);
   };
 
-  // 生成报告HTML模板
+  // Generate report HTML template
   const generateReportHTML = (data) => {
-    // 添加数据验证和调试信息
+    // Add data validation and debug info
     console.log('Export data:', data);
     
-    // 确保数据存在，提供默认值
+    // Ensure data exists, provide default values
     const orgData = data.organizationReport || {};
     const deptStats = data.departmentStats || [];
     const empReports = data.employeeReports || [];
@@ -507,7 +507,7 @@ const ReportPage = () => {
     `;
   };
 
-  // 下载HTML文件
+  // Download HTML file
   const downloadHTML = (htmlContent, filename) => {
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const link = document.createElement('a');
@@ -523,7 +523,7 @@ const ReportPage = () => {
       try {
         setLoading(true);
         
-        // 并行获取所有数据
+        // Get all data in parallel
         const [
           orgData,
           deptStats,
@@ -555,7 +555,7 @@ const ReportPage = () => {
     fetchData();
   }, []);
 
-  // 当部门筛选改变时重新获取员工报告
+  // Refetch employee reports when department filter changes
   useEffect(() => {
     const fetchEmployeeReports = async () => {
       try {
@@ -564,7 +564,7 @@ const ReportPage = () => {
         setEmployeeReports(Array.isArray(empReports?.employeeReports) ? empReports.employeeReports : []);
       } catch (err) {
         console.error('Error fetching employee reports:', err);
-        setEmployeeReports([]); // 出错时设置为空数组
+        setEmployeeReports([]); // Set to empty array on error
       }
     };
 
@@ -573,7 +573,7 @@ const ReportPage = () => {
     }
   }, [selectedDepartment, loading, organizationData]);
 
-  // 筛选员工报告数据
+  // Filter employee report data
   const filteredEmployeeReports = Array.isArray(employeeReports) ? employeeReports.filter(report => {
     if (selectedDepartment !== 'all' && report.department !== selectedDepartment) {
       return false;
@@ -581,7 +581,7 @@ const ReportPage = () => {
     return true;
   }) : [];
 
-  // 加载状态
+  // Loading state
   if (loading) {
     return (
       <div className="p-6">
@@ -592,18 +592,18 @@ const ReportPage = () => {
     );
   }
 
-  // 错误状态
+  // Error state
   if (error) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-600">加载数据时出错: {error}</div>
+          <div className="text-lg text-red-600">{error}</div>
         </div>
       </div>
     );
   }
 
-  // 如果没有数据
+  // If no data
   if (!organizationData) {
     return (
       <div className="p-6">
@@ -649,7 +649,7 @@ const ReportPage = () => {
         <p className="text-gray-600">Administrator View - Monitor compliance completion status for all employees in the organization</p>
       </div>
 
-      {/* 组织合规概览 */}
+      {/* 组织Compliance概览 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
@@ -693,7 +693,7 @@ const ReportPage = () => {
           </CardContent>
         </Card>
 
-        {/* 报告下载按钮 */}
+        {/* ReportDownloadButton */}
         <Card className="cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={exportReport}>
           <CardContent className="p-6">
             <div className="flex items-center justify-center h-full">
@@ -709,7 +709,7 @@ const ReportPage = () => {
         </Card>
       </div>
 
-      {/* 部门合规统计 */}
+      {/* 部门ComplianceStatistics */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -742,7 +742,7 @@ const ReportPage = () => {
         </CardContent>
       </Card>
 
-      {/* 月度合规趋势 */}
+      {/* Month度ComplianceTrend */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -770,7 +770,7 @@ const ReportPage = () => {
         </CardContent>
       </Card>
 
-      {/* 合规类别完成情况 */}
+      {/* ComplianceClass别完成情况 */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -809,7 +809,7 @@ const ReportPage = () => {
         </CardContent>
       </Card>
 
-      {/* 员工报告详情 */}
+      {/* 员工ReportDetails */}
       <Card className="mb-8">
         <CardHeader>
           <div className="flex justify-between items-center">

@@ -20,9 +20,7 @@ public class WrongQuestionController {
 
     private final WrongQuestionService wrongQuestionService;
 
-    /**
-     * 获取用户未重做的错题列表
-     */
+    /* * * GetUser未Redo的错题List */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestions(@PathVariable("userId") Long userId) {
         try {
@@ -36,9 +34,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 获取用户在特定课程下的错题
-     */
+    /* * * GetUser在特定Course下的错题 */
     @GetMapping("/user/{userId}/course/{courseId}")
     public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestionsByCourse(
             @PathVariable("userId") Long userId,
@@ -52,9 +48,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 获取用户在特定小测下的错题
-     */
+    /* * * GetUser在特定Quiz下的错题 */
     @GetMapping("/user/{userId}/quiz/{quizId}")
     public ResponseEntity<List<WrongQuestionDTO>> getUserWrongQuestionsByQuiz(
             @PathVariable("userId") Long userId,
@@ -68,9 +62,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 获取用户未重做错题数量统计
-     */
+    /* * * GetUser未Redo错题QuantityStatistics */
     @GetMapping("/user/{userId}/count")
     public ResponseEntity<Map<String, Long>> getUserWrongQuestionsCount(@PathVariable("userId") Long userId) {
         try {
@@ -82,9 +74,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 错题重做提交
-     */
+    /* * * 错题RedoSubmit */
     @PostMapping("/{wrongQuestionId}/redo")
     public ResponseEntity<Map<String, Object>> redoWrongQuestion(
             @PathVariable("wrongQuestionId") Long wrongQuestionId,
@@ -123,9 +113,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 获取错题详情
-     */
+    /* * * Get错题Details */
     @GetMapping("/{wrongQuestionId}")
     public ResponseEntity<WrongQuestion> getWrongQuestionDetail(@PathVariable("wrongQuestionId") Long wrongQuestionId) {
         try {
@@ -138,9 +126,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 批量标记错题为已重做（管理员功能）
-     */
+    /* * * 批量Tag错题为已Redo（AdministratorFeature） */
     @PostMapping("/batch-mark-redone")
     public ResponseEntity<Map<String, Object>> batchMarkAsRedone(@RequestBody Map<String, List<Long>> request) {
         try {
@@ -176,9 +162,7 @@ public class WrongQuestionController {
         }
     }
 
-    /**
-     * 清理已重做的错题记录（管理员功能）
-     */
+    /* * * 清理已Redo的错题Record（AdministratorFeature） */
     @DeleteMapping("/cleanup-redone")
     public ResponseEntity<Map<String, Object>> cleanupRedoneWrongQuestions() {
         try {

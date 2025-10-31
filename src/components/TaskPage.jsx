@@ -7,7 +7,7 @@ const TaskPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // 模拟任务数据
+  // TODO: Translate - Mock task data
   const tasksData = [
     {
       id: 1,
@@ -141,7 +141,7 @@ const TaskPage = () => {
         </div>
       </div>
 
-      {/* 统计概览 */}
+      {/* Statistics概览 */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
         <Card>
           <CardContent className="p-4">
@@ -214,7 +214,7 @@ const TaskPage = () => {
         </Card>
       </div>
 
-      {/* 筛选和标签页 */}
+      {/* 筛选和Label页 */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="border-b border-gray-200">
@@ -258,7 +258,7 @@ const TaskPage = () => {
         </div>
       </div>
 
-      {/* 任务列表 */}
+      {/* TaskList */}
       <div className="space-y-4">
         {filteredTasks.map((task) => (
           <Card key={task.id} className="hover:shadow-md transition-shadow">

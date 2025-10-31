@@ -20,7 +20,7 @@ import TestQuizPage from './components/TestQuizPage';
 import ChatbotPage from './components/ChatbotPage';
 import UploadProgressIndicator from './components/UploadProgressIndicator';
 
-// 主应用内容组件
+// Main app content component
 const AppContent = () => {
   const { isAuthenticated, isLoading, login } = useAuth();
   const [activeMenu, setActiveMenu] = useState('tasks');
@@ -28,10 +28,10 @@ const AppContent = () => {
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
   const [showRegister, setShowRegister] = useState(false);
 
-  // 处理菜单变化并更新历史记录
+  // Handle menu changes and update history
   const handleMenuChange = (newMenu) => {
     if (newMenu !== activeMenu) {
-      // 如果当前不在历史记录的末尾，删除后面的记录
+      // If current is not at end of history, delete following records
       const newHistory = navigationHistory.slice(0, currentHistoryIndex + 1);
       newHistory.push(newMenu);
       
@@ -39,12 +39,12 @@ const AppContent = () => {
       setCurrentHistoryIndex(newHistory.length - 1);
       setActiveMenu(newMenu);
       
-      // 更新浏览器历史记录
+      // Update browser history
       window.history.pushState({ menu: newMenu, index: newHistory.length - 1 }, '', `#${newMenu}`);
     }
   };
 
-  // 处理浏览器前进后退事件
+  // Handle browser forward/back events
   useEffect(() => {
     const handlePopState = (event) => {
       if (event.state && event.state.menu) {
@@ -54,10 +54,10 @@ const AppContent = () => {
       }
     };
 
-    // 监听浏览器前进后退事件
+    // Listen to browser forward/back events
     window.addEventListener('popstate', handlePopState);
     
-    // 初始化浏览器历史记录
+    // Initialize browser history
     window.history.replaceState({ menu: activeMenu, index: 0 }, '', `#${activeMenu}`);
 
     return () => {
@@ -65,18 +65,18 @@ const AppContent = () => {
     };
   }, []);
 
-  // 处理键盘快捷键和手势
+  // Handle keyboard shortcuts and gestures
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // 支持 Cmd+Left/Right (Mac) 和 Alt+Left/Right (Windows/Linux)
+      // Support Cmd+Left/Right (Mac) and Alt+Left/Right (Windows/Linux)
       if ((event.metaKey || event.altKey) && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
         event.preventDefault();
         
         if (event.key === 'ArrowLeft' && currentHistoryIndex > 0) {
-          // 后退 - 只使用浏览器原生操作，popstate事件会处理状态更新
+          // Back - only use browser native operation, popstate event will handle state update
           window.history.back();
         } else if (event.key === 'ArrowRight' && currentHistoryIndex < navigationHistory.length - 1) {
-          // 前进 - 只使用浏览器原生操作，popstate事件会处理状态更新
+          // Forward - only use browser native operation, popstate event will handle state update
           window.history.forward();
         }
       }
@@ -89,19 +89,19 @@ const AppContent = () => {
     };
   }, [currentHistoryIndex, navigationHistory]);
 
-  // 处理触摸手势（支持触控板和触摸屏）
+  // Handle touch gestures (support trackpad and touchscreen)
   useEffect(() => {
     let startX = 0;
     let startY = 0;
     let isTouching = false;
-    let hasTriggered = false; // 防止重复触发
+    let hasTriggered = false; // Prevent duplicate triggers
 
     const handleTouchStart = (event) => {
       if (event.touches.length === 1) {
         startX = event.touches[0].clientX;
         startY = event.touches[0].clientY;
         isTouching = true;
-        hasTriggered = false; // 重置触发标志
+        hasTriggered = false; // Reset trigger flag
       }
     };
 
@@ -113,15 +113,15 @@ const AppContent = () => {
         const deltaY = endY - startY;
         const threshold = 100;
 
-        // 确保是水平滑动而不是垂直滑动
+        // Ensure horizontal swipe not vertical swipe
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
-          hasTriggered = true; // 标记已触发，防止重复
+          hasTriggered = true; // Mark as triggered to prevent duplicates
           
           if (deltaX > 0 && currentHistoryIndex > 0) {
-            // 右滑，后退 - 只使用浏览器原生操作，popstate事件会处理状态更新
+            // Right swipe, back - only use browser native operation, popstate event will handle state update
             window.history.back();
           } else if (deltaX < 0 && currentHistoryIndex < navigationHistory.length - 1) {
-            // 左滑，前进 - 只使用浏览器原生操作，popstate事件会处理状态更新
+            // Left swipe, forward - only use browser native operation, popstate event will handle state update
             window.history.forward();
           }
         }
@@ -130,7 +130,7 @@ const AppContent = () => {
       }
     };
 
-    // 添加 touchmove 事件来处理滑动过程中的逻辑
+    // Add touchmove event to handle logic during swipe
     const handleTouchMove = (event) => {
       if (isTouching && !hasTriggered) {
         const currentX = event.touches[0].clientX;
@@ -139,15 +139,15 @@ const AppContent = () => {
         const deltaY = currentY - startY;
         const threshold = 100;
 
-        // 如果滑动距离足够且是水平滑动，立即触发并标记
+        // If swipe distance is enough and is horizontal swipe, trigger immediately and mark
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
           hasTriggered = true;
           
           if (deltaX > 0 && currentHistoryIndex > 0) {
-            // 右滑，后退
+            // Right swipe, back
             window.history.back();
           } else if (deltaX < 0 && currentHistoryIndex < navigationHistory.length - 1) {
-            // 左滑，前进
+            // Left swipe, forward
             window.history.forward();
           }
         }
@@ -165,13 +165,13 @@ const AppContent = () => {
     };
   }, [currentHistoryIndex, navigationHistory]);
 
-  // 处理鼠标手势（Chrome Mac 左右滑动）
+  // Handle mouse gestures (Chrome Mac left/right swipe)
   useEffect(() => {
     let startX = 0;
     let isGesturing = false;
 
     const handleMouseDown = (event) => {
-      // 检测是否是在边缘开始的手势
+      // Detect if gesture starts at edge
       if (event.clientX < 50 || event.clientX > window.innerWidth - 50) {
         startX = event.clientX;
         isGesturing = true;
@@ -181,18 +181,18 @@ const AppContent = () => {
     const handleMouseUp = (event) => {
       if (isGesturing) {
         const deltaX = event.clientX - startX;
-        const threshold = 100; // 手势阈值
+        const threshold = 100; // Gesture threshold
 
         if (Math.abs(deltaX) > threshold) {
           if (deltaX > 0 && currentHistoryIndex > 0) {
-            // 右滑，后退
+            // Right swipe, back
             const newIndex = currentHistoryIndex - 1;
             const newMenu = navigationHistory[newIndex];
             setActiveMenu(newMenu);
             setCurrentHistoryIndex(newIndex);
             window.history.back();
           } else if (deltaX < 0 && currentHistoryIndex < navigationHistory.length - 1) {
-            // 左滑，前进
+            // Left swipe, forward
             const newIndex = currentHistoryIndex + 1;
             const newMenu = navigationHistory[newIndex];
             setActiveMenu(newMenu);
@@ -214,7 +214,7 @@ const AppContent = () => {
     };
   }, [currentHistoryIndex, navigationHistory]);
 
-  // 如果正在加载，显示加载状态
+  // If loading, show loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -226,13 +226,13 @@ const AppContent = () => {
     );
   }
 
-  // 如果未登录，显示登录或注册页面
+  // If not logged in, show login or register page
   if (!isAuthenticated()) {
     if (showRegister) {
       return (
         <RegisterPage 
           onRegister={(userInfo) => {
-            // 注册成功后可以选择自动登录或跳转到登录页面
+            // After successful registration, can choose auto login or redirect to login page
             setShowRegister(false);
           }}
           onBackToLogin={() => setShowRegister(false)}
@@ -281,13 +281,13 @@ const AppContent = () => {
         {/* 左侧侧边栏 */}
         <Sidebar activeMenu={activeMenu} onMenuChange={handleMenuChange} />
         
-        {/* 主体内容区域 */}
+        {/* 主体ContentArea */}
         <main className="flex-1 overflow-y-auto bg-white">
           {renderContent()}
         </main>
       </div>
       
-      {/* 上传进度指示器 */}
+      {/* UploadProgress指示器 */}
       <UploadProgressIndicator />
     </div>
   );

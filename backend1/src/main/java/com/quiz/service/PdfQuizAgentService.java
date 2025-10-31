@@ -32,10 +32,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * PDF 测验 Agent 服务类
- * 负责处理 PDF 内容分析和自动生成测验的核心业务逻辑
- */
+/* * * PDF 测验 Agent ServiceClass
+ * 负责Process PDF ContentAnalysis和自动生成测验的核心业务逻辑 */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -56,7 +54,7 @@ public class PdfQuizAgentService {
     @Value("${langchain4j.openai.base-url:https://api.openai.com/v1}")
     private String openaiBaseUrl;
 
-    // 存储异步处理任务的状态
+    // Store status of asynchronous processing tasks
     private final Map<String, ProcessingStatus> taskStatusMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Add OkHttp client for Responses API
@@ -67,9 +65,7 @@ public class PdfQuizAgentService {
             .callTimeout(java.time.Duration.ofSeconds(150))
             .build();
 
-    /**
-     * OpenAI 测验生成器接口
-     */
+    /* * * OpenAI QuizGenerate器API */
     public interface QuizGenerator {
         @SystemMessage("""
             你是一个专业的教育内容分析师和测验生成专家。请根据提供的PDF内容生成高质量的测验。
@@ -109,27 +105,23 @@ public class PdfQuizAgentService {
         String generateQuizzes(@UserMessage String prompt);
     }
 
-    /**
-     * 处理课程的 PDF 内容，生成测验
-     */
+    /* * * ProcessCourse的 PDF Content，GenerateQuiz */
     @Transactional
     public AgentProcessResult processCourse(AgentProcessRequest request) {
         String taskId = UUID.randomUUID().toString();
         return processCourseWithTaskId(request, taskId);
     }
 
-    /**
-     * 使用指定的 taskId 处理课程 PDF 内容
-     */
+    /* * * 使用指定的 taskId ProcessCourse PDF Content */
     @Transactional
     public AgentProcessResult processCourseWithTaskId(AgentProcessRequest request, String taskId) {
         LocalDateTime startTime = LocalDateTime.now();
 
         try {
-            // 更新任务状态
+            // Update task status
             updateTaskStatus(taskId, "IN_PROGRESS", 10, "Starting course processing...", request.getCourseId());
 
-            // 1. 获取课程信息
+            // 1. GetCourseInformation
             Course course = courseRepository.findById(request.getCourseId())
                     .orElseThrow(() -> new RuntimeException("课程不存在: " + request.getCourseId()));
 
@@ -139,7 +131,7 @@ public class PdfQuizAgentService {
 
             updateTaskStatus(taskId, "IN_PROGRESS", 20, "Reading PDF content...", request.getCourseId());
 
-            // 2. 读取PDF内容
+            // 2. 读取PDFContent
             String pdfContent = readPdfContent(course.getHandbookFilePath());
             if (pdfContent == null || pdfContent.trim().isEmpty()) {
                 log.warn("PDF文本读取失败或为空，继续使用文件输入进行AI处理");
@@ -153,7 +145,7 @@ public class PdfQuizAgentService {
 
             updateTaskStatus(taskId, "IN_PROGRESS", 70, "Saving quizzes to database...", request.getCourseId());
 
-            // 4. 保存生成的测验到数据库
+            // 4. Save生成的测验到Database
             List<AgentProcessResult.QuizSummary> quizSummaries = 
                     saveGeneratedQuizzes(course, generationResponse, request.getOverwriteExisting());
 
@@ -190,32 +182,24 @@ public class PdfQuizAgentService {
         }
     }
 
-    /**
-     * 异步处理课程（生成并统一使用 taskId）
-     */
+    /* * * AsynchronousProcessCourse（生成并统一使用 taskId） */
     public CompletableFuture<AgentProcessResult> processCourseAsync(AgentProcessRequest request) {
         String taskId = UUID.randomUUID().toString();
         return CompletableFuture.supplyAsync(() -> processCourseWithTaskId(request, taskId));
     }
 
-    /**
-     * 异步处理课程（使用外部提供的 taskId）
-     */
+    /* * * AsynchronousProcessCourse（使用外部提供的 taskId） */
     public CompletableFuture<AgentProcessResult> processCourseAsync(AgentProcessRequest request, String taskId) {
         updateTaskStatus(taskId, "PENDING", 0, "Task created, waiting to start", request.getCourseId());
         return CompletableFuture.supplyAsync(() -> processCourseWithTaskId(request, taskId));
     }
 
-    /**
-     * 获取处理状态
-     */
+    /** * GetProcessStatus */
     public ProcessingStatus getProcessingStatus(String taskId) {
         return taskStatusMap.get(taskId);
     }
 
-    /**
-     * 读取PDF内容（简化版本，实际应该使用PDF解析库）
-     */
+    /* * * 读取PDFContent（简化Version，实际应该使用PDFParseLibrary） */
     private String readPdfContent(byte[] pdfBytes) {
         try {
             if (pdfBytes == null || pdfBytes.length == 0) {
@@ -223,12 +207,12 @@ public class PdfQuizAgentService {
                 return null;
             }
 
-            // 这里应该使用PDF解析库如Apache PDFBox来解析PDF内容
-            // 为了演示，我们假设PDF内容可以直接转换为文本
-            // 在实际应用中，需要使用专业的PDF解析库
+            // Should use PDF parsing library like Apache PDFBox to parse PDF content here
+            // For demonstration, we assume PDF content can be directly converted to text
+            // In actual applications, need to use professional PDF parsing libraries
             String content = new String(pdfBytes);
             
-            // 如果内容太长，截取前10000个字符
+            // If content is too long, truncate to first 10000 characters
             if (content.length() > 10000) {
                 content = content.substring(0, 10000) + "...";
             }
@@ -241,13 +225,11 @@ public class PdfQuizAgentService {
         }
     }
 
-    /**
-     * 使用AI生成测验
-     */
+    /* * * 使用AIGenerateQuiz */
     private QuizGenerationRequest.QuizGenerationResponse generateQuizzesWithAI(
             String pdfContent, Course course, AgentProcessRequest request, String taskId) {
         try {
-            // 环境变量回退：优先使用属性注入，其次尝试从环境变量读取
+            // Environment variable fallback: prioritize property injection, then try reading from environment variables
             if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
                 String envKey = System.getenv("OPENAI_API_KEY");
                 if (envKey != null && !envKey.isBlank()) {
@@ -261,7 +243,7 @@ public class PdfQuizAgentService {
                 throw new RuntimeException("OpenAI API密钥未配置或无效");
             }
 
-            // 上传PDF并调用Responses API
+            // Upload PDF and call Responses API
             updateTaskStatus(taskId, "IN_PROGRESS", 45, "Uploading PDF to OpenAI...", request.getCourseId());
             byte[] pdfBytes = course.getHandbookFilePath();
             String fileName = java.util.Optional.ofNullable(course.getHandbookFileName()).orElse("course.pdf");
@@ -300,9 +282,7 @@ public class PdfQuizAgentService {
         }
     }
 
-    /**
-     * 构建AI提示词
-     */
+    /* * * BuildAIHint词 */
     private String buildPrompt(String pdfContent, Course course, AgentProcessRequest request) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("课程信息：\n");
@@ -324,9 +304,7 @@ public class PdfQuizAgentService {
         return prompt.toString();
     }
 
-    /**
-     * 解析AI响应
-     */
+    /** * ParseAIResponse */
     private QuizGenerationRequest.QuizGenerationResponse parseAIResponse(String response) {
         String sanitized = sanitizeJsonResponse(response);
         try {
@@ -357,17 +335,17 @@ public class PdfQuizAgentService {
     private String sanitizeJsonResponse(String response) {
         if (response == null) return null;
         String s = response.trim();
-        // 移除可能的 BOM
+        // Remove possible BOM
         if (!s.isEmpty() && s.charAt(0) == '\uFEFF') {
             s = s.substring(1).trim();
         }
-        // 处理Markdown代码块 ```json ... ``` 或 ``` ... ```
+        // Handle Markdown code blocks ```json ... ``` or ``` ... ```
         if (s.startsWith("```") ) {
             int first = s.indexOf("```");
             int second = s.indexOf("```", first + 3);
             if (second > first) {
                 String inner = s.substring(first + 3, second).trim();
-                // 去掉可选语言标签 json/JSON
+                // Remove optional language tags json/JSON
                 if (inner.toLowerCase(java.util.Locale.ROOT).startsWith("json")) {
                     int nl = inner.indexOf('\n');
                     if (nl >= 0) inner = inner.substring(nl + 1).trim();
@@ -378,11 +356,11 @@ public class PdfQuizAgentService {
                 s = s.replace("```", "").trim();
             }
         }
-        // 再次去除可能残留的开头/结尾代码围栏
+        // Remove possible remaining start/end code fences again
         s = s.replaceFirst("(?s)^\\s*```(?:json|JSON)?\\s*", "");
         s = s.replaceFirst("(?s)\\s*```\\s*$", "");
         
-        // 如仍含非JSON包裹文本，尝试截取首个对象或数组
+        // If still contains non-JSON wrapped text, try to extract first object or array
         if (!s.isEmpty() && s.charAt(0) != '{' && s.charAt(0) != '[') {
             int objStart = s.indexOf('{');
             int objEnd = s.lastIndexOf('}');
@@ -404,9 +382,7 @@ public class PdfQuizAgentService {
         return s.length() > max ? s.substring(0, max) + "...[truncated]" : s;
     }
 
-    /**
-     * 从JSON节点解析测验
-     */
+    /* * * 从JSONNodeParseQuiz */
     private QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz parseQuizFromJson(JsonNode quizNode) {
         String title = quizNode.get("title").asText();
         String description = quizNode.get("description").asText();
@@ -431,9 +407,7 @@ public class PdfQuizAgentService {
                 .build();
     }
 
-    /**
-     * 从JSON节点解析题目
-     */
+    /* * * 从JSONNodeParseQuestion */
     private QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz.GeneratedQuestion parseQuestionFromJson(JsonNode questionNode) {
         String text = questionNode.get("text").asText();
         String type = questionNode.get("type").asText();
@@ -464,9 +438,7 @@ public class PdfQuizAgentService {
                 .build();
     }
 
-    /**
-     * 生成备用测验（当AI不可用时）
-     */
+    /* * * Generate备用Quiz（当AI不可用时） */
     private QuizGenerationRequest.QuizGenerationResponse generateFallbackQuizzes(Course course, AgentProcessRequest request) {
         List<QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz> quizzes = new ArrayList<>();
         
@@ -477,7 +449,7 @@ public class PdfQuizAgentService {
                 List<QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz.GeneratedQuestion.GeneratedOption> options = Arrays.asList(
                         QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz.GeneratedQuestion.GeneratedOption.builder()
                                 .text("选项 A")
-                                .isCorrect(j == 1) // 第一题选A，其他题选B
+                                .isCorrect(j == 1) // First question select A, other questions select B
                                 .build(),
                         QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz.GeneratedQuestion.GeneratedOption.builder()
                                 .text("选项 B")
@@ -516,9 +488,7 @@ public class PdfQuizAgentService {
                 .build();
     }
 
-    /**
-     * 保存生成的测验到数据库
-     */
+    /* * * SaveGenerate的Quiz到DataLibrary */
     @Transactional
     private List<AgentProcessResult.QuizSummary> saveGeneratedQuizzes(
             Course course, 
@@ -527,16 +497,16 @@ public class PdfQuizAgentService {
         
         List<AgentProcessResult.QuizSummary> summaries = new ArrayList<>();
         
-        // 如果需要覆盖现有测验，先删除
+        // If need to override existing quiz, delete first
         if (overwriteExisting) {
             List<Quiz> existingQuizzes = quizRepository.findByCourseIdAndIsActiveTrue(course.getId());
             for (Quiz quiz : existingQuizzes) {
-                // 删除相关的题目和选项（级联删除应该自动处理）
+                // Delete related questions and options (cascade delete should handle automatically)
                 quizRepository.delete(quiz);
             }
         }
         
-        // 保存新生成的测验
+        // Save newly generated quiz
         for (QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz generatedQuiz : generationResponse.getQuizzes()) {
             Quiz quiz = new Quiz();
             quiz.setTitle(generatedQuiz.getTitle());
@@ -547,7 +517,7 @@ public class PdfQuizAgentService {
             
             Quiz savedQuiz = quizRepository.save(quiz);
             
-            // 保存题目
+            // Save question
             int questionOrder = 1;
             for (QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz.GeneratedQuestion generatedQuestion : generatedQuiz.getQuestions()) {
                 Question question = new Question();
@@ -563,7 +533,7 @@ public class PdfQuizAgentService {
                 
                 Question savedQuestion = questionRepository.save(question);
                 
-                // 保存选项
+                // Save option
                 int optionOrder = 1;
                 for (QuizGenerationRequest.QuizGenerationResponse.GeneratedQuiz.GeneratedQuestion.GeneratedOption generatedOption : generatedQuestion.getOptions()) {
                     QuestionOption option = new QuestionOption();
@@ -578,7 +548,7 @@ public class PdfQuizAgentService {
                 }
             }
             
-            // 添加到摘要
+            // Add to summary
             summaries.add(AgentProcessResult.QuizSummary.builder()
                     .quizId(savedQuiz.getId())
                     .title(savedQuiz.getTitle())
@@ -592,9 +562,7 @@ public class PdfQuizAgentService {
         return summaries;
     }
 
-    /**
-     * 更新任务状态
-     */
+    /* * * UpdateTaskStatus */
     private void updateTaskStatus(String taskId, String status, Integer progress, String message, Long courseId) {
         ProcessingStatus processingStatus = taskStatusMap.computeIfAbsent(taskId, k -> 
                 ProcessingStatus.builder()
@@ -612,9 +580,7 @@ public class PdfQuizAgentService {
                 taskId, status, progress, message);
     }
 
-/**
- * 上传PDF到OpenAI并返回file_id
- */
+/* * * UploadPDF到OpenAI并Returnfile_id */
 private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
     try {
         RequestBody fileBody = RequestBody.create(pdfBytes, MediaType.parse("application/pdf"));
@@ -674,29 +640,27 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
     }
 }
 
-/**
-     * 调用OpenAI Responses API（文件输入）并返回文本输出 - 带配置约束
-     */
+/* * * 调用OpenAI Responses API（FileInput）并ReturnTextOutput - 带ConfigurationConstraint */
     private String callOpenAIResponses(String fileId, String prompt, AgentProcessRequest request) {
         try {
-            // 构建请求JSON
+            // Build request JSON
             com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
             root.put("model", openaiModel);
             com.fasterxml.jackson.databind.node.ObjectNode textCfg = root.putObject("text");
             com.fasterxml.jackson.databind.node.ObjectNode textFormat = textCfg.putObject("format");
-            // 使用严格 JSON Schema 约束输出结构
+            // Use strict JSON Schema to constrain output structure
             textFormat.put("type", "json_schema");
             textFormat.put("name", "QuizSchema");
-            // API 要求 schema/strict 直接位于 text.format 下
+            // API requires schema/strict to be directly under text.format
             textFormat.put("strict", true);
             com.fasterxml.jackson.databind.node.ObjectNode schema = textFormat.putObject("schema");
-            // quizzes 顶层数组结构
+            // quizzes top-level array structure
             schema.put("type", "object");
             schema.put("additionalProperties", false);
             com.fasterxml.jackson.databind.node.ArrayNode required = schema.putArray("required");
             required.add("quizzes");
             com.fasterxml.jackson.databind.node.ObjectNode properties = schema.putObject("properties");
-            // quizzes 数组 - 添加长度约束
+            // quizzes array - add length constraints
             com.fasterxml.jackson.databind.node.ObjectNode quizzesProp = properties.putObject("quizzes");
             quizzesProp.put("type", "array");
             quizzesProp.put("minItems", request.getQuizCount());
@@ -712,12 +676,12 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
             com.fasterxml.jackson.databind.node.ObjectNode quizProps = quizzesItems.putObject("properties");
             quizProps.putObject("title").put("type", "string");
             quizProps.putObject("description").put("type", "string");
-            // 难度为枚举
+            // Difficulty as enum
             com.fasterxml.jackson.databind.node.ObjectNode difficultyProp = quizProps.putObject("difficulty");
             difficultyProp.put("type", "string");
             com.fasterxml.jackson.databind.node.ArrayNode difficultyEnum = difficultyProp.putArray("enum");
             difficultyEnum.add("easy"); difficultyEnum.add("medium"); difficultyEnum.add("hard");
-            // questions 数组 - 添加长度约束
+            // questions array - add length constraints
             com.fasterxml.jackson.databind.node.ObjectNode questionsProp = quizProps.putObject("questions");
             questionsProp.put("type", "array");
             questionsProp.put("minItems", request.getQuestionsPerQuiz());
@@ -733,12 +697,12 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
             questionRequired.add("points");
             com.fasterxml.jackson.databind.node.ObjectNode questionProps = questionItems.putObject("properties");
             questionProps.putObject("text").put("type", "string");
-            // 题目类型限定为 SINGLE_CHOICE
+            // Question type limited to SINGLE_CHOICE
             com.fasterxml.jackson.databind.node.ObjectNode qTypeProp = questionProps.putObject("type");
             qTypeProp.put("type", "string");
             com.fasterxml.jackson.databind.node.ArrayNode qTypeEnum = qTypeProp.putArray("enum");
             qTypeEnum.add("SINGLE_CHOICE");
-            // options 数组 - 固定4个选项
+            // options array - fixed 4 options
             com.fasterxml.jackson.databind.node.ObjectNode optionsProp = questionProps.putObject("options");
             optionsProp.put("type", "array");
             optionsProp.put("minItems", 4);
@@ -752,11 +716,11 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
             com.fasterxml.jackson.databind.node.ObjectNode optionProps = optionItems.putObject("properties");
             optionProps.putObject("text").put("type", "string");
             optionProps.putObject("isCorrect").put("type", "boolean");
-            // explanation 与 points
+            // explanation and points
             questionProps.putObject("explanation").put("type", "string");
             questionProps.putObject("points").put("type", "integer");
             
-            // 继续构造 input 消息
+            // Continue constructing input message
             com.fasterxml.jackson.databind.node.ArrayNode input = root.putArray("input");
             com.fasterxml.jackson.databind.node.ObjectNode systemMsg = input.addObject();
             systemMsg.put("role", "system");
@@ -816,7 +780,7 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
                     return null;
                 }
                 JsonNode node = objectMapper.readTree(respBody);
-                // Responses API 输出解析：支持 output_text 与 output_json
+                // Responses API output parsing: support output_text and output_json
                 String output = null;
                 if (node.has("output_text")) {
                     output = node.get("output_text").asText();
@@ -832,11 +796,11 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
                                     break;
                                 } else if ("output_json".equals(t) && part.has("json")) {
                                     try {
-                                        // 将 JSON 节点序列化为字符串
+                                        // Serialize JSON node to string
                                         output = objectMapper.writeValueAsString(part.get("json"));
                                         break;
                                     } catch (Exception ignore) {
-                                        // 如果序列化失败，则继续尝试其他内容块
+                                        // If serialization fails, continue trying other content blocks
                                     }
                                 }
                             }
@@ -854,11 +818,9 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
         }
     }
 
-    /**
-     * 调用OpenAI Responses API（文件输入）并返回文本输出 - 简化版本用于预检
-     */
+    /* * * 调用OpenAI Responses API（FileInput）并ReturnTextOutput - 简化VersionUsed for预检 */
     private String callOpenAIResponses(String fileId, String prompt) {
-        // 创建默认请求参数用于预检
+        // Create default request parameters for pre-check
         AgentProcessRequest defaultRequest = new AgentProcessRequest();
         defaultRequest.setQuizCount(1);
         defaultRequest.setQuestionsPerQuiz(1);
@@ -866,7 +828,7 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
         return callOpenAIResponses(fileId, prompt, defaultRequest);
     }
 
-// 公共方法：在入库前进行AI预检（上传PDF+调用Responses）
+// Public method: Perform AI pre-check before storing (upload PDF + call Responses)
 public void preflightCheckPdfWithOpenAI(byte[] pdfBytes, String fileName, String prompt) {
     if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
         throw new RuntimeException("OpenAI API密钥未配置或无效");

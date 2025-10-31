@@ -15,50 +15,32 @@ import java.util.Map;
 @AllArgsConstructor
 public class ChatbotResponse {
     
-    /**
-     * AI回复消息
-     */
+    /** * AIReplyMessage */
     private String message;
     
-    /**
-     * 请求是否成功处理
-     */
+    /* * * Request是否SuccessProcess */
     private boolean success;
     
-    /**
-     * 使用的工具列表
-     */
+    /* * * 使用的ToolList */
     private List<String> toolsUsed;
     
-    /**
-     * 工具执行结果（可选，用于调试）
-     */
+    /* * * ToolExecutionResult（可选，Used forDebug） */
     private Map<String, Object> toolResults;
     
-    /**
-     * 响应时间戳
-     */
+    /* * * ResponseTime戳 */
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
     
-    /**
-     * 会话ID
-     */
+    /* * * SessionID */
     private String sessionId;
     
-    /**
-     * 建议的后续操作（可选）
-     */
+    /* * * Suggestion的后续操作（可选） */
     private List<String> suggestedActions;
     
-    /**
-     * 错误信息（如果有）
-     */
+    /* * * ErrorInfo（如果有） */
     private String errorMessage;
     
-    /**
-     * 响应类型（text, data, error等）
-     */
+    /* * * ResponseClass型（text, data, error等） */
     @Builder.Default
     private String responseType = "text";
 }

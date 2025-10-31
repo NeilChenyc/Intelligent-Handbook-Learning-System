@@ -17,26 +17,26 @@ const ChatbotPage = () => {
   const [availableTools, setAvailableTools] = useState([]);
   const messagesEndRef = useRef(null);
 
-  // 滚动到消息底部
+  // 滚动到Message底部
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 加载聊天历史
+  // Loading聊天History
   const loadChatHistory = () => {
     const history = getChatHistory();
-    // 将会话历史（每条包含 userMessage/botResponse）转换为UI消息队列
+    // 将SessionHistory（每条Package含 userMessage/botResponse）Conversion为UIMessageQueue
     const reconstructed = [];
     (history || []).forEach((conv, idx) => {
       const baseTs = conv.timestamp || new Date().toISOString();
-      // 用户消息
+      // UserMessage
       reconstructed.push({
         id: `${baseTs}-u-${idx}`,
         type: 'user',
         content: conv.userMessage || '',
         timestamp: baseTs
       });
-      // 助手消息
+      // HelperMessage
       reconstructed.push({
         id: `${baseTs}-a-${idx}`,
         type: 'assistant',
@@ -48,13 +48,13 @@ const ChatbotPage = () => {
     setMessages(reconstructed);
   };
 
-  // 清空聊天历史
+  // Clear聊天History
   const handleClearHistory = () => {
     clearChatHistory();
     setMessages([]);
   };
 
-  // 发送消息
+  // SendMessage
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -63,7 +63,7 @@ const ChatbotPage = () => {
     setIsLoading(true);
 
     try {
-      // 添加用户消息到界面
+      // AddUserMessage到Interface
       const newUserMessage = {
         id: Date.now(),
         type: 'user',
@@ -72,11 +72,11 @@ const ChatbotPage = () => {
       };
       setMessages(prev => [...prev, newUserMessage]);
 
-      // 发送消息并获取回复
+      // SendMessage并Get回复
       const response = await sendChatMessage(userMessage);
-      console.log('Chatbot API response:', response); // 调试日志
+      console.log('Chatbot API response:', response); // DebuggingLog
       
-      // 添加AI回复到界面
+      // AddAI回复到Interface
       const aiMessage = {
         id: Date.now() + 1,
         type: 'assistant',
@@ -101,7 +101,7 @@ const ChatbotPage = () => {
     }
   };
 
-  // 处理回车键发送
+  // Process回车KeySend
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -109,7 +109,7 @@ const ChatbotPage = () => {
     }
   };
 
-  // 初始化
+  // Initialize
   useEffect(() => {
     loadChatHistory();
     setAvailableTools(getAvailableTools());
@@ -122,7 +122,7 @@ const ChatbotPage = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto h-full flex flex-col">
-      {/* 页面标题 */}
+      {/* PageTitle */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -148,7 +148,7 @@ const ChatbotPage = () => {
         </div>
       </div>
 
-      {/* 聊天区域 */}
+      {/* 聊天Area */}
       <Card className="flex-1 flex flex-col">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center">
@@ -163,7 +163,7 @@ const ChatbotPage = () => {
         </CardHeader>
         
         <CardContent className="flex-1 flex flex-col">
-          {/* 消息列表 */}
+          {/* MessageList */}
           <div className="flex-1 overflow-y-auto mb-4 space-y-4 max-h-96">
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
@@ -277,7 +277,7 @@ const ChatbotPage = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 输入区域 */}
+          {/* InputArea */}
           <div className="border-t pt-4">
             <div className="flex gap-2">
               <textarea
@@ -312,7 +312,7 @@ const ChatbotPage = () => {
 };
 
 export default ChatbotPage;
-  // 将“用空格列对齐”的文本转换为 Markdown 表格（GFM）
+  // 将“用空格Column对齐”的TextConversion为 Markdown Table格（GFM）
   const convertTextTablesToMarkdown = (text) => {
     if (!text || typeof text !== 'string') return text;
 
@@ -339,7 +339,7 @@ export default ChatbotPage;
       const line = lines[i];
       if (!line || !line.trim()) break;
       const cells = line.trim().split(/\s{2,}/).filter(Boolean);
-      // 至少两列才算有效数据行
+      // 至少两Column才算有效DataRow
       if (cells.length < 2) break;
       rows.push(cells);
     }

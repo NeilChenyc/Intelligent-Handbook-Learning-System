@@ -12,16 +12,16 @@ const CoursePage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [currentView, setCurrentView] = useState('courseList'); // 'courseList', 'quizList', or 'quiz'
+  const [currentView, setCurrentView] = useState('courseList'); // TODO: Translate - 'courseList', 'quizList', or 'quiz'
   const [selectedQuizId, setSelectedQuizId] = useState(null);
   
-  // 新增状态管理
+  // Add state management
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 获取课程数据
+  // Fetch course data
   const fetchCourses = async () => {
     try {
       setLoading(true);
@@ -51,7 +51,7 @@ const CoursePage = () => {
   }
 };
 
-  // 刷新课程数据
+  // Refresh course data
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
@@ -61,22 +61,22 @@ const CoursePage = () => {
     }
   };
 
-  // 组件挂载时获取数据
+  // Get data when component mounts
   useEffect(() => {
     fetchCourses();
   }, []);
 
-  // 根据状态筛选课程
+  // Filter courses by status
   const displayedCourses = filterCoursesByStatus(courses, filterStatus).filter(course => {
     if (activeTab !== 'all') {
-      // 将后端的isActive状态映射到前端的状态
+      // Map backend isActive status to frontend status
       const frontendStatus = course.isActive ? 'active' : 'inactive';
       return activeTab === frontendStatus;
     }
     return true;
   });
 
-  // 获取课程状态相关的辅助函数
+  // Get course status related helper functions
   const getStatusColor = (isActive) => {
     return isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
   };
@@ -89,20 +89,20 @@ const CoursePage = () => {
     return isActive ? 'Active' : 'Inactive';
   };
 
-  // 计算课程统计
+  // Calculate course statistics
   const courseStats = {
     total: courses.length,
     active: courses.filter(c => c.isActive).length,
     inactive: courses.filter(c => !c.isActive).length,
   };
 
-  // 处理PDF下载
+  // Handle PDF download
   const handleDownloadHandbook = async (course) => {
     try {
-      // 使用前端API按需下载PDF文件（后端路径：/courses/{id}/handbook）
+      // Use frontend API to download PDF file on demand (backend path: /courses/{id}/handbook)
       const blob = await downloadCourseHandbook(course.id);
 
-      // 创建下载链接
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -118,7 +118,7 @@ const CoursePage = () => {
   };
 
   const handleContinueLearning = (courseId) => {
-    // 找到选中的课程
+    // Find selected course
     const course = courses.find(c => c.id === courseId);
     if (course) {
       setSelectedCourse(course);
@@ -143,22 +143,22 @@ const CoursePage = () => {
   };
 
   const handleQuizComplete = (quizId, score, passed, nextQuizId) => {
-    // 测验完成后的处理逻辑
+    // Processing logic after quiz completion
     if (passed && nextQuizId) {
-      // 如果通过且有下一个测验，跳转到下一个测验
+      // If passed and has next quiz, navigate to next quiz
       setSelectedQuizId(nextQuizId);
     } else {
-      // 否则返回测验列表页面，让CourseQuizListPage刷新数据
+      // Otherwise return to quiz list page, let CourseQuizListPage refresh data
       setCurrentView('quizList');
       setSelectedQuizId(null);
-      // 触发CourseQuizListPage刷新
+      // Trigger CourseQuizListPage refresh
       if (selectedCourse && selectedCourse.refreshQuizzes) {
         selectedCourse.refreshQuizzes();
       }
     }
   };
 
-  // 如果当前视图是小测页面，显示小测页面
+  // If current view is quiz page, show quiz page
   if (currentView === 'quiz' && selectedQuizId) {
     return (
       <QuizPage 
@@ -171,7 +171,7 @@ const CoursePage = () => {
     );
   }
 
-  // 如果当前视图是小测列表，显示小测列表页面
+  // If current view is quiz list, show quiz list page
   if (currentView === 'quizList' && selectedCourse) {
     return (
       <CourseQuizListPage 
@@ -179,7 +179,7 @@ const CoursePage = () => {
         onBack={handleBackToCourseList}
         onStartQuiz={handleStartQuiz}
         onProgressUpdate={(courseId, newProgress) => {
-          // 更新课程进度的逻辑
+          // Logic for updating course progress
           console.log(`Update course ${courseId} progress to ${newProgress}%`);
         }}
       />
@@ -197,7 +197,7 @@ const CoursePage = () => {
         </div>
       </div>
 
-      {/* 统计概览 */}
+      {/* Statistics概览 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardContent className="p-4">
@@ -242,7 +242,7 @@ const CoursePage = () => {
         </Card>
       </div>
 
-      {/* 筛选标签 */}
+      {/* 筛选Label */}
       <div className="flex flex-wrap gap-2 mb-6">
         {[
           { key: 'all', label: 'All Courses', count: courseStats.total },
@@ -263,7 +263,7 @@ const CoursePage = () => {
         ))}
       </div>
 
-      {/* 课程列表 */}
+      {/* CourseList */}
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -316,7 +316,7 @@ const CoursePage = () => {
                       </div>
                     </div>
 
-                    {/* 状态标签 */}
+                    {/* StatusLabel */}
                     <div className="flex items-center space-x-2 mb-4">
                       {getStatusIcon(course.isActive)}
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(course.isActive)}`}>

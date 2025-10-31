@@ -31,7 +31,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
         points: quiz.points || 10
       });
     } else {
-      // 重置表单为添加模式
+      // TODO: Translate - Reset form to add mode
       setFormData({
         question: '',
         type: 'multiple-choice',
@@ -51,7 +51,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
       ...prev,
       [name]: value
     }));
-    // 清除对应字段的错误
+    // Clear corresponding field errors
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -96,7 +96,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
     if (file) {
       if (file.type === 'text/plain' || file.type === 'application/pdf' || file.name.endsWith('.md')) {
         setQuestionFile(file);
-        // 如果是文本文件，尝试读取内容
+        // If it's a text file, try to read content
         if (file.type === 'text/plain' || file.name.endsWith('.md')) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -152,7 +152,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
     const quizData = {
       ...formData,
       id: isAddMode ? Date.now() : quiz.id,
-      options: formData.options.filter(opt => opt.trim()) // 过滤空选项
+      options: formData.options.filter(opt => opt.trim()) // Filter empty options
     };
 
     onSave(quizData);
@@ -174,7 +174,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 题目类型 */}
+          {/* QuestionClass型 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               题目类型
@@ -193,7 +193,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
             </select>
           </div>
 
-          {/* 题目内容 */}
+          {/* QuestionContent */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               题目内容
@@ -213,7 +213,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
                 <p className="text-red-500 text-sm">{errors.question}</p>
               )}
               
-              {/* 文件上传 */}
+              {/* FileUpload */}
               <div className="flex items-center space-x-3">
                 <label className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                   <Upload className="w-4 h-4" />
@@ -235,7 +235,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
             </div>
           </div>
 
-          {/* 选项设置（仅选择题和判断题） */}
+          {/* OptionSettings（仅Select题和判断题） */}
           {(formData.type === 'multiple-choice' || formData.type === 'true-false') && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -297,7 +297,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
             </div>
           )}
 
-          {/* 解析 */}
+          {/* Parse */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               答案解析
@@ -317,7 +317,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
             )}
           </div>
 
-          {/* 分值 */}
+          {/* 分Value */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               分值
@@ -338,7 +338,7 @@ const QuizEditModal = ({ isOpen, onClose, quiz, onSave, isAddMode = false }) => 
             )}
           </div>
 
-          {/* 按钮 */}
+          {/* Button */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
               取消

@@ -32,10 +32,10 @@ public class CourseSummaryDTO {
         this.teacherFullName = teacherFullName;
         this.handbookFileName = handbookFileName;
         this.createdAt = createdAt;
-        this.quizCount = 0; // 默认值
+        this.quizCount = 0; // Default value
     }
 
-    // 新增构造函数，包含department字段
+    // New constructor including department field
     public CourseSummaryDTO(Long id, String title, String description, Boolean isActive,
                             Long teacherId, String teacherFullName,
                             String handbookFileName, String department, LocalDateTime createdAt) {
@@ -48,6 +48,6 @@ public class CourseSummaryDTO {
         this.handbookFileName = handbookFileName;
         this.department = department;
         this.createdAt = createdAt;
-        this.quizCount = 0; // 默认值
+        this.quizCount = 0; // Default value
     }
 }

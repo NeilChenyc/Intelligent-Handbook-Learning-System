@@ -57,7 +57,7 @@ public class QuizController {
             List<Quiz> quizzes = quizService.getQuizzesByCourse(courseId);
             log.debug("Found {} quizzes for course ID: {}", quizzes.size(), courseId);
             
-            // 转换为DTO避免循环引用
+            // Convert to DTO to avoid circular references
             List<QuizResponseDto> quizDtos = quizzes.stream()
                     .map(this::convertToDto)
                     .collect(Collectors.toList());
@@ -69,9 +69,7 @@ public class QuizController {
         }
     }
 
-    /**
-     * 获取课程下的小测摘要信息（优化版本，不包含题目详情）
-     */
+    /* * * GetCourse下的QuizSummaryInformation（OptimizationVersion，不Package含QuestionDetails） */
     @GetMapping("/course/{courseId}/summaries")
     public ResponseEntity<List<QuizSummaryDto>> getQuizSummariesByCourse(@PathVariable("courseId") Long courseId) {
         try {
@@ -91,16 +89,14 @@ public class QuizController {
         }
     }
 
-    /**
-     * 获取课程下的小测列表（带用户通过信息）
-     */
+    /* * * GetCourse下的QuizList（带User通过Information） */
     @GetMapping("/course/{courseId}/list-cached")
     public ResponseEntity<Map<String, Object>> getCourseQuizListCached(@PathVariable("courseId") Long courseId,
                                                                        @RequestParam("userId") Long userId) {
         try {
             log.info("list-cached request courseId={}, userId={}", courseId, userId);
             
-            // 直接查询摘要与用户通过列表（使用投影查询，避免加载 Course 大字段）
+            // Directly query summary and user pass list (using projection query, avoid loading Course large fields)
             List<QuizSummaryDto> quizSummaries = quizService.getQuizSummaryDtosByCourse(courseId);
             Map<Long, Integer> questionCounts = quizService.getQuizQuestionCounts(courseId);
             quizSummaries.forEach(dto -> dto.setQuestionCount(questionCounts.getOrDefault(dto.getId(), 0)));
@@ -150,9 +146,7 @@ public class QuizController {
         return dto;
     }
 
-    /**
-     * 转换为小测摘要DTO
-     */
+    /* * * Conversion为QuizSummaryDTO */
     private QuizSummaryDto convertToSummaryDto(Quiz quiz, Integer questionCount) {
         QuizSummaryDto dto = new QuizSummaryDto();
         dto.setId(quiz.getId());
@@ -166,13 +160,13 @@ public class QuizController {
         dto.setCreatedAt(quiz.getCreatedAt());
         dto.setUpdatedAt(quiz.getUpdatedAt());
         
-        // 设置课程信息
+        // Set course information
         if (quiz.getCourse() != null) {
             dto.setCourseId(quiz.getCourse().getId());
             dto.setCourseTitle(quiz.getCourse().getTitle());
         }
         
-        // 设置题目数量（从参数获取，避免加载题目）
+        // Set question count (from parameters, avoid loading questions)
         dto.setQuestionCount(questionCount);
         
         return dto;

@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// 创建认证上下文
+// Create authentication context
 const AuthContext = createContext();
 
-// 自定义Hook用于使用认证上下文
+// Custom Hook for using authentication context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -12,12 +12,12 @@ export const useAuth = () => {
   return context;
 };
 
-// 认证提供者组件
+// Authentication provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 组件挂载时检查本地存储的用户信息
+  // Check local stored user info when component mounts
   useEffect(() => {
     const checkAuthStatus = () => {
       try {
@@ -37,34 +37,34 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  // 登录函数
+  // Login function
   const login = (userInfo) => {
     setUser(userInfo);
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
   };
 
-  // 登出函数
+  // Logout function
   const logout = () => {
     setUser(null);
     localStorage.removeItem('userInfo');
   };
 
-  // 检查用户是否已登录
+  // Check if user is logged in
   const isAuthenticated = () => {
     return user !== null;
   };
 
-  // 检查用户是否为管理员
+  // Check if user is admin
   const isAdmin = () => {
     return user && (user.role === 'admin' || user.role === 'ADMIN');
   };
 
-  // 检查用户是否为学员
+  // Check if user is student
   const isStudent = () => {
     return user && (user.role === 'student' || user.role === 'STUDENT');
   };
 
-  // 获取用户权限
+  // Get user permissions
   const getUserPermissions = () => {
     if (!user) return [];
     
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
     return [];
   };
 
-  // 检查用户是否有特定权限
+  // Check if user has specific permission
   const hasPermission = (permission) => {
     const permissions = getUserPermissions();
     return permissions.includes(permission);

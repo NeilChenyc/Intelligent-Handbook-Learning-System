@@ -31,7 +31,7 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
-    // 部门字段用于组织归属和课程分配
+    // Department field for organizational affiliation and course assignment
     @Column(name = "department")
     private String department;
 

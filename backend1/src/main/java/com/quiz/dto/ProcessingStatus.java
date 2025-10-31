@@ -7,73 +7,47 @@ import lombok.Builder;
 
 import java.time.LocalDateTime;
 
-/**
- * 处理状态 DTO
- * 用于异步查询 AI 处理任务的当前状态
- */
+/* * * ProcessStatus DTO
+ * Used forAsynchronousQuery AI ProcessTask的当前Status */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ProcessingStatus {
     
-    /**
-     * 任务ID
-     */
+    /* * * TaskID */
     private String taskId;
     
-    /**
-     * 当前状态：PENDING, IN_PROGRESS, COMPLETED, FAILED
-     */
+    /* * * 当前Status：PENDING, IN_PROGRESS, COMPLETED, FAILED */
     private String status;
     
-    /**
-     * 进度百分比 (0-100)
-     */
+    /* * * ProgressPercentage (0-100) */
     private Integer progress;
     
-    /**
-     * 当前处理步骤描述
-     */
+    /* * * 当前Process步骤描述 */
     private String currentStep;
     
-    /**
-     * 状态消息
-     */
+    /** * StatusMessage */
     private String message;
     
-    /**
-     * 任务创建时间
-     */
+    /* * * TaskCreateTime */
     private LocalDateTime createdAt;
     
-    /**
-     * 最后更新时间
-     */
+    /* * * 最后UpdateTime */
     private LocalDateTime updatedAt;
     
-    /**
-     * 预估剩余时间（秒）
-     */
+    /* * * 预估剩余Time（Second） */
     private Long estimatedRemainingSeconds;
     
-    /**
-     * 错误信息（如果失败）
-     */
+    /* * * ErrorInfo（如果Failure） */
     private String errorMessage;
     
-    /**
-     * 课程ID
-     */
+    /** * CourseID */
     private Long courseId;
     
-    /**
-     * 已完成的测验数量
-     */
+    /* * * 已完成的QuizQuantity */
     private Integer completedQuizzes;
     
-    /**
-     * 总测验数量
-     */
+    /* * * 总QuizQuantity */
     private Integer totalQuizzes;
 }

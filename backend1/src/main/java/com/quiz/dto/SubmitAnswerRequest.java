@@ -11,5 +11,5 @@ import java.util.List;
 @AllArgsConstructor
 public class SubmitAnswerRequest {
     private Long questionId;
-    private List<String> selectedOptions; // 前端发送的是选项标识符，如["a", "b"]
+    private List<String> selectedOptions; // Frontend sends option identifiers, like ["a", "b"]
 }

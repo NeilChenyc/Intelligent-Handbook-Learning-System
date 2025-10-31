@@ -49,7 +49,7 @@ public class WrongQuestion {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 标记为已重做
+    // Mark as redone
     public void markAsRedone() {
         this.isRedone = true;
         this.redoneAt = LocalDateTime.now();

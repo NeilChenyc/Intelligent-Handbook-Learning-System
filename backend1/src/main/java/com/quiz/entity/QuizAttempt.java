@@ -32,19 +32,19 @@ public class QuizAttempt {
     private List<StudentAnswer> studentAnswers;
 
     @Column(name = "score")
-    private Integer score = 0; // 得分
+    private Integer score = 0; // TODO: Translate - Score
 
     @Column(name = "total_points")
-    private Integer totalPoints = 0; // 总分
+    private Integer totalPoints = 0; // Total points
 
     @Column(name = "percentage")
-    private Double percentage = 0.0; // 得分百分比
+    private Double percentage = 0.0; // ScorePercentage
 
     @Column(name = "is_passed")
-    private Boolean isPassed = false; // 是否通过
+    private Boolean isPassed = false; // Is passed
 
     @Column(name = "attempt_number")
-    private Integer attemptNumber = 1; // 第几次尝试
+    private Integer attemptNumber = 1; // Attempt number
 
     @Column(name = "started_at")
     private LocalDateTime startedAt;
@@ -53,7 +53,7 @@ public class QuizAttempt {
     private LocalDateTime completedAt;
 
     @Column(name = "time_spent_minutes")
-    private Integer timeSpentMinutes; // 花费时间（分钟）
+    private Integer timeSpentMinutes; // Time spent (minutes)
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

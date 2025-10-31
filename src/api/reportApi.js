@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:8080';
 
-// 获取组织合规报告数据
+// Get organizational compliance report data
 export const getOrganizationReport = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/reports/organization`);
@@ -14,7 +14,7 @@ export const getOrganizationReport = async () => {
   }
 };
 
-// 获取部门合规统计
+// Get department compliance statistics
 export const getDepartmentStats = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/reports/departments`);
@@ -28,7 +28,7 @@ export const getDepartmentStats = async () => {
   }
 };
 
-// 获取员工报告详情
+// Get employee report details
 export const getEmployeeReports = async (department = null) => {
   try {
     const url = department 
@@ -46,7 +46,7 @@ export const getEmployeeReports = async (department = null) => {
   }
 };
 
-// 获取合规类别完成情况
+// Get compliance category completion status
 export const getComplianceCategories = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/reports/compliance-categories`);
@@ -60,7 +60,7 @@ export const getComplianceCategories = async () => {
   }
 };
 
-// 获取月度合规趋势
+// Get monthly compliance trends
 export const getMonthlyTrend = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/reports/monthly-trend`);

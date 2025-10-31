@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:8080';
 
-// 根据quizId获取题目列表
+// 根据quizIdGetQuestionList
 export const getQuestionsByQuiz = async (quizId) => {
   const response = await fetch(`${API_BASE_URL}/questions/quiz/${quizId}`);
   if (!response.ok) {
@@ -9,7 +9,7 @@ export const getQuestionsByQuiz = async (quizId) => {
   return response.json();
 };
 
-// 根据ID获取quiz详情
+// 根据IDGetquizDetails
 export const getQuizById = async (quizId) => {
   const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`);
   if (!response.ok) {
@@ -18,7 +18,7 @@ export const getQuizById = async (quizId) => {
   return response.json();
 };
 
-// 开始小测尝试
+// StartQuiz尝试
 export const startQuizAttempt = async (userId, quizId) => {
   const response = await fetch(`${API_BASE_URL}/quiz-attempts/start`, {
     method: 'POST',
@@ -37,7 +37,7 @@ export const startQuizAttempt = async (userId, quizId) => {
   return response.json();
 };
 
-// 提交quiz答案
+// CommitquizAnswer
 export const submitQuizAnswers = async (attemptId, answers) => {
   const response = await fetch(`${API_BASE_URL}/quiz-attempts/${attemptId}/submit`, {
     method: 'POST',
@@ -53,7 +53,7 @@ export const submitQuizAnswers = async (attemptId, answers) => {
   return response.json();
 };
 
-// 获取用户的小测尝试记录
+// GetUser的Quiz尝试Record
 export const getUserQuizAttempts = async (userId) => {
   const response = await fetch(`${API_BASE_URL}/quiz-attempts/user/${userId}`, {
     method: 'GET',
@@ -68,7 +68,7 @@ export const getUserQuizAttempts = async (userId) => {
   return response.json();
 };
 
-// 获取小测尝试详情
+// GetQuiz尝试Details
 export const getQuizAttemptDetail = async (attemptId) => {
   const response = await fetch(`${API_BASE_URL}/quiz-attempts/${attemptId}`, {
     method: 'GET',
@@ -83,7 +83,7 @@ export const getQuizAttemptDetail = async (attemptId) => {
   return response.json();
 };
 
-// 创建小测
+// CreateQuiz
 export const createQuiz = async ({ courseId, title, description, passingScore }) => {
   const response = await fetch(`${API_BASE_URL}/quizzes`, {
     method: 'POST',
@@ -99,7 +99,7 @@ export const createQuiz = async ({ courseId, title, description, passingScore })
   return response.json();
 };
 
-// 获取课程下的小测列表
+// GetCourse下的QuizList
 export const getQuizzesByCourse = async (courseId) => {
   const response = await fetch(`${API_BASE_URL}/quizzes/course/${courseId}`);
   if (!response.ok) {
@@ -108,7 +108,7 @@ export const getQuizzesByCourse = async (courseId) => {
   return response.json();
 };
 
-// 获取课程小测摘要（优化版本，不包含题目详情）
+// GetCourseQuizSummary（OptimizationVersion，不Package含QuestionDetails）
 export const getQuizSummariesByCourse = async (courseId) => {
   const response = await fetch(`${API_BASE_URL}/quizzes/course/${courseId}/summaries`);
   if (!response.ok) {
@@ -117,13 +117,13 @@ export const getQuizSummariesByCourse = async (courseId) => {
   return response.json();
 };
 
-// 获取课程下的小测列表（带用户通过信息），采用后端聚合与缓存
+// GetCourse下的QuizList（带User通过Information），采用后端聚合与Cache
 export const getCourseQuizListCached = async (courseId, userId) => {
   const url = `${API_BASE_URL}/quizzes/course/${courseId}/list-cached?userId=${userId}`;
   try {
     const response = await fetch(url);
     const contentType = response.headers.get('content-type') || '';
-    // 克隆响应以便在非200时输出原始文本
+    // CloneResponse以便在非200时Output原始Text
     const rawText = await response.clone().text().catch(() => '');
 
     if (!response.ok) {
@@ -139,7 +139,7 @@ export const getCourseQuizListCached = async (courseId, userId) => {
       return response.json();
     }
 
-    // 非JSON但可能是可解析的文本
+    // 非JSON但可能是可Parse的Text
     console.warn('缓存接口返回非JSON，尝试解析文本', { url, rawText });
     try {
       return JSON.parse(rawText);

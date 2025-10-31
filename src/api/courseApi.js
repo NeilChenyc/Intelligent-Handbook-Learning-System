@@ -1,10 +1,10 @@
-// 导入getCourseQuizListCached函数
+// TODO: Translate - Import getCourseQuizListCached function
 import { getCourseQuizListCached } from './quizApi';
 
-// 课程相关API调用函数
+// Course relatedAPI调用Function
 const API_BASE_URL = 'http://localhost:8080';
 
-// 获取所有活跃课程（后端已忽略PDF二进制字段）
+// Get all active courses (backend already ignores PDF binary fields)
 export const getAllCourses = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/summaries`, {
@@ -26,7 +26,7 @@ export const getAllCourses = async () => {
   }
 };
 
-// 新增：获取完整课程列表（用于管理页，包含部门等字段）
+// New: Get complete course list (for management page, including department fields)
 export const getAllCoursesFull = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses`, {
@@ -48,7 +48,7 @@ export const getAllCoursesFull = async () => {
   }
 };
 
-// 按需下载课程手册PDF（仅在用户点击时请求）
+// Download course handbook PDF on demand (only request when user clicks)
 export const downloadCourseHandbook = async (courseId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/${courseId}/handbook`, {
@@ -73,7 +73,7 @@ export const downloadCourseHandbook = async (courseId) => {
   }
 };
 
-// 根据ID获取课程详情
+// Get course details by ID
 export const getCourseById = async (courseId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
@@ -98,7 +98,7 @@ export const getCourseById = async (courseId) => {
   }
 };
 
-// 根据教师ID获取课程列表
+// Get course list by teacher ID
 export const getCoursesByTeacher = async (teacherId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/summaries/teacher/${teacherId}`, {
@@ -120,7 +120,7 @@ export const getCoursesByTeacher = async (teacherId) => {
   }
 };
 
-// 搜索课程
+// Search courses
 export const searchCourses = async (title) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/summaries/search?title=${encodeURIComponent(title)}`, {
@@ -142,7 +142,7 @@ export const searchCourses = async (title) => {
   }
 };
 
-// 创建课程
+// Create course
 export const createCourse = async (courseData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses`, {
@@ -165,7 +165,7 @@ export const createCourse = async (courseData) => {
   }
 };
 
-// 更新课程
+// Update course
 export const updateCourse = async (courseId, courseData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
@@ -188,7 +188,7 @@ export const updateCourse = async (courseId, courseData) => {
   }
 };
 
-// 删除课程（软删除）
+// Delete course (soft delete)
 export const deleteCourse = async (courseId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/${courseId}`, {
@@ -209,7 +209,7 @@ export const deleteCourse = async (courseId) => {
   }
 };
 
-// 级联硬删除课程及其关联数据
+// Cascade hard delete course and its associated data
 export const deleteCourseCascade = async (courseId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/${courseId}/cascade`, {
@@ -230,14 +230,14 @@ export const deleteCourseCascade = async (courseId) => {
   }
 };
 
-// 课程状态枚举
+// Course status enum
 export const COURSE_STATUS = {
   ALL: 'all',
   ACTIVE: 'active',
   INACTIVE: 'inactive'
 };
 
-// 根据状态筛选课程
+// Filter courses by status
 export const filterCoursesByStatus = (courses, status) => {
   if (!courses || !Array.isArray(courses)) {
     return [];
@@ -254,7 +254,7 @@ export const filterCoursesByStatus = (courses, status) => {
   }
 };
 
-// 格式化课程数据用于显示
+// Format course data for display
 export const formatCourseForDisplay = (course) => {
   if (!course) return null;
 
@@ -291,7 +291,7 @@ export const formatCourseForDisplay = (course) => {
 };
 
 
-// 获取用户的课程学习进度
+// Get user course learning progress
 export const getUserCourseProgress = async (userId) => {
   try {
     const response = await fetch(`${API_BASE_URL}/courses/summaries`, {
@@ -307,14 +307,14 @@ export const getUserCourseProgress = async (userId) => {
 
     const courses = await response.json();
     
-    // 为每个课程获取进度信息
+    // Get progress info for each course
     const coursesWithProgress = await Promise.all(
       courses.map(async (course) => {
         try {
-          // 获取课程下的小测列表和用户通过情况
+          // Get quiz list under course和User通过情况
           const { quizzes, passedQuizIds } = await getCourseQuizListCached(course.id, userId);
           
-          // 计算进度
+          // Calculate progress
           const totalQuizzes = quizzes.length;
           const completedQuizzes = passedQuizIds.length;
           const progress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
@@ -346,7 +346,7 @@ export const getUserCourseProgress = async (userId) => {
   }
 };
 
-// 获取用户学习统计信息
+// Get user learning statistics
 export const getUserLearningStats = async (userId) => {
   try {
     const coursesWithProgress = await getUserCourseProgress(userId);
@@ -357,10 +357,10 @@ export const getUserLearningStats = async (userId) => {
     const totalQuizzes = coursesWithProgress.reduce((sum, course) => sum + course.totalQuizzes, 0);
     const completedQuizzes = coursesWithProgress.reduce((sum, course) => sum + course.completedQuizzes, 0);
     
-    // 计算总体进度
+    // Calculate overall progress
     const overallProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
     
-    // 计算合规率（完成课程的百分比）
+    // Calculate compliance rate (percentage of completed courses)
     const complianceRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
     
     return {

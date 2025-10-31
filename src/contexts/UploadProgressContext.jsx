@@ -13,7 +13,7 @@ export const useUploadProgress = () => {
 export const UploadProgressProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
 
-  // 创建新的上传任务
+  // Create new upload task
   const createTask = useCallback((taskData) => {
     const taskId = Date.now().toString();
     const newTask = {
@@ -33,7 +33,7 @@ export const UploadProgressProvider = ({ children }) => {
     return taskId;
   }, []);
 
-  // 更新任务状态
+  // Update task status
   const updateTask = useCallback((taskId, updates) => {
     console.log('Updating task:', taskId, 'with updates:', updates); // Debug log
     setTasks(prev => {
@@ -45,31 +45,31 @@ export const UploadProgressProvider = ({ children }) => {
     });
   }, []);
 
-  // 删除任务
+  // Delete task
   const removeTask = useCallback((taskId) => {
     setTasks(prev => prev.filter(task => task.id !== taskId));
   }, []);
 
-  // 获取活跃任务（正在进行中的任务）
+  // Get active tasks (tasks in progress)
   const getActiveTasks = useCallback(() => {
     return tasks.filter(task => 
       task.status === 'uploading' || task.status === 'ai_processing'
     );
   }, [tasks]);
 
-  // 获取最新任务
+  // Get latest task
   const getLatestTask = useCallback(() => {
     if (tasks.length === 0) return null;
     return tasks[tasks.length - 1];
   }, [tasks]);
 
-  // 清理完成的任务（可选，用于定期清理）
+  // Clean completed tasks (optional, for periodic cleanup)
   const cleanupCompletedTasks = useCallback(() => {
     const now = new Date();
     setTasks(prev => prev.filter(task => {
       if (task.status === 'completed' || task.status === 'failed') {
         const timeDiff = now - new Date(task.createdAt);
-        return timeDiff < 5 * 60 * 1000; // 保留5分钟
+        return timeDiff < 5 * 60 * 1000; // Keep for 5 minutes
       }
       return true;
     }));

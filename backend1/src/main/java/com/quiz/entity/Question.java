@@ -48,7 +48,7 @@ public class Question {
     private Integer orderIndex = 0;
 
     @Column(columnDefinition = "TEXT")
-    private String explanation; // 答案解释
+    private String explanation; // Answer explanation
 
     @Column(name = "is_active")
     private Boolean isActive = true;

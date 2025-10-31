@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 小测摘要DTO - 用于小测列表显示，不包含题目详情
+ * Quiz Summary DTO - Used for quiz list display, excluding question details
  */
 @Data
 @NoArgsConstructor
@@ -24,10 +24,10 @@ public class QuizSummaryDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    // Course信息
+    // Course information
     private Long courseId;
     private String courseTitle;
     
-    // 题目数量（不包含题目详情）
+    // Question count (excluding question details)
     private Integer questionCount;
 }

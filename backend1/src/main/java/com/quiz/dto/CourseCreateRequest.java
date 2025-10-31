@@ -11,5 +11,5 @@ public class CourseCreateRequest {
     private String title;
     private String description;
     private Long teacherId;
-    private String department; // 部门字段，用于课程管理页面的部门课程分发
+    private String department; // Department field for department course distribution in course management page
 }

@@ -29,8 +29,8 @@ public class QuizSubmissionResult {
         private Boolean isCorrect;
         private Integer pointsEarned;
         private Integer maxPoints;
-        private List<String> selectedOptions; // 用户选择的选项标识符
-        private List<String> correctOptions;   // 正确答案的选项标识符
+        private List<String> selectedOptions; // User selected option identifiers
+        private List<String> correctOptions;   // Correct answer option identifiers
         private String explanation;
     }
     

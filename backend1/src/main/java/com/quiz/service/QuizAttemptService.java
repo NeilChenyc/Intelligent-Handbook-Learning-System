@@ -70,13 +70,13 @@ public class QuizAttemptService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
-        // 移除最大尝试次数检查，允许无限次尝试
+        // TODO: Translate - Remove maximum attempt limit check, allow unlimited attempts
         // Long attemptCount = quizAttemptRepository.countByUserIdAndQuizId(userId, quizId);
         // if (quiz.getMaxAttempts() != null && attemptCount >= quiz.getMaxAttempts()) {
         //     throw new RuntimeException("Maximum attempts reached for this quiz");
         // }
 
-        // 获取下一个尝试编号
+        // Get next attempt number
         Integer maxAttemptNumber = quizAttemptRepository.getMaxAttemptNumberByUserIdAndQuizId(userId, quizId);
         int nextAttemptNumber = (maxAttemptNumber != null ? maxAttemptNumber : 0) + 1;
 
@@ -97,7 +97,7 @@ public class QuizAttemptService {
         QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
                 .orElseThrow(() -> new RuntimeException("Quiz attempt not found"));
 
-        // 实时评分，不保存StudentAnswer
+        // Real-time scoring, don't save StudentAnswer
         int totalScore = 0;
         int maxPossibleScore = 0;
         List<QuizSubmissionResult.QuestionResult> questionResults = new ArrayList<>();
@@ -107,14 +107,14 @@ public class QuizAttemptService {
             Question question = questionRepository.findById(answerRequest.getQuestionId())
                     .orElseThrow(() -> new RuntimeException("Question not found: " + answerRequest.getQuestionId()));
             
-            // 获取题目的所有选项（按顺序）
+            // Get all options for the question (in order)
             List<QuestionOption> questionOptions = questionOptionRepository.findByQuestionIdOrderByOrderIndexAsc(question.getId());
             
-            // 根据选项标识符找到对应的QuestionOption实体
+            // Find corresponding QuestionOption entity based on option identifier
             List<QuestionOption> selectedOptions = new ArrayList<>();
             List<String> selectedOptionIdentifiers = new ArrayList<>();
             for (String optionIdentifier : answerRequest.getSelectedOptions()) {
-                // 将选项标识符（如"a", "b"）转换为索引
+                // Convert option identifiers (like "a", "b") to indices
                 int optionIndex = optionIdentifier.toLowerCase().charAt(0) - 'a';
                 
                 if (optionIndex >= 0 && optionIndex < questionOptions.size()) {
@@ -123,7 +123,7 @@ public class QuizAttemptService {
                 }
             }
             
-            // 获取正确答案
+            // Get correct answer
             List<QuestionOption> correctOptions = questionOptions.stream()
                     .filter(QuestionOption::getIsCorrect)
                     .toList();
@@ -135,14 +135,14 @@ public class QuizAttemptService {
                 }
             }
             
-            // 评分逻辑
+            // Scoring logic
              boolean isCorrect = AnswerValidationUtil.isAnswerCorrect(selectedOptions, correctOptions, question.getType());
              int pointsEarned = isCorrect ? question.getPoints() : 0;
             
             totalScore += pointsEarned;
             maxPossibleScore += question.getPoints();
             
-            // 创建题目结果
+            // Create question result
             QuizSubmissionResult.QuestionResult questionResult = new QuizSubmissionResult.QuestionResult(
                 question.getId(),
                 question.getQuestionText(),
@@ -155,12 +155,12 @@ public class QuizAttemptService {
             );
             questionResults.add(questionResult);
             
-            // 如果答错，记录到错题表和错题列表
+            // If answered incorrectly, record to wrong question table and list
             if (!isCorrect) {
-                // 创建错题记录到数据库
+                // Create wrong question record to database
                 wrongQuestionService.createWrongQuestion(attempt.getUser().getId(), question.getId(), attempt.getId());
                 
-                // 添加到返回的错题列表
+                // Add to returned wrong question list
                 QuizSubmissionResult.WrongQuestionInfo wrongQuestionInfo = new QuizSubmissionResult.WrongQuestionInfo(
                     question.getId(),
                     question.getQuestionText(),
@@ -173,22 +173,22 @@ public class QuizAttemptService {
             }
         }
         
-        // 更新QuizAttempt的分数信息并持久化通过状态
+        // Update QuizAttempt score info and persist pass status
         attempt.setScore(totalScore);
         attempt.setCompletedAt(LocalDateTime.now());
-        // 通过规则：总分/满分 >= 80%
+        // Pass rule: total score/full score >= 80%
         boolean isPassed = maxPossibleScore > 0 && ((double) totalScore / (double) maxPossibleScore) >= 0.8;
         attempt.setIsPassed(isPassed);
         quizAttemptRepository.save(attempt);
 
-        // 如果该提交导致用户在课程下所有小测均通过，则自动颁发证书
+        // If this submission causes user to pass all quizzes under the course, automatically issue certificate
         try {
             Long userId = attempt.getUser().getId();
             Long courseId = attempt.getQuiz().getCourse().getId();
 
-            // 课程下激活的小测总数
+            // Total number of active quizzes under course
             Long totalActiveQuizzes = quizRepository.countActiveByCourseId(courseId);
-            // 用户在该课程下已通过的小测数量（去重）
+            // Number of quizzes user has passed under this course (deduplicated)
             List<Long> passedQuizIds = quizAttemptRepository.findPassedQuizIdsByUserIdAndCourseId(userId, courseId);
             int passedCount = passedQuizIds != null ? passedQuizIds.size() : 0;
 
@@ -196,16 +196,16 @@ public class QuizAttemptService {
                     ? (int) Math.round((double) passedCount * 100.0 / (double) totalActiveQuizzes)
                     : 0;
 
-            // 当所有激活小测均通过时，自动颁发证书
+            // Automatically issue certificate when all active quizzes are passed
             if (totalActiveQuizzes != null && totalActiveQuizzes > 0 && passedCount >= totalActiveQuizzes) {
-                // 这里将最终分数视为课程完成度分数（100），以满足证书通过阈值
+                // Here treat final score as course completion score (100) to meet certificate pass threshold
                 int finalScoreForCertificate = 100;
                 try {
                     log.info("Auto-award certificate: userId={}, courseId={}, completion={}%, totalQuizzes={}, passedCount={}",
                             userId, courseId, completionPercentage, totalActiveQuizzes, passedCount);
                     certificateService.awardCertificateToUser(userId, courseId, finalScoreForCertificate, completionPercentage);
                 } catch (Exception awardEx) {
-                    // 可能的情况：证书已存在或阈值未达到等，这里记录日志但不影响提交结果返回
+                    // Possible cases: certificate already exists or threshold not met, log here but don't affect submission result return
                     log.warn("Auto-award certificate failed: {}", awardEx.getMessage());
                 }
             }
@@ -213,7 +213,7 @@ public class QuizAttemptService {
             log.warn("Post-submit auto-award check failed: {}", ex.getMessage());
         }
         
-        // 返回提交结果
+        // Return submission result
         return new QuizSubmissionResult(
             attempt.getId(),
             totalScore,
@@ -226,14 +226,12 @@ public class QuizAttemptService {
         );
     }
 
-     /**
-      * 判断答案是否正确
-      * @param selectedOptions 用户选择的选项
-      * @param correctOptions 正确的选项
-      * @param questionType 题目类型
-      * @return 是否正确
-      */
-     // 移除原有的isAnswerCorrect方法，现在使用AnswerValidationUtil
+     /* * * 判断Answer是否正确
+      * @param selectedOptions UserSelect的Option
+      * @param correctOptions 正确的Option
+      * @param questionType QuestionClass型
+      * @return 是否正确 */
+     // Remove original isAnswerCorrect method, now use AnswerValidationUtil
 
      public List<StudentAnswer> getAnswersByAttempt(Long attemptId) {
         return studentAnswerRepository.findByQuizAttemptId(attemptId);
@@ -256,7 +254,7 @@ public class QuizAttemptService {
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
         if (quiz.getMaxAttempts() == null) {
-            return true; // 无限制
+            return true; // No limit
         }
 
         Long attemptCount = quizAttemptRepository.countByUserIdAndQuizId(userId, quizId);
@@ -268,9 +266,7 @@ public class QuizAttemptService {
         return !passedAttempts.isEmpty();
     }
 
-    /**
-     * 获取用户在某课程中已通过的小测ID列表
-     */
+    /* * * GetUser在某Course中已通过的QuizIDList */
     public List<Long> getUserPassedQuizzesInCourse(Long userId, Long courseId) {
         return quizAttemptRepository.findPassedQuizIdsByUserIdAndCourseId(userId, courseId);
     }
@@ -279,7 +275,7 @@ public class QuizAttemptService {
         Question question = answer.getQuestion();
         List<QuestionOption> correctOptions = questionOptionRepository.findCorrectOptionsByQuestionId(question.getId());
         
-        // 获取学生选择的选项ID
+        // Get student selected option IDs
         List<Long> selectedOptionIds = answer.getSelectedOptions().stream()
                 .map(QuestionOption::getId)
                 .toList();
@@ -288,7 +284,7 @@ public class QuizAttemptService {
                 .map(QuestionOption::getId)
                 .toList();
 
-        // 判断答案是否正确
+        // Judge if answer is correct
         boolean isCorrect = selectedOptionIds.size() == correctOptionIds.size() && 
                            selectedOptionIds.containsAll(correctOptionIds);
         
@@ -313,11 +309,11 @@ public class QuizAttemptService {
             double percentage = (double) totalScore / totalPoints * 100;
             attempt.setPercentage(percentage);
             
-            // 判断是否通过
+            // Judge if passed
             if (quiz.getPassingScore() != null) {
                 attempt.setIsPassed(percentage >= quiz.getPassingScore());
             } else {
-                attempt.setIsPassed(percentage >= 60.0); // 默认60%通过
+                attempt.setIsPassed(percentage >= 60.0); // Default 60% pass
             }
         } else {
             attempt.setPercentage(0.0);

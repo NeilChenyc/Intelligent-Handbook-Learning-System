@@ -71,7 +71,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 课程信息表单 */}
+            {/* CourseInfoTable单 */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -122,7 +122,7 @@ const CourseEditModal = ({ isOpen, onClose, course, onSave }) => {
               </div>
             </div>
 
-            {/* 按钮组 */}
+            {/* Button组 */}
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <Button
                 type="button"

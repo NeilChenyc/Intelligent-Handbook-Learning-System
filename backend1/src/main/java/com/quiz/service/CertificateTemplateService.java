@@ -104,7 +104,7 @@ public class CertificateTemplateService {
         }
         result = result.replace("{{VALIDITY_TEXT}}", validityText);
         
-        // Skills handling（当前证书实体不包含skills字段，跳过该段渲染）
+        // Skills handling (current certificate entity doesn't include skills field, skip this section rendering)
         String skills = null;
         if (skills != null && !skills.trim().isEmpty()) {
             // Handle skills as comma-separated values

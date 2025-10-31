@@ -31,7 +31,7 @@ const CourseManagementPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // 获取课程数据
+  // GetCourseData
   const fetchCourses = async (retryCount = 0) => {
     try {
       setLoading(true);
@@ -43,12 +43,12 @@ const CourseManagementPage = () => {
       console.log('Error fetching courses:', error);
       setError('Failed to load courses');
       
-      // 如果是网络错误且重试次数少于3次，自动重试
+      // 如果是NetworkMistake且Retry次数少于3次，自动Retry
       if (retryCount < 3 && (err.name === 'AbortError' || err.message.includes('fetch'))) {
         console.log(`重试获取课程数据，第 ${retryCount + 1} 次`);
         setTimeout(() => {
           fetchCourses(retryCount + 1);
-        }, 1000 * (retryCount + 1)); // 递增延迟
+        }, 1000 * (retryCount + 1)); // 递增Latency
         return;
       }
       
@@ -99,11 +99,11 @@ const CourseManagementPage = () => {
   const handleSaveCourse = async (updatedCourse) => {
     try {
       await updateCourse(updatedCourse.id, updatedCourse);
-      alert('课程更新成功');
+      alert('Course update successful');
       setEditingCourse(null);
       fetchCourses();
     } catch (err) {
-      alert('更新课程失败: ' + err.message);
+      alert('Course update failed: ' + err.message);
     }
   };
 
@@ -111,7 +111,7 @@ const CourseManagementPage = () => {
     setSelectedCourseForQuestions(course);
   };
 
-  // 新增：删除课程（级联硬删除）
+  // 新增：DeleteCourse（级联硬Delete）
   const handleDeleteCourse = async (course) => {
     const ok = window.confirm(
       `Are you sure you want to delete the course?“${course.title}”`
@@ -264,7 +264,7 @@ const CourseManagementPage = () => {
                         <Edit className="w-4 h-4" />
                         <span>Question Management</span>
                       </Button>
-                      {/* 新增：删除按钮 */}
+                      {/* 新增：DeleteButton */}
                       <Button 
                         size="sm" 
                         variant="outline"

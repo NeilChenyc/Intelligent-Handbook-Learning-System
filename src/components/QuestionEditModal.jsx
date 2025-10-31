@@ -17,9 +17,9 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
   });
 
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false); // 添加loading状态
+  const [loading, setLoading] = useState(false); // TODO: Translate - Add loading state
 
-  // 添加clearError函数
+  // Add clearError function
   const clearError = (field) => {
     if (errors[field]) {
       setErrors(prev => ({
@@ -32,7 +32,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
   useEffect(() => {
     if (isOpen) {
       if (question && !isAddMode) {
-        // 编辑模式：使用现有题目数据
+        // Edit mode：使用现有QuestionData
         setFormData({
           questionText: question.questionText || '',
           type: question.type || 'SINGLE_CHOICE',
@@ -49,7 +49,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
           ]
         });
       } else {
-        // 添加模式：计算下一个排序索引
+        // Add mode：Calculate下一个SortIndex
         const nextOrderIndex = getNextOrderIndex();
         setFormData({
           questionText: '',
@@ -68,12 +68,12 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
     }
   }, [isOpen, question, isAddMode, quizzes]);
 
-  // 计算下一个排序索引
+  // Calculate next sort index
   const getNextOrderIndex = () => {
     if (!formData.quizId || !quizzes.length) return 1;
     
-    // 这里需要从父组件传入当前quiz的题目列表来计算最大排序
-    // 暂时返回1，后续需要优化
+    // Need to pass current quiz question list from parent component to calculate max sort
+    // Temporarily return 1, needs optimization later
     return 1;
   };
 
@@ -82,7 +82,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
       ...prev,
       [field]: value
     }));
-    // 清除对应字段的错误
+    // Clear corresponding field errors
     clearError(field);
   };
 
@@ -105,7 +105,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
         }))
       }));
     } else if (formData.type === 'MULTIPLE_CHOICE') {
-      // 多选题：可以选择多个正确答案
+      // Multiple choice: can select multiple correct answers
       setFormData(prev => ({
         ...prev,
         options: prev.options.map((option, i) => 
@@ -178,10 +178,10 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
       return;
     }
 
-    setLoading(true); // 开始提交时设置loading为true
+    setLoading(true); // Set loading to true when starting submission
 
     try {
-      // 准备提交数据
+      // Prepare submission data
       const submitData = {
         questionText: formData.questionText.trim(),
         type: formData.type,
@@ -190,7 +190,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
         quizId: parseInt(formData.quizId)
       };
 
-      // 如果是选择题，添加选项数据
+      // If it's multiple choice, add option data
       if (formData.type === 'SINGLE_CHOICE' || formData.type === 'MULTIPLE_CHOICE') {
         submitData.options = formData.options
           .filter(opt => opt.optionText.trim())
@@ -204,7 +204,7 @@ const QuestionEditModal = ({ isOpen, onClose, question, quizzes, onSave, isAddMo
     } catch (error) {
       console.error('Error saving question:', error);
     } finally {
-      setLoading(false); // 无论成功还是失败都要重置loading状态
+      setLoading(false); // Reset loading state whether success or failure
     }
   };
 

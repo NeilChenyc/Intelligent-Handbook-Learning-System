@@ -34,7 +34,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showQuizModal, setShowQuizModal] = useState(false);
 
-  // 获取课程下的所有题目
+  // TODO: Translate - Get all questions under course
   const fetchQuestions = async () => {
     try {
       setLoading(true);
@@ -47,7 +47,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
     }
   };
 
-  // 获取课程下的所有quiz
+  // GetCourse下的所有quiz
   const fetchQuizzes = async () => {
     try {
       const data = await getQuizzesByCourse(course.id);
@@ -72,7 +72,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
       try {
         await deleteQuestion(questionId);
-        await fetchQuestions(); // 重新获取题目列表
+        await fetchQuestions(); // Refetch question list
       } catch (err) {
         alert('Failed to delete question: ' + err.message);
       }
@@ -82,24 +82,24 @@ const QuestionManagementPage = ({ course, onBack }) => {
   const handleSaveQuestion = async (questionData) => {
     try {
       if (editingQuestion) {
-        // 编辑模式
+        // Edit mode
         await updateQuestion(editingQuestion.id, questionData);
         setSuccessMessage('Question updated successfully!');
       } else {
-        // 添加模式
+        // Add mode
         await createQuestion(questionData);
         setSuccessMessage('Question added successfully!');
       }
 
-      await fetchQuestions(); // 重新获取题目列表
+      await fetchQuestions(); // Refetch question list
       setEditingQuestion(null);
       setShowAddModal(false);
       
-      // 显示成功提示
+      // Show success message
       setShowSuccessMessage(true);
       setTimeout(() => {
         setShowSuccessMessage(false);
-      }, 2000); // 减少显示时间从3秒到2秒
+      }, 2000); // Reduce display time from 3 seconds to 2 seconds
     } catch (err) {
       alert((editingQuestion ? 'Failed to update question: ' : 'Failed to create question: ') + err.message);
     }
@@ -109,12 +109,12 @@ const QuestionManagementPage = ({ course, onBack }) => {
     setShowAddModal(true);
   };
 
-  // 添加小测：打开模态
+  // Add quiz: open modal
   const handleAddQuiz = () => {
     setShowQuizModal(true);
   };
 
-  // 保存小测：调用后端并刷新列表
+  // Save quiz: call backend and refresh list
   const handleSaveQuiz = async (quizData) => {
     try {
       await createQuiz({ courseId: course.id, ...quizData });
@@ -177,7 +177,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* 成功提示 */}
+      {/* SuccessHint */}
       {showSuccessMessage && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2">
           <CheckCircle className="w-5 h-5" />
@@ -215,7 +215,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         </div>
       </div>
 
-      {/* 统计信息 */}
+      {/* StatisticsInfo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
@@ -278,7 +278,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         </Card>
       </div>
 
-      {/* 题目列表 */}
+      {/* QuestionList */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -390,7 +390,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         </CardContent>
       </Card>
 
-      {/* 题目编辑模态框 */}
+      {/* QuestionEdit模态框 */}
       <QuestionEditModal
         isOpen={editingQuestion !== null}
         onClose={() => setEditingQuestion(null)}
@@ -400,7 +400,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         isAddMode={false}
       />
 
-      {/* 题目添加模态框 */}
+      {/* QuestionAdd模态框 */}
       <QuestionEditModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
@@ -410,7 +410,7 @@ const QuestionManagementPage = ({ course, onBack }) => {
         isAddMode={true}
       />
 
-      {/* 创建小测模态框 */}
+      {/* CreateQuiz模态框 */}
       <QuizCreateModal
         isOpen={showQuizModal}
         onClose={() => setShowQuizModal(false)}

@@ -5,12 +5,12 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    userType: 'admin' // 'admin' or 'student'
+    userType: 'admin' // TODO: Translate - 'admin' or 'student'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 模拟用户数据
+  // Mock user data
   const users = {
     admin: {
       username: 'admin',
@@ -51,7 +51,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
     setError('');
 
     try {
-      // 调用后端登录API
+      // Call backend login API
       const response = await fetch('http://localhost:8080/users/login', {
         method: 'POST',
         headers: {
@@ -66,7 +66,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
       const data = await response.json();
 
       if (data.success) {
-        // 登录成功
+        // Login successful
         const userInfo = {
           id: data.user.id,
           username: data.user.username,
@@ -78,17 +78,17 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
           loginTime: new Date().toISOString()
         };
         
-        // 保存到localStorage
+        // Save to localStorage
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
         
-        // 调用父组件的登录回调
+        // Call parent component login callback
         onLogin(userInfo);
       } else {
-        setError(data.message || '登录失败，请检查用户名和密码');
+        setError(data.message || 'Login failed, please check your username and password.');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('网络错误，请稍后重试');
+      setError('Network error, please try again later.');
     } finally {
       setIsLoading(false);
     }

@@ -1,4 +1,4 @@
-// 导入现有API函数作为tools
+// TODO: Translate - Import existing API functions as tools
 import { 
   getAllCourses, 
   getAllCoursesFull, 
@@ -18,21 +18,21 @@ import { getUserCertificates } from './certificateApi';
 
 const API_BASE_URL = 'http://localhost:8080';
 
-// Chatbot会话管理
+// ChatbotSessionManagement
 class ChatbotSession {
   constructor() {
-    this.HISTORY_TTL_MS = 10 * 60 * 1000; // 10分钟保留
+    this.HISTORY_TTL_MS = 10 * 60 * 1000; // 10Minute保留
     this.conversationHistory = this.loadConversationHistory();
-    this.maxHistoryLength = 5; // 最多保存5轮对话
+    this.maxHistoryLength = 5; // Save at most 5 rounds of conversation
   }
 
-  // 从sessionStorage加载对话历史，并按10分钟TTL过滤
+  // Load conversation history from sessionStorage and filter by 10-minute TTL
   loadConversationHistory() {
     try {
       const saved = sessionStorage.getItem('chatbot_conversation_history');
       const history = saved ? JSON.parse(saved) : [];
       const now = Date.now();
-      // 仅保留10分钟内的记录
+      // Only keep records within 10 minutes
       const filtered = Array.isArray(history)
         ? history.filter(conv => {
             if (!conv || !conv.timestamp) return false;
@@ -40,7 +40,7 @@ class ChatbotSession {
             return now - ts <= this.HISTORY_TTL_MS;
           })
         : [];
-      // 如果有过滤变化则写回
+      // Write back if there are filter changes
       if (filtered.length !== (history?.length || 0)) {
         sessionStorage.setItem('chatbot_conversation_history', JSON.stringify(filtered));
       }
@@ -51,7 +51,7 @@ class ChatbotSession {
     }
   }
 
-  // 保存对话历史到sessionStorage
+  // Save conversation history to sessionStorage
   saveConversationHistory() {
     try {
       sessionStorage.setItem('chatbot_conversation_history', JSON.stringify(this.conversationHistory));
@@ -60,7 +60,7 @@ class ChatbotSession {
     }
   }
 
-  // 添加对话到历史记录
+  // Add conversation to history
   addToHistory(userMessage, botResponse, toolsUsed = []) {
     const conversation = {
       timestamp: new Date().toISOString(),
@@ -71,7 +71,7 @@ class ChatbotSession {
 
     this.conversationHistory.push(conversation);
 
-    // 保持最多5轮对话
+    // Keep at most 5 rounds of conversation
     if (this.conversationHistory.length > this.maxHistoryLength) {
       this.conversationHistory = this.conversationHistory.slice(-this.maxHistoryLength);
     }
@@ -79,24 +79,24 @@ class ChatbotSession {
     this.saveConversationHistory();
   }
 
-  // 获取对话历史
+  // Get conversation history
   getHistory() {
     return this.conversationHistory;
   }
 
-  // 清除对话历史
+  // Clear conversation history
   clearHistory() {
     this.conversationHistory = [];
     sessionStorage.removeItem('chatbot_conversation_history');
   }
 
-  // 获取上下文摘要（用于AI理解）
+  // Get context summary (for AI understanding)
   getContextSummary() {
     if (this.conversationHistory.length === 0) {
       return "这是一个新的对话会话。";
     }
 
-    const recentConversations = this.conversationHistory.slice(-3); // 最近3轮对话
+    const recentConversations = this.conversationHistory.slice(-3); // Recent 3 rounds of conversation
     const contextSummary = recentConversations.map((conv, index) => 
       `第${index + 1}轮 - 用户: ${conv.userMessage.substring(0, 100)}... 助手: ${conv.botResponse.substring(0, 100)}...`
     ).join('\n');
@@ -105,12 +105,12 @@ class ChatbotSession {
   }
 }
 
-// 创建全局会话实例
+// Create global session instance
 const chatbotSession = new ChatbotSession();
 
-// 可用的工具函数
+// Available tool functions
 const availableTools = {
-  // 课程相关工具
+  // Course-related tools
   getAllCourses: {
     name: 'getAllCourses',
     description: '获取所有活跃课程列表',
@@ -147,7 +147,7 @@ const availableTools = {
     function: getUserLearningStats
   },
 
-  // 合规报告相关工具
+  // Compliance report related tools
   getOrganizationReport: {
     name: 'getOrganizationReport',
     description: '获取组织合规报告数据',
@@ -178,7 +178,7 @@ const availableTools = {
     function: getMonthlyTrend
   },
 
-  // 证书相关工具
+  // Certificate related tools
   getUserCertificates: {
     name: 'getUserCertificates',
     description: '获取用户证书列表',
@@ -186,10 +186,10 @@ const availableTools = {
   }
 };
 
-// 后端AI响应函数：调用后端并返回完整响应对象（包含 toolsUsed）
+// Backend AI response function: call backend and return complete response object (including toolsUsed)
 const generateAIResponse = async (userMessage) => {
   try {
-    // 调用后端的OpenAI API
+    // Call backend OpenAI API
     const response = await fetch(`${API_BASE_URL}/chatbot/chat`, {
       method: 'POST',
       headers: {
@@ -205,22 +205,22 @@ const generateAIResponse = async (userMessage) => {
     }
 
     const data = await response.json();
-    // 返回完整对象，包含 message 与 toolsUsed
+    // Return complete object including message and toolsUsed
     return data;
 
   } catch (error) {
     console.error('Error calling backend AI API:', error);
     
-    // 如果后端API调用失败，使用本地后备响应
+    // Use local fallback response if backend API call fails
     return { message: generateFallbackResponse(userMessage), toolsUsed: [], success: false };
   }
 };
 
-// 后备响应函数（当后端API不可用时使用）
+// Fallback response function (used when backend API is unavailable)
 const generateFallbackResponse = (userMessage, toolResults = null, contextSummary = '') => {
   const message = userMessage.toLowerCase();
   
-  // 基础问候和帮助
+  // Basic greetings and help
   if (message.includes('你好') || message.includes('hello') || message.includes('hi')) {
     return `Hello! I'm your intelligent learning assistant. I can help you with:
 
@@ -260,12 +260,12 @@ Please tell me what you need help with!`;
 You can also ask specific questions directly, and I'll do my best to help!`;
   }
 
-  // 如果有工具执行结果，基于结果生成响应
+  // If there are tool execution results, generate response based on results
   if (toolResults) {
     return formatToolResults(toolResults, userMessage);
   }
 
-  // 默认响应
+  // Default response
   return `I understand your question: "${userMessage}"
 
 ${contextSummary ? `\nBased on our previous conversation, ` : ''}I suggest you can:
@@ -278,7 +278,7 @@ ${contextSummary ? `\nBased on our previous conversation, ` : ''}I suggest you c
 Please tell me specifically what you need help with, and I'll provide more accurate information!`;
 };
 
-// 格式化工具执行结果
+// Format tool execution results
 const formatToolResults = (results, userMessage) => {
   if (!results || results.length === 0) {
     return '抱歉，没有找到相关信息。请尝试重新描述您的问题。';
@@ -297,7 +297,7 @@ const formatToolResults = (results, userMessage) => {
   return response;
 };
 
-// 格式化单个工具结果
+// Format single tool result
 const formatSingleResult = (toolName, data) => {
   switch (toolName) {
     case 'getAllCourses':
@@ -338,12 +338,12 @@ const formatSingleResult = (toolName, data) => {
   }
 };
 
-// 确定需要调用的工具
+// Determine which tools need to be called
 const determineRequiredTools = (userMessage) => {
   const message = userMessage.toLowerCase();
   const requiredTools = [];
 
-  // 课程相关
+  // Course related
   if (message.includes('课程') || message.includes('course')) {
     if (message.includes('进度') || message.includes('progress')) {
       requiredTools.push('getUserCourseProgress', 'getUserLearningStats');
@@ -352,7 +352,7 @@ const determineRequiredTools = (userMessage) => {
     }
   }
 
-  // 合规相关
+  // Compliance related
   if (message.includes('合规') || message.includes('compliance')) {
     if (message.includes('组织') || message.includes('整体')) {
       requiredTools.push('getOrganizationReport');
@@ -365,7 +365,7 @@ const determineRequiredTools = (userMessage) => {
     }
   }
 
-  // 证书相关
+  // Certificate related
   if (message.includes('证书') || message.includes('certificate')) {
     requiredTools.push('getUserCertificates');
   }
@@ -373,7 +373,7 @@ const determineRequiredTools = (userMessage) => {
   return requiredTools;
 };
 
-// 执行工具调用
+// Execute tool calls
 const executeTools = async (toolNames, userId = null) => {
   const results = [];
 
@@ -389,7 +389,7 @@ const executeTools = async (toolNames, userId = null) => {
 
     try {
       let data;
-      // 根据工具类型传递不同参数
+      // Pass different parameters based on tool type
       if (toolName.includes('User') && userId) {
         data = await tool.function(userId);
       } else {
@@ -412,13 +412,13 @@ const executeTools = async (toolNames, userId = null) => {
   return results;
 };
 
-// 主要的聊天接口
+// Main chat interface
 export const sendChatMessage = async (userMessage, userId = null) => {
   try {
-    // 直接调用后端生成AI响应（包含 toolsUsed）
+    // Directly call backend to generate AI response (including toolsUsed)
     const backendResponse = await generateAIResponse(userMessage);
 
-    // 添加到对话历史
+    // Add to conversation history
     chatbotSession.addToHistory(
       userMessage,
       backendResponse.message || backendResponse.response || '',
@@ -442,18 +442,18 @@ export const sendChatMessage = async (userMessage, userId = null) => {
   }
 };
 
-// 获取对话历史
+// Get conversation history
 export const getChatHistory = () => {
   return chatbotSession.getHistory();
 };
 
-// 清除对话历史
+// Clear conversation history
 export const clearChatHistory = () => {
   chatbotSession.clearHistory();
   return { success: true, message: '对话历史已清除' };
 };
 
-// 获取可用工具列表
+// Get available tools list
 export const getAvailableTools = () => {
   return Object.keys(availableTools).map(key => ({
     name: key,

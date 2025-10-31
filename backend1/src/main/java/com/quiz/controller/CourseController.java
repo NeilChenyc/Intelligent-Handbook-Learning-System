@@ -59,7 +59,7 @@ public class CourseController {
         }
     }
 
-    // 新增：支持multipart/form-data的PDF上传端点
+    // New: Support multipart/form-data PDF upload endpoint
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Course> uploadCourse(
             @ModelAttribute CourseCreateRequest request,
@@ -96,7 +96,7 @@ public class CourseController {
         }
     }
 
-    // 新增：级联硬删除课程及其关联数据
+    // New: Cascade hard delete course and its associated data
     @DeleteMapping("/{id}/cascade")
     public ResponseEntity<Void> deleteCourseCascade(@PathVariable("id") Long id) {
         try {

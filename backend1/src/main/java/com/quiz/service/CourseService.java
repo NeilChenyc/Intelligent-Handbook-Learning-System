@@ -10,6 +10,7 @@ import com.quiz.repository.WrongQuestionRepository;
 import com.quiz.repository.QuizAttemptRepository;
 import com.quiz.repository.QuizRepository;
 import com.quiz.repository.CertificateRepository;
+import com.quiz.repository.UserCertificateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,9 +33,10 @@ public class CourseService {
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizRepository quizRepository;
     private final CertificateRepository certificateRepository;
-    // 新增：引入AI预检服务
+    private final UserCertificateRepository userCertificateRepository;
+    // 新增：引入AI预检Service
     private final PdfQuizAgentService pdfQuizAgentService;
-    // 新增：证书服务用于在课程创建后自动生成证书
+    // 新增：CertificateServiceUsed for在CourseCreate后自动生成Certificate
     private final CertificateService certificateService;
 
     @Transactional(readOnly = true)
@@ -42,10 +44,10 @@ public class CourseService {
         try {
             log.info("Fetching all active courses");
             List<Course> courses = courseRepository.findByIsActiveTrue();
-            // 手动设置quizzes为null以避免序列化问题，但保留PDF相关字段
+            // 手动Settingquizzes为null以避免序Column化Issue，但保留PDFCorrelationField
             courses.forEach(course -> {
                 course.setQuizzes(null);
-                // 确保PDF相关字段被保留
+                // 确保PDFCorrelationField被保留
                 log.debug("Course {} has handbook: {}", course.getTitle(), course.getHandbookFileName());
             });
             log.info("Found {} courses", courses.size());
@@ -71,7 +73,7 @@ public class CourseService {
     }
 
     public Course createCourse(CourseCreateRequest request) {
-        // 验证教师是否存在
+        // Validate教师是否存在
         User teacher = userRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
 
@@ -79,7 +81,7 @@ public class CourseService {
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setTeacher(teacher);
-        course.setDepartment(request.getDepartment()); // 设置部门字段
+        course.setDepartment(request.getDepartment()); // Setting部门Field
         course.setIsActive(true);
         course.setCreatedAt(LocalDateTime.now());
         course.setUpdatedAt(LocalDateTime.now());
@@ -87,16 +89,16 @@ public class CourseService {
         Course savedCourse = courseRepository.save(course);
         log.info("Course created with id: {}", savedCourse.getId());
 
-        // 在课程创建完成后自动创建证书（使用默认模板与参数）
+        // 在CourseCreate完成后自动CreateCertificate（使用DefaultTemplate与Parameter）
         try {
             certificateService.createCertificateForCourse(
                 savedCourse.getId(),
-                null, // 使用课程标题作为证书名
-                null, // 默认发行方
-                request.getDescription(), // 证书描述沿用课程描述
-                null, // 等级默认
-                null, // 有效期默认
-                null  // 通过分数默认
+                null, // 使用CourseTitle作为Certificate名
+                null, // Default发Row方
+                request.getDescription(), // Certificate描述沿用Course描述
+                null, // 等级Default
+                null, // 有效期Default
+                null  // 通过分数Default
             );
             log.info("Auto-created certificate for course id: {}", savedCourse.getId());
         } catch (Exception e) {
@@ -106,11 +108,11 @@ public class CourseService {
     }
 
     public Course createCourseWithPdf(CourseCreateRequest request, org.springframework.web.multipart.MultipartFile handbookFile) throws IOException {
-        // 验证教师是否存在
+        // Validate教师是否存在
         User teacher = userRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
 
-        // 验证PDF文件
+        // ValidatePDFFile
         if (handbookFile == null || handbookFile.isEmpty()) {
             throw new RuntimeException("Handbook PDF file is required");
         }
@@ -119,7 +121,7 @@ public class CourseService {
             throw new RuntimeException("Only PDF files are allowed");
         }
 
-        // 先进行AI预检，避免PDF先入库导致不必要的egress
+        // 先进RowAI预检，避免PDF先入Library导致不必要的egress
         String preflightPrompt = "课程预检:\n标题:" + request.getTitle() + "\n描述:" + request.getDescription();
         pdfQuizAgentService.preflightCheckPdfWithOpenAI(handbookFile.getBytes(), handbookFile.getOriginalFilename(), preflightPrompt);
 
@@ -127,15 +129,15 @@ public class CourseService {
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
         course.setTeacher(teacher);
-        course.setDepartment(request.getDepartment()); // 设置部门字段
+        course.setDepartment(request.getDepartment()); // Setting部门Field
         
-        // 设置PDF文件信息（通过预检后再入库）
+        // SettingPDFFileInformation（通过预检后再入Library）
         course.setHandbookFileName(handbookFile.getOriginalFilename());
         course.setHandbookContentType(handbookFile.getContentType());
         course.setHandbookFileSize(handbookFile.getSize());
         
-        // 这里暂时将PDF文件内容存储为字节数组
-        // 在生产环境中，建议将文件存储到文件系统或云存储服务
+        // 这里暂时将PDFFileContentStorage为字节Array
+        // 在生产Environment中，Suggestion将FileStorage到File系统或云StorageService
         course.setHandbookFilePath(handbookFile.getBytes());
         
         course.setIsActive(true);
@@ -145,7 +147,7 @@ public class CourseService {
         Course savedCourse = courseRepository.save(course);
         log.info("Course created with PDF handbook, id: {}", savedCourse.getId());
 
-        // 在上传PDF并创建课程后，自动创建证书以便在Available中显示
+        // 在UploadPDF并CreateCourse后，自动CreateCertificate以便在Available中Display
         try {
             certificateService.createCertificateForCourse(
                 savedCourse.getId(),
@@ -169,7 +171,7 @@ public class CourseService {
 
         existingCourse.setTitle(request.getTitle());
         existingCourse.setDescription(request.getDescription());
-        existingCourse.setDepartment(request.getDepartment()); // 更新部门字段
+        existingCourse.setDepartment(request.getDepartment()); // Update部门Field
         
         // 如果需要更换教师
         if (request.getTeacherId() != null && 
@@ -190,7 +192,7 @@ public class CourseService {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
         
-        // 软删除
+        // 软Delete
         course.setIsActive(false);
         course.setUpdatedAt(LocalDateTime.now());
         courseRepository.save(course);
@@ -211,7 +213,7 @@ public class CourseService {
 
     public List<CourseSummaryDTO> getCourseSummaries() {
         List<CourseSummaryDTO> summaries = courseRepository.findActiveCourseSummaries();
-        // 为每个课程设置quiz数量
+        // 为每个CourseSettingquizQuantity
         for (CourseSummaryDTO summary : summaries) {
             Long quizCount = quizRepository.countActiveByCourseId(summary.getId());
             summary.setQuizCount(quizCount.intValue());
@@ -221,7 +223,7 @@ public class CourseService {
 
     public List<CourseSummaryDTO> getCourseSummariesByTeacher(Long teacherId) {
         List<CourseSummaryDTO> summaries = courseRepository.findCourseSummariesByTeacherId(teacherId);
-        // 为每个课程设置quiz数量
+        // 为每个CourseSettingquizQuantity
         for (CourseSummaryDTO summary : summaries) {
             Long quizCount = quizRepository.countActiveByCourseId(summary.getId());
             summary.setQuizCount(quizCount.intValue());
@@ -231,7 +233,7 @@ public class CourseService {
 
     public List<CourseSummaryDTO> searchCourseSummaries(String title) {
         List<CourseSummaryDTO> summaries = courseRepository.findCourseSummariesByTitleContainingAndIsActiveTrue(title);
-        // 为每个课程设置quiz数量
+        // 为每个CourseSettingquizQuantity
         for (CourseSummaryDTO summary : summaries) {
             Long quizCount = quizRepository.countActiveByCourseId(summary.getId());
             summary.setQuizCount(quizCount.intValue());
@@ -252,10 +254,8 @@ public class CourseService {
         return course.isPresent() && course.get().getTeacher().getId().equals(teacherId);
     }
 
-    /**
-     * 级联硬删除课程及其关联数据
-     * 删除范围：课程、相关测验、测验下题目与选项、错题记录、测验提交与作答、证书
-     */
+    /* * * 级联硬DeleteCourse及其AssociationData
+     * DeleteRange：Course、Correlation测验、测验下Question与Option、错题Record、测验Commit与作答、Certificate */
     @Transactional
     public void deleteCourseCascade(Long id) {
         Course course = courseRepository.findById(id)
@@ -263,21 +263,25 @@ public class CourseService {
 
         log.info("Starting cascade delete for course id {}", id);
 
-        // 1) 删除该课程涉及的错题（关联题目或测验提交）
+        // 1) Delete该Course涉及的错题（AssociationQuestion或测验Commit）
         wrongQuestionRepository.deleteByCourseId(id);
         log.info("Deleted wrong questions for course id {}", id);
 
-        // 2) 删除该课程下的所有测验提交（将级联删除学生答案与选项关联）
+        // 2) Delete该Course下的所有测验Commit（将级联Delete学生Answer与OptionAssociation）
         quizAttemptRepository.deleteByCourseId(id);
         log.info("Deleted quiz attempts for course id {}", id);
 
-        // 3) 删除该课程关联的证书（必须在删除课程之前删除，避免外键约束冲突）
+        // 3) Delete该Course关联的用户证书记录（必须在删除证书之前删除，避免外键约束冲突）
+        userCertificateRepository.deleteByCourseId(id);
+        log.info("Deleted user certificates for course id {}", id);
+
+        // 4) Delete该CourseAssociation的Certificate（必须在DeleteCourse之前Delete，避免外KeyConstraintConflict）
         certificateRepository.findByCourseId(id).ifPresent(certificate -> {
             certificateRepository.delete(certificate);
             log.info("Deleted certificate for course id {}", id);
         });
 
-        // 4) 删除课程实体（级联删除其下测验、题目和选项）
+        // 5) DeleteCourse实体（级联Delete其下测验、Question和Option）
         courseRepository.delete(course);
         log.info("Cascade deleted course entity and related quizzes/questions/options for id {}", id);
     }

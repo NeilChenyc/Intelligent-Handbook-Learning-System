@@ -78,11 +78,11 @@ public class QuestionService {
 
     @Transactional
     public Question createQuestion(CreateQuestionRequest request) {
-        // 验证测验是否存在
+        // TODO: Translate - Validate if quiz exists
         Quiz quiz = quizRepository.findById(request.getQuizId())
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
         
-        // 创建Question实体
+        // Create Question entity
         Question question = new Question();
         question.setQuestionText(request.getText());
         question.setType(request.getType());
@@ -90,7 +90,7 @@ public class QuestionService {
         question.setPoints(request.getPoints() != null ? request.getPoints() : 1);
         question.setExplanation(request.getExplanation());
         
-        // 自动分配排序索引：获取当前quiz的最大排序索引+1
+        // Auto assign sort index: get current quiz's max sort index + 1
         Integer maxOrderIndex = questionRepository.getMaxOrderIndexByQuizId(quiz.getId());
         int nextOrderIndex = (maxOrderIndex != null) ? maxOrderIndex + 1 : 1;
         
@@ -99,10 +99,10 @@ public class QuestionService {
         question.setCreatedAt(LocalDateTime.now());
         question.setUpdatedAt(LocalDateTime.now());
 
-        // 先保存题目（不包含选项）
+        // Save question first (excluding options)
         Question savedQuestion = questionRepository.save(question);
         
-        // 处理选项
+        // Handle options
         if (request.getOptions() != null && !request.getOptions().isEmpty()) {
             List<CreateQuestionRequest.CreateQuestionOptionRequest> optionRequests = request.getOptions();
             for (int i = 0; i < optionRequests.size(); i++) {
@@ -118,7 +118,7 @@ public class QuestionService {
             }
         }
         
-        // 更新测验的总分
+        // Update quiz total score
         updateQuizTotalPoints(quiz.getId());
         
         log.info("Question created with id: {} and {} options, orderIndex: {}", 
@@ -132,7 +132,7 @@ public class QuestionService {
         Question existingQuestion = questionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Question not found"));
 
-        // 记录原来的quiz ID，用于更新总分
+        // Record original quiz ID for updating total score
         Long originalQuizId = existingQuestion.getQuiz().getId();
         
         existingQuestion.setQuestionText(updatedQuestion.getQuestionText());
@@ -143,11 +143,11 @@ public class QuestionService {
         existingQuestion.setIsActive(updatedQuestion.getIsActive());
         existingQuestion.setUpdatedAt(LocalDateTime.now());
         
-        // 处理quiz的更改
+        // Handle quiz changes
         if (updatedQuestion.getQuiz() != null && updatedQuestion.getQuiz().getId() != null) {
             Long newQuizId = updatedQuestion.getQuiz().getId();
             if (!originalQuizId.equals(newQuizId)) {
-                // 验证新的quiz是否存在
+                // Validate if new quiz exists
                 Quiz newQuiz = quizRepository.findById(newQuizId)
                         .orElseThrow(() -> new RuntimeException("Target quiz not found"));
                 existingQuestion.setQuiz(newQuiz);
@@ -157,16 +157,16 @@ public class QuestionService {
 
         Question savedQuestion = questionRepository.save(existingQuestion);
         
-        // 处理选项更新
+        // Handle optionsUpdate
         if (updatedQuestion.getOptions() != null) {
-            // 删除现有选项
+            // Delete existing options
             questionOptionRepository.deleteByQuestionId(existingQuestion.getId());
             
-            // 添加新选项
+            // Add new options
             List<QuestionOption> newOptions = updatedQuestion.getOptions();
             for (int i = 0; i < newOptions.size(); i++) {
                 QuestionOption option = newOptions.get(i);
-                option.setId(null); // 确保创建新记录
+                option.setId(null); // Ensure creating new record
                 option.setQuestion(savedQuestion);
                 option.setOrderIndex(i + 1);
                 option.setCreatedAt(LocalDateTime.now());
@@ -176,7 +176,7 @@ public class QuestionService {
             savedQuestion.setOptions(newOptions);
         }
         
-        // 更新测验的总分（原quiz和新quiz都需要更新）
+        // Update quiz total score（原quiz和新quiz都需要Update）
         updateQuizTotalPoints(originalQuizId);
         if (updatedQuestion.getQuiz() != null && updatedQuestion.getQuiz().getId() != null) {
             Long newQuizId = updatedQuestion.getQuiz().getId();
@@ -194,12 +194,12 @@ public class QuestionService {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Question not found"));
         
-        // 软删除
+        // Soft delete
         question.setIsActive(false);
         question.setUpdatedAt(LocalDateTime.now());
         questionRepository.save(question);
         
-        // 更新测验的总分
+        // Update quiz total score
         updateQuizTotalPoints(question.getQuiz().getId());
         
         log.info("Question with id {} has been deactivated", id);
@@ -213,7 +213,7 @@ public class QuestionService {
         question.setUpdatedAt(LocalDateTime.now());
         questionRepository.save(question);
         
-        // 更新测验的总分
+        // Update quiz total score
         updateQuizTotalPoints(question.getQuiz().getId());
         
         log.info("Question with id {} has been activated", id);
@@ -262,10 +262,10 @@ public class QuestionService {
         
         questionRepository.saveAll(questions);
         
-        // 更新目标quiz的总分
+        // Update target quiz total score
         updateQuizTotalPoints(quizId);
         
-        // 更新原quiz的总分（如果有的话）
+        // Update original quiz total score (if any)
         questions.stream()
                 .map(q -> q.getQuiz().getId())
                 .distinct()
@@ -280,7 +280,7 @@ public class QuestionService {
         
         List<Question> questions = questionRepository.findAllById(questionIds);
         
-        // 记录原来的quiz ID用于更新总分
+        // Record original quiz ID for updating total score
         Set<Long> originalQuizIds = questions.stream()
                 .map(q -> q.getQuiz().getId())
                 .collect(java.util.stream.Collectors.toSet());
@@ -292,10 +292,10 @@ public class QuestionService {
         
         questionRepository.saveAll(questions);
         
-        // 更新目标quiz的总分
+        // Update target quiz total score
         updateQuizTotalPoints(targetQuizId);
         
-        // 更新原quiz的总分
+        // Update original quiz total score
         originalQuizIds.forEach(this::updateQuizTotalPoints);
         
         log.info("Moved {} questions to quiz {}", questions.size(), targetQuizId);

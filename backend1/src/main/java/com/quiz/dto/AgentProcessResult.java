@@ -8,69 +8,45 @@ import lombok.Builder;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Agent 处理结果 DTO
- * 用于返回 AI 自动生成测验的处理结果
- */
+/* * * Agent ProcessResult DTO
+ * Used forReturn AI 自动生成测验的ProcessResult */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class AgentProcessResult {
     
-    /**
-     * 处理状态：SUCCESS, FAILED, IN_PROGRESS, PARTIAL_SUCCESS
-     */
+    /** * ProcessStatus：SUCCESS, FAILED, IN_PROGRESS, PARTIAL_SUCCESS */
     private String status;
     
-    /**
-     * 任务ID，用于异步查询处理状态
-     */
+    /* * * TaskID，Used forAsyncQueryProcessStatus */
     private String taskId;
     
-    /**
-     * 课程ID
-     */
+    /** * CourseID */
     private Long courseId;
     
-    /**
-     * 生成的测验摘要列表
-     */
+    /* * * Generate的QuizSummaryList */
     private List<QuizSummary> generatedQuizzes;
     
-    /**
-     * 处理日志和详细信息
-     */
+    /* * * ProcessLog和详细Info */
     private String processingLog;
     
-    /**
-     * 错误信息（如果处理失败）
-     */
+    /* * * ErrorInfo（如果ProcessFailure） */
     private String errorMessage;
     
-    /**
-     * 处理开始时间
-     */
+    /* * * ProcessStartTime */
     private LocalDateTime startTime;
     
-    /**
-     * 处理结束时间
-     */
+    /* * * ProcessEndTime */
     private LocalDateTime endTime;
     
-    /**
-     * 处理耗时（毫秒）
-     */
+    /* * * Process耗时（毫Second） */
     private Long processingTimeMs;
     
-    /**
-     * OpenAI API 调用统计
-     */
+    /* * * OpenAI API 调用Statistics */
     private ApiUsageStats apiUsage;
     
-    /**
-     * 测验摘要信息
-     */
+    /* * * QuizSummaryInfo */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -84,9 +60,7 @@ public class AgentProcessResult {
         private LocalDateTime createdAt;
     }
     
-    /**
-     * API 使用统计
-     */
+    /* * * API 使用Statistics */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

@@ -181,7 +181,7 @@ public class CertificateService {
         userCertificate.setCompletionPercentage(completionPercentage);
         userCertificate.setStatus("ACTIVE");
         
-        // HTML内容不持久化到数据库（PostgreSQL列为OID），下载时动态生成
+        // HTML content not persisted to database (PostgreSQL column is OID), dynamically generated on download
         
         UserCertificate savedCertificate = userCertificateRepository.save(userCertificate);
         log.info("Certificate awarded successfully with number: {}", savedCertificate.getCertificateNumber());

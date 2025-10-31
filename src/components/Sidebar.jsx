@@ -32,9 +32,9 @@ const Sidebar = ({ activeMenu, onMenuChange }) => {
     { id: 'report', label: 'Compliance Report', icon: FileCheck },
   ];
 
-  // 根据用户身份动态生成菜单项
+  // Dynamically generate menu items based on user identity
   const menuItems = isAdmin() 
-    ? [...baseMenuItems.slice(0, 4), ...adminMenuItems, baseMenuItems[4]] // 在证书中心前插入管理员菜单项
+    ? [...baseMenuItems.slice(0, 4), ...adminMenuItems, baseMenuItems[4]] // Insert admin menu items before certificate center
     : baseMenuItems;
 
   const handleLogout = () => {

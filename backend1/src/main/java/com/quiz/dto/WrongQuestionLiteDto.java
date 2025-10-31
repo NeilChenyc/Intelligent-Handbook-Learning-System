@@ -7,14 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * 错题轻量级投影 DTO，用于高效列表加载，避免抓取重量级实体字段
- */
+/* * * 错题轻量级投影 DTO，Used for高效ListLoading，避免ScrapeWeight级实体Field */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class WrongQuestionLiteDto {
-    // WrongQuestion 基本信息
+    // WrongQuestion basic information
     private Long wrongQuestionId;
     private Long userId;
     private String userName;
@@ -24,13 +22,13 @@ public class WrongQuestionLiteDto {
     private LocalDateTime redoneAt;
     private LocalDateTime updatedAt;
 
-    // Question 信息
+    // Question information
     private Long questionId;
     private String questionText;
     private Question.QuestionType questionType;
     private String explanation;
 
-    // Quiz & Course 信息（仅必要字段）
+    // Quiz & Course information (only necessary fields)
     private Long quizId;
     private String quizTitle;
     private Long courseId;

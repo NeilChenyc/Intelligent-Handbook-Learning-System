@@ -58,7 +58,7 @@ public class TestController {
     @GetMapping("/quiz-attempts/{userId}/{quizId}")
     public ResponseEntity<Map<String, Object>> getQuizAttempts(@PathVariable("userId") Long userId, @PathVariable("quizId") Long quizId) {
         try {
-            // 直接使用repository查询
+            // Directly use repository query
             int attemptCount = quizAttemptService.getAttemptsByUserAndQuiz(userId, quizId).size();
             return ResponseEntity.ok(Map.of(
                 "userId", userId,

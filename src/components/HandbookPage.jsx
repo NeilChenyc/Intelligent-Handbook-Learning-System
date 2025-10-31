@@ -6,7 +6,7 @@ import { BookOpen, Clock, Award, TrendingUp, FileText, Shield, Users, Building, 
 const HandbookPage = () => {
   const [activeCategory, setActiveCategory] = useState('all');
 
-  // 模拟公司规章制度学习数据
+  // TODO: Translate - Mock company policy learning data
   const handbookData = {
     stats: {
       totalDocuments: 12,
@@ -182,12 +182,12 @@ const HandbookPage = () => {
     ]
   };
 
-  // 根据分类筛选文档
+  // Filter documents by category
   const filteredDocuments = activeCategory === 'all' 
     ? handbookData.documents 
     : handbookData.documents.filter(doc => doc.category === activeCategory);
 
-  // 获取状态颜色和图标
+  // Get status color and icon
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'text-green-600 bg-green-100';
@@ -222,7 +222,7 @@ const HandbookPage = () => {
         <p className="text-gray-600">学习公司各类规章制度，确保合规操作</p>
       </div>
 
-      {/* 学习统计 */}
+      {/* LearningStatistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
@@ -281,7 +281,7 @@ const HandbookPage = () => {
         </Card>
       </div>
 
-      {/* 分类筛选 */}
+      {/* 分Class筛选 */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>制度分类</CardTitle>
@@ -306,7 +306,7 @@ const HandbookPage = () => {
         </CardContent>
       </Card>
 
-      {/* 制度文档列表 */}
+      {/* 制度DocumentList */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredDocuments.map((doc) => (
           <Card key={doc.id} className="hover:shadow-lg transition-shadow">
@@ -325,7 +325,7 @@ const HandbookPage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* 学习进度 */}
+                {/* LearningProgress */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-600">学习进度</span>
@@ -339,7 +339,7 @@ const HandbookPage = () => {
                   </div>
                 </div>
 
-                {/* 文档信息 */}
+                {/* DocumentInfo */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">预计时长:</span>
@@ -361,7 +361,7 @@ const HandbookPage = () => {
                   )}
                 </div>
 
-                {/* 状态和操作 */}
+                {/* Status和操作 */}
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                   <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(doc.status)}`}>
                     {getStatusIcon(doc.status)}
@@ -384,7 +384,7 @@ const HandbookPage = () => {
         ))}
       </div>
 
-      {/* 学习提醒 */}
+      {/* LearningReminder */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">

@@ -36,16 +36,16 @@ public class Quiz {
     private List<Question> questions;
 
     @Column(name = "time_limit_minutes")
-    private Integer timeLimitMinutes; // 测验时间限制（分钟）
+    private Integer timeLimitMinutes; // Quiz time limit (minutes)
 
     @Column(name = "total_points")
-    private Integer totalPoints = 0; // 总分
+    private Integer totalPoints = 0; // Total points
 
     @Column(name = "passing_score")
-    private Integer passingScore = 80; // 及格分数改为80
+    private Integer passingScore = 80; // Pass score changed to 80
 
     @Column(name = "max_attempts")
-    private Integer maxAttempts = 1; // 最大尝试次数
+    private Integer maxAttempts = 1; // Maximum attempts
 
     @Column(name = "is_active")
     private Boolean isActive = true;

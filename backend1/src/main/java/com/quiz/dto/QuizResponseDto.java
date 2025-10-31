@@ -21,10 +21,10 @@ public class QuizResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    // Course信息
+    // Course information
     private Long courseId;
     private String courseTitle;
     
-    // 题目数量
+    // Question count
     private Integer questionCount;
 }

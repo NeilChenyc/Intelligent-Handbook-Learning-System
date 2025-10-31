@@ -65,7 +65,7 @@ public class UserService {
         user.setFullName(userDetails.getFullName());
         user.setRole(userDetails.getRole());
         
-        // 支持更新部门字段并校验
+        // Support updating department field with validation
         if (userDetails.getDepartment() != null) {
             if (!ALLOWED_DEPARTMENTS.contains(userDetails.getDepartment())) {
                 throw new RuntimeException("Invalid department. Must be one of: " + String.join(", ", ALLOWED_DEPARTMENTS));

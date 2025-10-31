@@ -14,33 +14,21 @@ import java.util.Map;
 @AllArgsConstructor
 public class ChatbotRequest {
     
-    /**
-     * 用户消息内容
-     */
+    /* * * UserMessageContent */
     private String message;
     
-    /**
-     * 用户ID（可选，用于个性化回复）
-     */
+    /* * * UserID（可选，Used for个性化Reply） */
     private Long userId;
     
-    /**
-     * 会话ID（可选，用于维护对话上下文）
-     */
+    /* * * SessionID（可选，Used forMaintenanceConversationContext） */
     private String sessionId;
     
-    /**
-     * 对话历史（可选，前端传递的上下文）
-     */
+    /* * * ConversationHistory（可选，Frontend传递的Context） */
     private List<Map<String, Object>> conversationHistory;
     
-    /**
-     * 请求的工具列表（可选，指定需要使用的工具）
-     */
+    /* * * Request的ToolList（可选，指定需要使用的Tool） */
     private List<String> requestedTools;
     
-    /**
-     * 额外的上下文信息
-     */
+    /* * * 额外的ContextInfo */
     private Map<String, Object> context;
 }

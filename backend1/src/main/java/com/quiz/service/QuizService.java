@@ -45,9 +45,7 @@ public class QuizService {
         }
     }
 
-    /**
-     * 获取课程下的小测摘要信息（不包含题目详情）- 用于小测列表显示
-     */
+    /* * * GetCourse下的QuizSummaryInformation（不Package含QuestionDetails）- Used forQuizListDisplay */
     public List<Quiz> getQuizSummariesByCourse(Long courseId) {
         try {
             log.debug("Fetching quiz summaries for course ID: {}", courseId);
@@ -60,9 +58,7 @@ public class QuizService {
         }
     }
 
-    /**
-     * 获取课程下各小测的题目数量
-     */
+    /* * * GetCourse下各Quiz的QuestionQuantity */
     public Map<Long, Integer> getQuizQuestionCounts(Long courseId) {
         try {
             List<Object[]> results = quizRepository.findQuizQuestionCountsByCourseId(courseId);
@@ -88,7 +84,7 @@ public class QuizService {
     }
 
     public Quiz createQuiz(QuizCreateRequest request) {
-        // 验证课程是否存在
+        // Validate if course exists
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new RuntimeException("Course not found"));
         
@@ -111,7 +107,7 @@ public class QuizService {
         Quiz existingQuiz = quizRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
-        // 更新基本信息
+        // Update basic information
         existingQuiz.setTitle(request.getTitle());
         existingQuiz.setDescription(request.getDescription());
         existingQuiz.setTimeLimitMinutes(request.getTimeLimitMinutes());
@@ -128,7 +124,7 @@ public class QuizService {
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
         
-        // 软删除
+        // Soft delete
         quiz.setIsActive(false);
         quiz.setUpdatedAt(LocalDateTime.now());
         quizRepository.save(quiz);

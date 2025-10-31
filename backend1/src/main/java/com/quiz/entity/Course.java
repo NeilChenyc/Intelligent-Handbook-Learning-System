@@ -42,7 +42,7 @@ public class Course {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private byte[] handbookFilePath;
 
-    // 添加一个方法来获取Base64编码的内容
+    // Add a method to get Base64 encoded content
     @Transient
     @com.fasterxml.jackson.annotation.JsonIgnore
     public String getHandbookContent() {
@@ -58,7 +58,7 @@ public class Course {
     @Column(name = "handbook_content_type")
     private String handbookContentType;
 
-    // 部门字段用于课程管理页面的部门课程分发
+    // Department field for department course distribution in course management page
     @Column(name = "department")
     private String department;
 

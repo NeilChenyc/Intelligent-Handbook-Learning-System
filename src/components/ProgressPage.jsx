@@ -11,7 +11,7 @@ const ProgressPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 获取用户学习进度数据
+  // GetUserLearningProgressData
   useEffect(() => {
     const fetchProgressData = async () => {
       if (!user?.id) {
@@ -23,7 +23,7 @@ const ProgressPage = () => {
         setLoading(true);
         const stats = await getUserLearningStats(user.id);
         
-        // 转换数据格式以适配现有的UI组件
+        // ConversionDataFormat以适配现有的UIComponent
         const formattedData = {
           overall: stats.overallProgress,
           handbooks: stats.courses.map((course, index) => ({
@@ -33,13 +33,13 @@ const ProgressPage = () => {
             totalSections: course.totalQuizzes,
             completedSections: course.completedQuizzes,
             category: getCategoryFromCourse(course),
-            mandatory: true // 假设所有课程都是必修的
+            mandatory: true // 假设所有Course都是必修的
           })),
           stats: {
-            totalStudyTime: Math.round(stats.completedQuizzes * 0.5), // 估算学习时间，每个quiz 0.5小时
+            totalStudyTime: Math.round(stats.completedQuizzes * 0.5), // 估算LearningTime，每个quiz 0.5Hour
             completedHandbooks: stats.completedCourses,
             totalHandbooks: stats.totalCourses,
-            certifications: stats.completedCourses, // 完成的课程数作为证书数
+            certifications: stats.completedCourses, // 完成的Course数作为Certificate数
             complianceRate: stats.complianceRate
           }
         };
@@ -56,7 +56,7 @@ const ProgressPage = () => {
     fetchProgressData();
   }, [user?.id]);
 
-  // 根据课程信息推断分类
+  // 根据CourseInformation推断分Class
   const getCategoryFromCourse = (course) => {
     const title = course.title?.toLowerCase() || '';
     if (title.includes('employee') || title.includes('员工') || title.includes('行为') || title.includes('考勤')) {
@@ -70,10 +70,10 @@ const ProgressPage = () => {
     } else if (title.includes('compliance') || title.includes('合规') || title.includes('隐私') || title.includes('数据')) {
       return 'compliance';
     }
-    return 'employee'; // 默认分类
+    return 'employee'; // Default分Class
   };
 
-  // 获取分类图标
+  // Get分ClassGraph标
   const getCategoryIcon = (category) => {
     switch (category) {
       case 'employee': return <FileText className="w-5 h-5 text-blue-500" />;
@@ -85,7 +85,7 @@ const ProgressPage = () => {
     }
   };
 
-  // 获取分类名称
+  // Get分ClassName
   const getCategoryName = (category) => {
     switch (category) {
       case 'employee': return 'Employee Handbook';
@@ -97,7 +97,7 @@ const ProgressPage = () => {
     }
   };
 
-  // 环形进度组件
+  // 环形ProgressComponent
   const CircularProgress = ({ percentage, size = 120, strokeWidth = 8 }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -172,7 +172,7 @@ const ProgressPage = () => {
         <p className="text-gray-600">Track your company policy learning progress and compliance status</p>
       </div>
 
-      {/* 总体进度卡片 */}
+      {/* PopulationProgress卡片 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -238,7 +238,7 @@ const ProgressPage = () => {
         </Card>
       </div>
 
-      {/* 制度手册进度列表 */}
+      {/* 制度ManualProgressList */}
       <Card>
         <CardHeader>
           <CardTitle>Policy Learning Details</CardTitle>

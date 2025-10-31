@@ -7,54 +7,36 @@ import lombok.Builder;
 
 import java.util.List;
 
-/**
- * 测验生成请求 DTO
- * 用于内部调用 OpenAI API 生成测验的数据结构
- */
+/* * * 测验生成Request DTO
+ * Used for内部调用 OpenAI API 生成测验的DataStructure */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class QuizGenerationRequest {
     
-    /**
-     * PDF 文件内容（文本形式）
-     */
+    /* * * PDF FileContent（Text形式） */
     private String pdfContent;
     
-    /**
-     * 课程标题
-     */
+    /* * * CourseTitle */
     private String courseTitle;
     
-    /**
-     * 课程描述
-     */
+    /* * * Course描述 */
     private String courseDescription;
     
-    /**
-     * 生成的测验数量
-     */
+    /* * * Generate的QuizQuantity */
     private Integer quizCount;
     
-    /**
-     * 每个测验的题目数量
-     */
+    /* * * 每个Quiz的QuestionQuantity */
     private Integer questionsPerQuiz;
     
-    /**
-     * 难度级别
-     */
+    /* * * 难度级别 */
     private String difficulty;
     
-    /**
-     * 额外指令
-     */
+    /* * * 额外指令 */
     private String additionalInstructions;
     
-    /**
-     * 测验生成响应 DTO
-     */
+    /** * QuizGenerateResponse DTO */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

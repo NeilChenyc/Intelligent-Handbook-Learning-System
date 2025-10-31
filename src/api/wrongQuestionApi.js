@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:8080';
 
-// 获取用户未重做的错题列表
+// Get user's unredone wrong questions list
 export const getUserWrongQuestions = async (userId) => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/user/${userId}`, {
     method: 'GET',
@@ -15,7 +15,7 @@ export const getUserWrongQuestions = async (userId) => {
   return response.json();
 };
 
-// 获取用户在特定课程下的错题
+// Get user's wrong questions under specific course
 export const getUserWrongQuestionsByCourse = async (userId, courseId) => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/user/${userId}/course/${courseId}`, {
     method: 'GET',
@@ -30,7 +30,7 @@ export const getUserWrongQuestionsByCourse = async (userId, courseId) => {
   return response.json();
 };
 
-// 获取用户在特定小测下的错题
+// Get user's wrong questions under specific quiz
 export const getUserWrongQuestionsByQuiz = async (userId, quizId) => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/user/${userId}/quiz/${quizId}`, {
     method: 'GET',
@@ -45,7 +45,7 @@ export const getUserWrongQuestionsByQuiz = async (userId, quizId) => {
   return response.json();
 };
 
-// 获取用户未重做错题数量统计
+// Get user's unredone wrong questions count statistics
 export const getUserWrongQuestionsCount = async (userId) => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/user/${userId}/count`, {
     method: 'GET',
@@ -60,9 +60,9 @@ export const getUserWrongQuestionsCount = async (userId) => {
   return response.json();
 };
 
-// 错题重做提交
+// Wrong question redo submission
 export const submitWrongQuestionRedo = async (wrongQuestionId, answer) => {
-  // 确保answer始终是数组格式，以匹配后端期望的selectedOptionIds
+  // Ensure answer is always array format to match backend expected selectedOptionIds
   const selectedOptionIds = Array.isArray(answer) ? answer : [answer];
   
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/${wrongQuestionId}/redo`, {
@@ -79,7 +79,7 @@ export const submitWrongQuestionRedo = async (wrongQuestionId, answer) => {
   return response.json();
 };
 
-// 获取错题详情
+// Get wrong question details
 export const getWrongQuestionDetail = async (wrongQuestionId) => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/${wrongQuestionId}`, {
     method: 'GET',
@@ -94,7 +94,7 @@ export const getWrongQuestionDetail = async (wrongQuestionId) => {
   return response.json();
 };
 
-// 批量标记错题为已重做
+// Batch mark wrong questions as redone
 export const markWrongQuestionsAsRedone = async (wrongQuestionIds) => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/mark-redone`, {
     method: 'POST',
@@ -110,7 +110,7 @@ export const markWrongQuestionsAsRedone = async (wrongQuestionIds) => {
   return response.json();
 };
 
-// 清理已重做的错题记录
+// Clean redone wrong question records
 export const cleanupRedoneWrongQuestions = async () => {
   const response = await fetch(`${API_BASE_URL}/api/wrong-questions/cleanup`, {
     method: 'DELETE',

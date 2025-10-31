@@ -25,21 +25,19 @@ public class ReportService {
     private final CourseRepository courseRepository;
     private final QuizAttemptRepository quizAttemptRepository;
 
-    /**
-     * 获取组织合规报告数据
-     */
+    /* * * Get组织ComplianceReportData */
     @Transactional(readOnly = true)
     public Map<String, Object> getOrganizationReportData() {
         Map<String, Object> data = new HashMap<>();
         
-        // 获取所有用户
+        // TODO: Translate - Get all users
         List<User> allUsers = userRepository.findAll();
         int totalEmployees = allUsers.size();
         
-        // 获取所有测验提交记录
+        // Get all quiz submission records
         List<QuizAttempt> allAttempts = quizAttemptRepository.findAll();
         
-        // 计算完成和待处理的报告数量
+        // Calculate completed and pending report counts
         Set<Long> usersWithCompletedReports = allAttempts.stream()
                 .filter(attempt -> attempt.getIsPassed())
                 .map(attempt -> attempt.getUser().getId())
@@ -48,7 +46,7 @@ public class ReportService {
         int completedReports = usersWithCompletedReports.size();
         int pendingReports = totalEmployees - completedReports;
         
-        // 计算总体合规率
+        // Calculate overall compliance rate
         double overallComplianceRate = totalEmployees > 0 ? 
                 (double) completedReports / totalEmployees * 100 : 0;
         
@@ -61,20 +59,18 @@ public class ReportService {
         return data;
     }
 
-    /**
-     * 获取部门合规统计
-     */
+    /* * * Get部门ComplianceStatistics */
     @Transactional(readOnly = true)
     public Map<String, Object> getDepartmentStats() {
         Map<String, Object> data = new HashMap<>();
         
-        // 按部门分组用户
+        // Group users by department
         List<User> allUsers = userRepository.findAll();
         Map<String, List<User>> usersByDepartment = allUsers.stream()
                 .filter(user -> user.getDepartment() != null && !user.getDepartment().trim().isEmpty())
                 .collect(Collectors.groupingBy(User::getDepartment));
         
-        // 获取所有通过的测验提交
+        // Get all passed quiz submissions
         List<QuizAttempt> passedAttempts = quizAttemptRepository.findAll().stream()
                 .filter(attempt -> attempt.getIsPassed())
                 .collect(Collectors.toList());
@@ -111,23 +107,21 @@ public class ReportService {
         return data;
     }
 
-    /**
-     * 获取员工报告详情
-     */
+    /* * * Get员工ReportDetails */
     @Transactional(readOnly = true)
     public Map<String, Object> getEmployeeReports(String departmentFilter) {
         Map<String, Object> data = new HashMap<>();
         
         List<User> users = userRepository.findAll();
         
-        // 如果指定了部门过滤器，则过滤用户
+        // Filter users if department filter is specified
         if (departmentFilter != null && !departmentFilter.equals("all")) {
             users = users.stream()
                     .filter(user -> departmentFilter.equals(user.getDepartment()))
                     .collect(Collectors.toList());
         }
         
-        // 获取所有测验提交记录
+        // Get all quiz submission records
         List<QuizAttempt> allAttempts = quizAttemptRepository.findAll();
         Map<Long, List<QuizAttempt>> attemptsByUser = allAttempts.stream()
                 .collect(Collectors.groupingBy(attempt -> attempt.getUser().getId()));
@@ -137,7 +131,7 @@ public class ReportService {
         for (User user : users) {
             List<QuizAttempt> userAttempts = attemptsByUser.getOrDefault(user.getId(), Collections.emptyList());
             
-            // 计算用户的最高分数和状态
+            // Calculate user's highest score and status
             OptionalDouble avgScore = userAttempts.stream()
                     .filter(attempt -> attempt.getIsPassed())
                     .mapToDouble(QuizAttempt::getPercentage)
@@ -149,7 +143,7 @@ public class ReportService {
             String status = hasPassedAttempts ? "completed" : "pending";
             Integer score = avgScore.isPresent() ? (int) Math.round(avgScore.getAsDouble()) : null;
             
-            // 获取最近的提交日期
+            // Get recent submission date
             String submitDate = userAttempts.stream()
                     .filter(attempt -> attempt.getCompletedAt() != null)
                     .max(Comparator.comparing(QuizAttempt::getCompletedAt))
@@ -171,9 +165,7 @@ public class ReportService {
         return data;
     }
 
-    /**
-     * 获取合规类别完成情况
-     */
+    /* * * GetComplianceClass别完成情况 */
     @Transactional(readOnly = true)
     public Map<String, Object> getComplianceCategories() {
         Map<String, Object> data = new HashMap<>();
@@ -185,7 +177,7 @@ public class ReportService {
         List<Map<String, Object>> complianceCategories = new ArrayList<>();
         
         for (Course course : allCourses) {
-            // 获取该课程的所有通过的测验提交
+            // Get all passed quiz submissions for this course
             List<QuizAttempt> coursePassedAttempts = quizAttemptRepository.findAll().stream()
                     .filter(attempt -> attempt.getIsPassed() && 
                             attempt.getQuiz().getCourse().getId().equals(course.getId()))
@@ -223,14 +215,12 @@ public class ReportService {
         return data;
     }
 
-    /**
-     * 获取月度合规趋势
-     */
+    /* * * GetMonth度ComplianceTrend */
     @Transactional(readOnly = true)
     public Map<String, Object> getMonthlyTrend() {
         Map<String, Object> data = new HashMap<>();
         
-        // 获取过去6个月的数据
+        // Get data for the past 6 months
         List<Map<String, Object>> monthlyTrend = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
         
@@ -238,13 +228,13 @@ public class ReportService {
             LocalDateTime monthStart = now.minusMonths(i).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
             LocalDateTime monthEnd = monthStart.plusMonths(1).minusSeconds(1);
             
-            // 获取该月的所有测验提交
+            // Get all quiz submissions for that month
             List<QuizAttempt> monthAttempts = quizAttemptRepository.findAll().stream()
                     .filter(attempt -> attempt.getCreatedAt().isAfter(monthStart) && 
                                      attempt.getCreatedAt().isBefore(monthEnd))
                     .collect(Collectors.toList());
             
-            // 计算该月的合规率
+            // Calculate compliance rate for that month
             Set<Long> usersWithAttempts = monthAttempts.stream()
                     .filter(QuizAttempt::getIsPassed)
                     .map(attempt -> attempt.getUser().getId())
@@ -255,7 +245,7 @@ public class ReportService {
             
             Map<String, Object> monthData = new HashMap<>();
             monthData.put("month", monthStart.format(DateTimeFormatter.ofPattern("yyyy-MM")));
-            monthData.put("rate", Math.max(rate, 75 + (int)(Math.random() * 20))); // 添加一些基础值避免过低
+            monthData.put("rate", Math.max(rate, 75 + (int)(Math.random() * 20))); // Add some base values to avoid being too low
             
             monthlyTrend.add(monthData);
         }

@@ -69,10 +69,10 @@ const QuizManagementPage = ({ course, onBack }) => {
 
   const handleSaveQuiz = (updatedQuiz) => {
     if (editingQuiz) {
-      // 编辑模式
+      // TODO: Translate - Edit mode
       setQuizzes(prev => prev.map(q => q.id === updatedQuiz.id ? updatedQuiz : q));
     } else {
-      // 添加模式
+      // Add mode
       setQuizzes(prev => [...prev, updatedQuiz]);
     }
     setEditingQuiz(null);
@@ -126,7 +126,7 @@ const QuizManagementPage = ({ course, onBack }) => {
         </div>
       </div>
 
-      {/* 统计信息 */}
+      {/* StatisticsInfo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
@@ -191,7 +191,7 @@ const QuizManagementPage = ({ course, onBack }) => {
         </Card>
       </div>
 
-      {/* 题目列表 */}
+      {/* QuestionList */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -295,7 +295,7 @@ const QuizManagementPage = ({ course, onBack }) => {
         </CardContent>
       </Card>
 
-      {/* 题目编辑模态框 */}
+      {/* QuestionEdit模态框 */}
       <QuizEditModal
         isOpen={editingQuiz !== null}
         onClose={() => setEditingQuiz(null)}
@@ -304,7 +304,7 @@ const QuizManagementPage = ({ course, onBack }) => {
         isAddMode={false}
       />
 
-      {/* 题目添加模态框 */}
+      {/* QuestionAdd模态框 */}
       <QuizEditModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}

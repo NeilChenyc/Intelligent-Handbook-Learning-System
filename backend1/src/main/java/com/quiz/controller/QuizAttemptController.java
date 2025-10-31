@@ -28,10 +28,8 @@ public class QuizAttemptController {
 
     private final QuizAttemptService quizAttemptService;
 
-    /**
-     * 处理CORS预检请求
-     */
-    @RequestMapping(value = "/**", method = RequestMethod.OPTIONS)
+    /* * * ProcessCORS预检Request */
+    @RequestMapping(value = "/* * ", method = RequestMethod.OPTIONS)
     public ResponseEntity<?> handleOptionsRequest() {
         log.info("=== OPTIONS request received ===");
         return ResponseEntity.ok()
@@ -42,9 +40,7 @@ public class QuizAttemptController {
                 .build();
     }
 
-    /**
-     * 开始小测尝试
-     */
+    /* * * StartQuiz尝试 */
     @PostMapping("/start")
     public ResponseEntity<?> startQuizAttempt(@RequestBody StartQuizRequest request) {
         log.info("=== startQuizAttempt method called ===");
@@ -71,9 +67,7 @@ public class QuizAttemptController {
         }
     }
 
-    /**
-     * 提交小测答案
-     */
+    /* * * SubmitQuizAnswer */
     @PostMapping("/{attemptId}/submit")
     public ResponseEntity<?> submitQuizAttempt(@PathVariable("attemptId") Long attemptId, @RequestBody List<SubmitAnswerRequest> answerRequests) {
         log.info("=== submitQuizAttempt method called ===");
@@ -94,7 +88,7 @@ public class QuizAttemptController {
                     .body("{\"error\":\"Answer requests are required\"}");
             }
 
-            // 验证每个答案请求的selectedOptions不为null
+            // Validate that selectedOptions in each answer request is not null
             for (SubmitAnswerRequest request : answerRequests) {
                 if (request.getSelectedOptions() == null) {
                     log.error("SelectedOptions is null for questionId: {}", request.getQuestionId());
@@ -107,7 +101,7 @@ public class QuizAttemptController {
             QuizSubmissionResult result = quizAttemptService.submitQuizAttempt(attemptId, answerRequests);
             log.info("Quiz attempt submitted successfully: {}", result.getAttemptId());
             
-            // 直接返回QuizSubmissionResult对象
+            // Directly return QuizSubmissionResult object
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error submitting quiz attempt for attemptId: {}", attemptId, e);
@@ -121,9 +115,7 @@ public class QuizAttemptController {
         }
     }
 
-    /**
-     * 获取小测尝试详情
-     */
+    /* * * GetQuiz尝试Details */
     @GetMapping("/{attemptId}")
     public ResponseEntity<?> getQuizAttempt(@PathVariable("attemptId") Long attemptId) {
         try {
@@ -139,9 +131,7 @@ public class QuizAttemptController {
         }
     }
 
-    /**
-     * 获取用户在某课程中已通过的小测信息
-     */
+    /* * * GetUser在某Course中已通过的QuizInfo */
     @GetMapping("/user/{userId}/course/{courseId}/passed")
     public ResponseEntity<List<Long>> getUserPassedQuizzesInCourse(
             @PathVariable("userId") Long userId, 

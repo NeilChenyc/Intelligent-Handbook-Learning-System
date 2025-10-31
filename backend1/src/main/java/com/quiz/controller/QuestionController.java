@@ -20,9 +20,7 @@ public class QuestionController {
 
     private final QuestionService questionService;
 
-    /**
-     * 根据quiz ID获取所有活跃题目
-     */
+    /* * * 根据quiz IDGet所有活跃Question */
     @GetMapping("/quiz/{quizId}")
     public ResponseEntity<List<QuestionDto>> getQuestionsByQuiz(@PathVariable("quizId") Long quizId) {
         try {
@@ -34,9 +32,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 根据课程ID获取该课程下所有quiz的题目
-     */
+    /* * * 根据CourseIDGet该Course下所有quiz的Question */
     @GetMapping("/course/{courseId}")
     public ResponseEntity<List<Question>> getQuestionsByCourse(@PathVariable("courseId") Long courseId) {
         try {
@@ -48,9 +44,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 根据ID获取单个题目
-     */
+    /* * * 根据IDGet单个Question */
     @GetMapping("/{id}")
     public ResponseEntity<Question> getQuestionById(@PathVariable("id") Long id) {
         return questionService.getQuestionById(id)
@@ -58,9 +52,7 @@ public class QuestionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 创建新题目
-     */
+    /* * * Create新Question */
     @PostMapping
     public ResponseEntity<Question> createQuestion(@RequestBody CreateQuestionRequest request) {
         try {
@@ -76,9 +68,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 更新题目
-     */
+    /* * * UpdateQuestion */
     @PutMapping("/{id}")
     public ResponseEntity<Question> updateQuestion(@PathVariable("id") Long id, @RequestBody Question question) {
         try {
@@ -90,9 +80,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 软删除题目（设置为非活跃状态）
-     */
+    /* * * 软DeleteQuestion（Settings为非活跃Status） */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteQuestion(@PathVariable("id") Long id) {
         try {
@@ -104,9 +92,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 激活题目
-     */
+    /* * * ActivateQuestion */
     @PutMapping("/{id}/activate")
     public ResponseEntity<Void> activateQuestion(@PathVariable("id") Long id) {
         try {
@@ -118,9 +104,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 获取quiz下题目数量
-     */
+    /* * * Get question quantity for quiz */
     @GetMapping("/quiz/{quizId}/count")
     public ResponseEntity<Long> getQuestionCountByQuiz(@PathVariable("quizId") Long quizId) {
         try {
@@ -132,9 +116,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 获取quiz下题目总分
-     */
+    /* * * Getquiz下Question总分 */
     @GetMapping("/quiz/{quizId}/total-points")
     public ResponseEntity<Integer> getTotalPointsByQuiz(@PathVariable("quizId") Long quizId) {
         try {
@@ -146,9 +128,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 批量分配题目到指定quiz
-     */
+    /* * * 批量分配Question到指定quiz */
     @PostMapping("/assign-to-quiz")
     public ResponseEntity<String> assignQuestionsToQuiz(@RequestBody AssignQuestionsRequest request) {
         try {
@@ -160,9 +140,7 @@ public class QuestionController {
         }
     }
 
-    /**
-     * 批量移动题目到另一个quiz
-     */
+    /* * * 批量MoveQuestion到另一个quiz */
     @PutMapping("/move-to-quiz")
     public ResponseEntity<String> moveQuestionsToQuiz(@RequestBody AssignQuestionsRequest request) {
         try {
@@ -174,7 +152,7 @@ public class QuestionController {
         }
     }
 
-    // 内部类用于接收批量分配请求
+    // Inner class for receiving batch assignment requests
     public static class AssignQuestionsRequest {
         private List<Long> questionIds;
         private Long quizId;

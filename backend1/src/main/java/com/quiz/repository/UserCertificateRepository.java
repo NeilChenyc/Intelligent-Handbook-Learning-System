@@ -2,9 +2,11 @@ package com.quiz.repository;
 
 import com.quiz.entity.UserCertificate;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,4 +50,10 @@ public interface UserCertificateRepository extends JpaRepository<UserCertificate
     // Find user certificates with high scores
     @Query("SELECT uc FROM UserCertificate uc WHERE uc.user.id = :userId AND uc.finalScore >= :minScore ORDER BY uc.finalScore DESC")
     List<UserCertificate> findByUserIdAndFinalScoreGreaterThanEqual(@Param("userId") Long userId, @Param("minScore") Integer minScore);
+    
+    // Delete all user certificates by course ID (for cascade deletion)
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM UserCertificate uc WHERE uc.certificate.course.id = :courseId")
+    void deleteByCourseId(@Param("courseId") Long courseId);
 }

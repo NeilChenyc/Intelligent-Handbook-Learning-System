@@ -20,9 +20,7 @@ public class ChatbotController {
 
     private final ChatbotService chatbotService;
 
-    /**
-     * 发送聊天消息并获取AI回复
-     */
+    /* * * Send聊天Message并GetAIReply */
     @PostMapping("/chat")
     public ResponseEntity<ChatbotResponse> sendMessage(@RequestBody ChatbotRequest request) {
         try {
@@ -39,9 +37,7 @@ public class ChatbotController {
         }
     }
 
-    /**
-     * 获取可用的工具列表
-     */
+    /* * * Get可用的ToolList */
     @GetMapping("/tools")
     public ResponseEntity<List<String>> getAvailableTools() {
         try {
@@ -53,9 +49,7 @@ public class ChatbotController {
         }
     }
 
-    /**
-     * 获取课程手册内容（用于AI上下文）
-     */
+    /* * * GetCourseManualContent（Used forAIContext） */
     @GetMapping("/course/{courseId}/handbook-content")
     public ResponseEntity<Map<String, Object>> getCourseHandbookContent(@PathVariable Long courseId) {
         try {
@@ -67,9 +61,7 @@ public class ChatbotController {
         }
     }
 
-    /**
-     * 健康检查接口
-     */
+    /* * * 健康CheckAPI */
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         return ResponseEntity.ok(Map.of(
@@ -79,9 +71,7 @@ public class ChatbotController {
         ));
     }
 
-    /**
-     * OpenAI 健康检查：验证后端是否能连通并返回简单回复
-     */
+    /* * * OpenAI 健康Check：Validate后端是否能连通并Return简单回复 */
     @GetMapping("/health/openai")
     public ResponseEntity<Map<String, Object>> openAiHealth() {
         try {

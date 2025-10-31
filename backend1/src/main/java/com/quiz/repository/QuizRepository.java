@@ -18,20 +18,20 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     
     List<Quiz> findByCourseIdAndIsActiveTrue(Long courseId);
 
-    // 新增：为课程下的小测列表预先抓取关联，避免懒加载
+    // New: Pre-fetch associations for quiz list under course to avoid lazy loading
     @Query("SELECT DISTINCT q FROM Quiz q JOIN FETCH q.course LEFT JOIN FETCH q.questions WHERE q.course.id = :courseId AND q.isActive = true")
     List<Quiz> findActiveByCourseIdFetchCourseAndQuestions(@Param("courseId") Long courseId);
     
-    // 优化：只获取小测基本信息，不预加载题目，用于小测列表显示
+    // Optimize: Only get quiz basic info, don't preload questions, for quiz list display
     @Query("SELECT q FROM Quiz q WHERE q.course.id = :courseId AND q.isActive = true ORDER BY q.id")
     List<Quiz> findActiveByCourseIdWithoutQuestions(@Param("courseId") Long courseId);
     
-    // 投影：仅选择必要字段，避免加载 Course 的无关列
+    // Projection: Only select necessary fields, avoid loading irrelevant Course columns
     @Query("SELECT new com.quiz.dto.QuizSummaryDto(q.id, q.title, q.description, q.timeLimitMinutes, q.totalPoints, q.passingScore, q.maxAttempts, q.isActive, q.createdAt, q.updatedAt, q.course.id, q.course.title, 0) " +
            "FROM Quiz q WHERE q.course.id = :courseId AND q.isActive = true ORDER BY q.id")
     List<com.quiz.dto.QuizSummaryDto> findSummaryDtosByCourseId(@Param("courseId") Long courseId);
     
-    // 获取小测的题目数量，避免加载完整题目数据
+    // Get quiz question count, avoid loading complete question data
     @Query("SELECT q.id, COUNT(qu) FROM Quiz q LEFT JOIN q.questions qu WHERE q.course.id = :courseId AND q.isActive = true GROUP BY q.id")
     List<Object[]> findQuizQuestionCountsByCourseId(@Param("courseId") Long courseId);
     

@@ -16,10 +16,10 @@ fi
 # 部署到Azure
 echo "部署到Azure App Service..."
 az webapp deploy \
-  --resource-group quiz-app-rg \
-  --name quiz-backend-app \
+  --resource-group Neilapp \
+  --name 5620 \
   --src-path target/quiz-backend-mvp-1.0.0.jar \
   --type jar
 
 echo "后端部署完成！"
-echo "访问地址: https://quiz-backend-app.azurewebsites.net"
+echo "访问地址: https://5620-gpgthzarcqduh2fe.australiaeast-01.azurewebsites.net"

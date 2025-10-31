@@ -18,7 +18,7 @@ public class ReportController {
     private final ReportService reportService;
 
     /**
-     * 获取组织合规报告数据
+     * Get organization compliance report data
      */
     @GetMapping("/organization")
     public ResponseEntity<Map<String, Object>> getOrganizationReport() {
@@ -32,7 +32,7 @@ public class ReportController {
     }
 
     /**
-     * 获取部门合规统计
+     * Get department compliance statistics
      */
     @GetMapping("/departments")
     public ResponseEntity<Map<String, Object>> getDepartmentStats() {
@@ -46,7 +46,7 @@ public class ReportController {
     }
 
     /**
-     * 获取员工报告详情
+     * Get employee report details
      */
     @GetMapping("/employees")
     public ResponseEntity<Map<String, Object>> getEmployeeReports(
@@ -60,9 +60,7 @@ public class ReportController {
         }
     }
 
-    /**
-     * 获取合规类别完成情况
-     */
+    /* * * GetComplianceClass别完成情况 */
     @GetMapping("/compliance-categories")
     public ResponseEntity<Map<String, Object>> getComplianceCategories() {
         try {
@@ -74,9 +72,7 @@ public class ReportController {
         }
     }
 
-    /**
-     * 获取月度合规趋势
-     */
+    /* * * GetMonth度ComplianceTrend */
     @GetMapping("/monthly-trend")
     public ResponseEntity<Map<String, Object>> getMonthlyTrend() {
         try {

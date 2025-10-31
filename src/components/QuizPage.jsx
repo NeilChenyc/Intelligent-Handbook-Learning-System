@@ -17,7 +17,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
   const [wrongQuestionsCount, setWrongQuestionsCount] = useState(0);
   const [quizResult, setQuizResult] = useState(null);
 
-  // 获取下一个小测ID
+  // Get next quiz ID
   const getNextQuizId = async () => {
     if (!course?.id || !quizId) return null;
     
@@ -44,19 +44,19 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       setNextQuizId(nextId);
     };
     
-    // 在组件加载时就获取下一个小测ID，不需要等到提交后
+    // Get next quiz ID when component loads, no need to wait until after submission
     if (course?.id && quizId) {
       fetchNextQuizId();
     }
   }, [course?.id, quizId]);
 
-  // 从认证系统获取用户ID
+  // 从Authentication系统GetUserID
   const userId = user?.id;
 
-  // 从后端获取题目数据并开始小测尝试
+  // 从后端GetQuestionData并StartQuiz尝试
   useEffect(() => {
     const initializeQuiz = async () => {
-      // 如果用户未登录或没有quizId，不执行数据获取
+      // 如果User未Login或没有quizId，不ExecutionDataGet
       if (!userId || !quizId) {
         setLoading(false);
         return;
@@ -65,7 +65,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       try {
         setLoading(true);
         
-        // 重置所有状态，确保新测验的干净状态
+        // Reset所有Status，确保新测验的干净Status
         setAnswers({});
         setSubmitted(false);
         setSubmitting(false);
@@ -76,18 +76,18 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         
         console.log('Debug: 开始初始化小测, quizId:', quizId, 'userId:', userId);
         
-        // 开始小测尝试
+        // StartQuiz尝试
         console.log('Debug: 调用 startQuizAttempt API');
         const attemptResponse = await startQuizAttempt(userId, quizId);
         console.log('Debug: startQuizAttempt 响应:', attemptResponse);
         setAttemptId(attemptResponse.id);
         
-        // 获取题目列表
+        // GetQuestionList
         console.log('Debug: 调用 getQuestionsByQuiz API');
         const data = await getQuestionsByQuiz(quizId);
         console.log('Debug: getQuestionsByQuiz 响应:', data);
         
-        // 转换后端数据格式为前端需要的格式
+        // Conversion后端DataFormat为前端需要的Format
         const formattedQuestions = data.map(question => ({
           id: question.id,
           questionText: question.questionText,
@@ -154,7 +154,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       return;
     }
     
-    // 准备答案数据，格式化为后端期望的格式
+    // 准备AnswerData，Format化为后端Expectation的Format
     const formattedAnswers = Object.entries(answers).map(([questionId, answer]) => ({
       questionId: parseInt(questionId),
       selectedOptions: Array.isArray(answer) ? answer : [answer]
@@ -166,21 +166,21 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       console.log('Debug: attemptId:', attemptId);
       console.log('Debug: formattedAnswers:', formattedAnswers);
       
-      // 提交到后端
+      // Commit到后端
       const result = await submitQuizAnswers(attemptId, formattedAnswers);
       console.log('Debug: Submission successful, result:', result);
       
-      // 设置提交状态
+      // SettingCommitStatus
       setSubmitted(true);
       
-      // 保存测验结果
+      // Save测验Result
       setQuizResult(result);
       
-      // 计算错题数量（从后端返回的结果中获取）
+      // Calculate错题Quantity（从后端Return的Result中Get）
       if (result.wrongQuestions) {
         setWrongQuestionsCount(result.wrongQuestions.length);
       } else {
-        // 如果后端没有返回错题信息，本地计算
+        // 如果后端没有Return错题Information，本地Calculate
         const wrongCount = questions.filter(question => {
           const userAnswer = answers[question.id];
           return !isCorrectAnswer(question, userAnswer);
@@ -188,7 +188,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         setWrongQuestionsCount(wrongCount);
       }
       
-      // 保留localStorage逻辑作为备份（可选）
+      // 保留localStorage逻辑作为Backup（可选）
       const wrongQuestions = [];
       questions.forEach(question => {
         const userAnswer = answers[question.id];
@@ -205,7 +205,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         }
       });
       
-      // 更新localStorage
+      // UpdatelocalStorage
       const existingWrongQuestions = JSON.parse(localStorage.getItem('wrongQuestions') || '[]');
       const updatedWrongQuestions = [...existingWrongQuestions];
       wrongQuestions.forEach(newWrongQ => {
@@ -222,7 +222,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
       
       localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
       
-      // 结果已保存，展示结果页由下方按钮控制导航
+      // Result已Save，展示Result页由下方ButtonControl导航
       
     } catch (error) {
       console.error('Quiz submission failed:', error);
@@ -234,7 +234,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         formattedAnswers: formattedAnswers
       });
       
-      // 更详细的错误信息
+      // 更详细的MistakeInformation
       let errorMessage = 'Submission failed, please try again';
       if (error.message) {
         errorMessage = `Submission failed: ${error.message}`;
@@ -276,11 +276,11 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
 
   const handleNextQuiz = () => {
     if (nextQuizId && onQuizComplete) {
-      // 计算当前测验的分数和通过状态
+      // Calculate当前测验的分数和通过Status
       const score = quizResult?.score !== undefined ? quizResult.score : calculateScore();
       const passed = quizResult?.passed !== undefined ? quizResult.passed : isQuizPassed();
       
-      // 调用父组件的回调，传递当前测验ID、分数、通过状态和下一个测验ID
+      // 调用父Component的回调，传递当前测验ID、分数、通过Status和下一个测验ID
       onQuizComplete(quizId, score, passed, nextQuizId);
     }
   };
@@ -361,7 +361,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
     );
   }
 
-  // 如果已提交，显示结果页面
+  // 如果已Commit，DisplayResultPage
   if (submitted) {
     const score = calculateScore();
     const passed = isQuizPassed();
@@ -370,7 +370,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
 
     return (
       <div className="p-6 max-w-4xl mx-auto">
-        {/* 结果页面标题 */}
+        {/* ResultPageTitle */}
         <div className="text-center mb-8">
           <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
             passed ? 'bg-green-100' : 'bg-red-100'
@@ -389,7 +389,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
           </p>
         </div>
 
-        {/* 成绩统计 */}
+        {/* GradeStatistics */}
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -413,7 +413,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
           </CardContent>
         </Card>
 
-        {/* 题目详情 */}
+        {/* QuestionDetails */}
         <div className="space-y-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900">Answer Details</h2>
           
@@ -496,10 +496,10 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
           })}
         </div>
 
-        {/* 操作按钮 */}
+        {/* 操作Button */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {passed && nextQuizId ? (
-            // 通过且有下一个测验，显示Next Quiz按钮
+            // 通过且有下一个测验，DisplayNext QuizButton
             <Button 
               onClick={handleNextQuiz}
               className="flex items-center space-x-2"
@@ -508,7 +508,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
               <span>Next Quiz</span>
             </Button>
           ) : (
-            // 未通过或没有下一个测验，显示Retake Quiz按钮
+            // 未通过或没有下一个测验，DisplayRetake QuizButton
             <Button 
               variant="outline" 
               onClick={handleRetry}
@@ -532,10 +532,10 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
     );
   }
 
-  // 正常的答题页面
+  // Normal的答题Page
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* 页面标题和返回按钮 */}
+      {/* PageTitle和ReturnButton */}
       <div className="flex items-center justify-between mb-6">
         <Button 
           variant="outline" 
@@ -557,7 +557,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         </div>
       </div>
 
-      {/* 进度条 */}
+      {/* Progress条 */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-medium text-gray-700">Answer Progress</span>
@@ -573,7 +573,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         </div>
       </div>
 
-      {/* 题目列表 */}
+      {/* QuestionList */}
       <div className="space-y-6 mb-8">
         {questions.map((question, index) => (
           <Card key={question.id} className="border border-gray-200">
@@ -632,7 +632,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
         ))}
       </div>
 
-      {/* 提交按钮 */}
+      {/* SubmitButton */}
       <div className="text-center">
         <Button
           onClick={handleSubmit}

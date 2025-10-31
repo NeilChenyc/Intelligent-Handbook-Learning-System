@@ -12,19 +12,19 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // 从后端获取课程的quiz数据
+  // TODO: Translate - Get course quiz data from backend
   useEffect(() => {
     const fetchQuizzes = async () => {
       try {
         setLoading(true);
         
-        // 使用后端聚合 + 缓存接口获取小测摘要与已通过ID
+        // Use backend aggregation + cache interface to get quiz summary and passed IDs
         const { quizzes: courseQuizzes, passedQuizIds } = await getCourseQuizListCached(course.id, user.id);
 
-        // 按ID排序小测
+        // Sort quizzes by ID
         const sortedQuizzes = courseQuizzes.sort((a, b) => a.id - b.id);
         
-        // 将quiz数据转换为组件需要的格式，并根据通过情况设置解锁状态
+        // Convert quiz data to component required format and set unlock status based on pass status
         const formattedQuizzes = sortedQuizzes.map((quiz, index) => {
           const isCompleted = passedQuizIds.includes(quiz.id);
           const isPreviousCompleted = index === 0 || passedQuizIds.includes(sortedQuizzes[index - 1].id);
@@ -47,10 +47,10 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
             title: `Quiz ${index + 1}: ${quiz.title}`,
             description: quiz.description || 'No description available',
             status: status,
-            score: null, // 这里可以后续扩展获取具体分数
+            score: null, // Can be extended later to get specific scores
             duration: quiz.timeLimitMinutes || 30,
             questions: quiz.questionCount || 0,
-            attempts: 0, // 这里可以后续扩展获取尝试次数
+            attempts: 0, // Can be extended later to get attempt counts
             maxAttempts: quiz.maxAttempts || 3,
             unlocked: unlocked,
             totalPoints: quiz.totalPoints || 0,
@@ -72,12 +72,12 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
     }
   }, [course?.id, user?.id, refreshTrigger]);
 
-  // 添加刷新函数，供外部调用
+  // Add refresh function for external calls
   const refreshQuizzes = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // 暴露刷新函数给父组件
+  // Expose refresh function to parent component
   useEffect(() => {
     if (course && course.refreshQuizzes !== refreshQuizzes) {
       course.refreshQuizzes = refreshQuizzes;
@@ -85,23 +85,23 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
   }, [course, refreshQuizzes]);
 
   const handleStartQuiz = (quizId) => {
-    // 调用父组件传入的回调函数，跳转到小测页面
+    // Call parent component callback function to navigate to quiz page
     if (onStartQuiz) {
       onStartQuiz(quizId);
     }
   };
 
   const handleCompleteQuiz = async (quizId, score) => {
-    // 完成小测后重新获取数据以更新解锁状态
+    // Refetch data after quiz completion to update unlock status
     try {
-      // 获取课程的所有小测
+      // Get all quizzes for the course
       const quizzesResponse = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
       if (!quizzesResponse.ok) {
         throw new Error('Failed to fetch quiz data');
       }
       const courseQuizzes = await quizzesResponse.json();
       
-      // 获取用户在该课程中已通过的小测ID列表
+      // Get list of quiz IDs user has passed in this course
       let passedQuizIds = [];
       if (user?.id) {
         try {
@@ -114,10 +114,10 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
         }
       }
       
-      // 按ID排序小测
+      // Sort quizzes by ID
       const sortedQuizzes = courseQuizzes.sort((a, b) => a.id - b.id);
       
-      // 将quiz数据转换为组件需要的格式，并根据通过情况设置解锁状态
+      // Convert quiz data to component required format and set unlock status based on pass status
       const formattedQuizzes = sortedQuizzes.map((quiz, index) => {
         const isCompleted = passedQuizIds.includes(quiz.id);
         const isPreviousCompleted = index === 0 || passedQuizIds.includes(sortedQuizzes[index - 1].id);
@@ -140,10 +140,10 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
           title: `Quiz ${index + 1}: ${quiz.title}`,
           description: quiz.description || 'No description available',
           status: status,
-          score: null, // 这里可以后续扩展获取具体分数
+          score: null, // Can be extended later to get specific scores
           duration: quiz.timeLimitMinutes || 30,
           questions: quiz.questionCount || 0,
-          attempts: 0, // 这里可以后续扩展获取尝试次数
+          attempts: 0, // Can be extended later to get attempt counts
           maxAttempts: quiz.maxAttempts || 3,
           unlocked: unlocked,
           totalPoints: quiz.totalPoints || 0,
@@ -153,7 +153,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
       
       setQuizzes(formattedQuizzes);
 
-      // 计算并更新课程进度
+      // Calculate and update course progress
       const completedQuizzes = passedQuizIds.length;
       const totalQuizzes = formattedQuizzes.length;
       const newProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
@@ -199,13 +199,13 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
     return 'text-red-600';
   };
 
-  // 计算统计数据
+  // Calculate statistics
   const totalQuizzes = quizzes.length;
   const completedQuizzes = quizzes.filter(q => q.status === 'completed').length;
   const courseProgress = totalQuizzes > 0 ? Math.round((completedQuizzes / totalQuizzes) * 100) : 0;
   const averageScore = quizzes.filter(q => q.score !== null).reduce((sum, q) => sum + q.score, 0) / (completedQuizzes || 1);
 
-  // 加载状态
+  // Loading state
   if (loading) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -227,7 +227,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
     );
   }
 
-  // 错误状态
+  // Error state
   if (error) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -252,7 +252,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* 返回按钮和课程标题 */}
+      {/* ReturnButton和CourseTitle */}
       <div className="mb-6">
         <Button 
           variant="outline" 
@@ -279,7 +279,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
             </div>
           </div>
           
-          {/* 课程进度 */}
+          {/* CourseProgress */}
           <div className="mt-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700">Course Progress</span>
@@ -295,7 +295,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
         </div>
       </div>
 
-      {/* 统计信息 */}
+      {/* StatisticsInfo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardContent className="p-4">
@@ -358,7 +358,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
         </Card>
       </div>
 
-      {/* 小测列表 */}
+      {/* QuizList */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quiz List</h2>
         
@@ -370,7 +370,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-start space-x-4 flex-1">
-                  {/* 序号和状态图标 */}
+                  {/* Serial Number和StatusGraph标 */}
                   <div className="flex flex-col items-center space-y-2">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
                       {quiz.quizNumber}
@@ -378,7 +378,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
                     {getStatusIcon(quiz.status)}
                   </div>
 
-                  {/* 小测信息 */}
+                  {/* QuizInfo */}
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">{quiz.title}</h3>
@@ -407,7 +407,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
                   </div>
                 </div>
 
-                {/* 操作按钮 */}
+                {/* 操作Button */}
                 <div className="ml-6">
                   {quiz.status === 'available' && quiz.unlocked && (
                     <Button 
@@ -451,7 +451,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
         ))}
       </div>
 
-      {/* 提示信息 */}
+      {/* HintInfo */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="flex items-start space-x-3">
           <div className="p-1 bg-blue-100 rounded">

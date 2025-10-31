@@ -86,7 +86,7 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
     setError('');
 
     try {
-      // 调用后端注册API
+      // Call backend registration API
       const response = await fetch('http://localhost:8080/users/register', {
         method: 'POST',
         headers: {

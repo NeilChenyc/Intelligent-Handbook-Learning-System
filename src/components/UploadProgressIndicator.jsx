@@ -16,14 +16,14 @@ const UploadProgressIndicator = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const activeTasks = getActiveTasks();
 
-  // 自动展开当有活跃任务时
+  // TODO: Translate - Auto expand when there are active tasks
   useEffect(() => {
     if (activeTasks.length > 0) {
       setIsExpanded(true);
     }
   }, [activeTasks.length]);
 
-  // 如果没有任务，不显示指示器
+  // Don't show indicator if no tasks
   if (tasks.length === 0) {
     return null;
   }
@@ -110,7 +110,7 @@ const UploadProgressIndicator = () => {
           </div>
         </div>
 
-        {/* 展开的任务列表 */}
+        {/* Unfold的TaskList */}
         {isExpanded && (
           <div className="border-t border-gray-200 max-h-80 overflow-y-auto">
             {tasks.slice(-5).reverse().map((task) => (
@@ -140,7 +140,7 @@ const UploadProgressIndicator = () => {
                   )}
                 </div>
 
-                {/* 进度条 */}
+                {/* Progress条 */}
                 {(task.status === 'uploading' || task.status === 'ai_processing') && (
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div 
@@ -187,7 +187,7 @@ const UploadProgressIndicator = () => {
         )}
       </div>
 
-      {/* 简化指示器（当收起时显示最新任务） */}
+      {/* 简化指示器（当收起时Display最新Task） */}
       {!isExpanded && activeTasks.length > 0 && (
         <div className="mt-2">
           {activeTasks.slice(-1).map((task) => (

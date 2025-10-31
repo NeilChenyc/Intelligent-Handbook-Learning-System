@@ -37,7 +37,7 @@ public class QuestionOptionService {
     }
 
     public QuestionOption createOption(QuestionOption option) {
-        // 验证题目是否存在
+        // Validate if question exists
         Question question = questionRepository.findById(option.getQuestion().getId())
                 .orElseThrow(() -> new RuntimeException("Question not found"));
         
@@ -109,7 +109,7 @@ public class QuestionOptionService {
             return false;
         }
 
-        // 检查是否至少有一个正确答案
+        // Check if there's at least one correct answer
         long correctCount = options.stream()
                 .mapToLong(option -> option.getIsCorrect() ? 1 : 0)
                 .sum();

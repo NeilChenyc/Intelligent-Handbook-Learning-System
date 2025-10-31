@@ -17,10 +17,10 @@ const WrongQuestionsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [wrongQuestionsCount, setWrongQuestionsCount] = useState(0);
 
-  // 从认证系统获取用户ID
+  // TODO: Translate - Get user ID from authentication system
   const userId = user?.id;
 
-  // 默认错题数据
+  // Default wrong question data
   const defaultWrongQuestions = [
     {
       id: 'default-1',
@@ -66,10 +66,10 @@ const WrongQuestionsPage = () => {
     }
   ];
 
-  // 从后端获取错题数据
+  // Get wrong question data from backend
   useEffect(() => {
     const fetchWrongQuestions = async () => {
-      // 如果用户未登录，不执行数据获取
+      // Don't execute data fetching if user not logged in
       if (!userId) {
         setLoading(false);
         return;
@@ -79,20 +79,20 @@ const WrongQuestionsPage = () => {
         setLoading(true);
         setError(null);
         
-        // 获取用户错题列表
+        // Get user wrong question list
         const wrongQuestionsData = await getUserWrongQuestions(userId);
         
-        // 获取错题数量统计
+        // Get wrong question count statistics
         const countData = await getUserWrongQuestionsCount(userId);
         setWrongQuestionsCount(countData.count || 0);
         
         if (wrongQuestionsData && wrongQuestionsData.length > 0) {
-          // 转换后端数据格式为前端期望的格式
+          // Convert backend data format to frontend expected format
           const formattedQuestions = wrongQuestionsData.map(wrongQ => ({
             id: wrongQ.wrongQuestionId,
             wrongQuestionId: wrongQ.wrongQuestionId,
             question: wrongQ.question.text,
-            questionId: wrongQ.question.id, // 添加questionId用于去重
+            questionId: wrongQ.question.id, // Add questionId for deduplication
             type: wrongQ.question.type === 'MULTIPLE_CHOICE' ? 'multiple' : 'single',
             options: wrongQ.question.options.map(opt => ({
               id: opt.id,
@@ -107,18 +107,18 @@ const WrongQuestionsPage = () => {
             isRedone: wrongQ.isRedone
           }));
           
-          // 去重处理：按questionId去重，保留最新的记录
+          // Deduplication: deduplicate by questionId, keep latest record
           const uniqueQuestions = [];
           const seenQuestionIds = new Set();
           
-          // 按创建时间倒序排序，确保保留最新的记录
+          // Sort by creation time descending to ensure keeping latest record
           const sortedQuestions = formattedQuestions.sort((a, b) => 
             new Date(b.createdAt) - new Date(a.createdAt)
           );
           
           for (const question of sortedQuestions) {
             if (!seenQuestionIds.has(question.questionId)) {
-              // 对选项进行去重处理
+              // Deduplicate options
               const uniqueOptions = [];
               const seenOptionIds = new Set();
               
@@ -129,7 +129,7 @@ const WrongQuestionsPage = () => {
                 }
               }
               
-              // 更新题目的选项为去重后的选项
+              // Update question的Option为去重后的Option
               question.options = uniqueOptions;
               uniqueQuestions.push(question);
               seenQuestionIds.add(question.questionId);
@@ -138,15 +138,15 @@ const WrongQuestionsPage = () => {
           
           setWrongQuestions(uniqueQuestions);
         } else {
-          // 如果没有错题，使用默认错题作为演示
+          // If no wrong questions, use default wrong questions for demo
           setWrongQuestions(defaultWrongQuestions);
         }
         
       } catch (err) {
-        console.error('获取错题失败:', err);
-        setError('加载错题失败，使用本地数据');
+        console.error('Failed to retrieve incorrect answers:', err);
+        setError('Failed to load incorrect questions, using local data');
         
-        // 降级到localStorage数据
+        // Fallback to localStorage data
         const savedWrongQuestions = localStorage.getItem('wrongQuestions');
         if (savedWrongQuestions) {
           const parsed = JSON.parse(savedWrongQuestions);
@@ -162,7 +162,7 @@ const WrongQuestionsPage = () => {
     fetchWrongQuestions();
   }, [userId]);
 
-  // 保存错题数据到localStorage
+  // Save wrong question data to localStorage
   const saveWrongQuestions = (questions) => {
     localStorage.setItem('wrongQuestions', JSON.stringify(questions));
     setWrongQuestions(questions);
@@ -190,7 +190,7 @@ const WrongQuestionsPage = () => {
     try {
       setSubmitting(true);
       
-      // 检查答案是否正确
+      // Check if answer is correct
       let correct = false;
       if (currentQuestion.type === 'multiple') {
         const correctSet = new Set(currentQuestion.correctAnswer);
@@ -204,28 +204,28 @@ const WrongQuestionsPage = () => {
       setIsCorrect(correct);
       setShowResult(true);
 
-      // 如果答对了，提交到后端并标记为已重做
+      // If answered correctly, submit to backend and mark as redone
       if (correct && currentQuestion.wrongQuestionId) {
         try {
           await submitWrongQuestionRedo(currentQuestion.wrongQuestionId, userAnswer);
           
-          // 从错题列表中移除
+          // Remove from wrong question list
           const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
           setWrongQuestions(updatedWrongQuestions);
           
-          // 更新错题数量
+          // Update wrong question count
           setWrongQuestionsCount(prev => Math.max(0, prev - 1));
           
-          // 更新localStorage作为备份
+          // Update localStorage作为Backup
           localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
           
-          // 如果当前是最后一题，回到上一题；否则保持当前索引
+          // If current is last question, go back to previous; otherwise keep current index
           if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
             setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
           }
         } catch (apiError) {
           console.error('提交错题重做失败:', apiError);
-          // API失败时仍然在本地移除，但显示警告
+          // APIFailure时仍然在本地Remove，但DisplayWarning
           setError('网络错误，但答案正确已记录');
           
           const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
@@ -237,7 +237,7 @@ const WrongQuestionsPage = () => {
           }
         }
       } else if (!correct) {
-        // 答错了，保持在错题列表中
+        // Answered incorrectly, keep in wrong question list
         console.log('答案错误，继续练习');
       }
       
@@ -251,12 +251,12 @@ const WrongQuestionsPage = () => {
 
   const nextQuestion = () => {
     if (isCorrect) {
-      // 如果答对了，题目已经被移除，不需要改变索引
+      // If answered correctly, question already removed, no need to change index
       setUserAnswer(null);
       setShowResult(false);
       setIsCorrect(false);
     } else {
-      // 如果答错了，移动到下一题
+      // If answered incorrectly, move to next question
       if (currentQuestionIndex < wrongQuestions.length - 1) {
         setCurrentQuestionIndex(currentQuestionIndex + 1);
       } else {
@@ -342,7 +342,7 @@ const WrongQuestionsPage = () => {
         <p className="text-gray-600">Review and practice previously incorrect questions, correct one to remove one</p>
       </div>
 
-      {/* 进度显示 */}
+      {/* ProgressDisplay */}
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
@@ -366,7 +366,7 @@ const WrongQuestionsPage = () => {
         </CardContent>
       </Card>
 
-      {/* 题目显示 */}
+      {/* QuestionDisplay */}
       <Card className={showResult ? (isCorrect ? 'border-green-200' : 'border-red-200') : ''}>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -444,7 +444,7 @@ const WrongQuestionsPage = () => {
         </CardContent>
       </Card>
 
-      {/* 操作按钮 */}
+      {/* 操作Button */}
       <div className="mt-6 flex justify-center space-x-4">
         {!showResult ? (
           <>
@@ -474,7 +474,7 @@ const WrongQuestionsPage = () => {
         )}
       </div>
 
-      {/* 错题统计信息 */}
+      {/* 错题StatisticsInfo */}
       {wrongQuestionsCount > 0 && (
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-500">
@@ -483,7 +483,7 @@ const WrongQuestionsPage = () => {
         </div>
       )}
 
-      {/* 提示信息 */}
+      {/* HintInfo */}
       <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="flex items-start space-x-3">
           <div className="p-1 bg-blue-100 rounded">

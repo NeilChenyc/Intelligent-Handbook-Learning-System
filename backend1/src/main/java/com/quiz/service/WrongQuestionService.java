@@ -37,9 +37,7 @@ public class WrongQuestionService {
     @Autowired
     private StudentAnswerRepository studentAnswerRepository;
 
-    /**
-     * 创建错题记录
-     */
+    /* * * Create错题Record */
     @Transactional
     public WrongQuestion createWrongQuestion(Long userId, Long questionId, Long quizAttemptId) {
         User user = userRepository.findById(userId)
@@ -49,7 +47,7 @@ public class WrongQuestionService {
         QuizAttempt quizAttempt = quizAttemptRepository.findById(quizAttemptId)
                 .orElseThrow(() -> new RuntimeException("Quiz attempt not found"));
 
-        // 检查是否已存在相同用户和题目的未重做错题记录
+        // TODO: Translate - Check if there's already an unredone wrong question record for same user and question
         Optional<WrongQuestion> existing = wrongQuestionRepository
                 .findByUserAndQuestionAndIsRedoneFalse(user, question);
         if (existing.isPresent()) {
@@ -72,9 +70,7 @@ public class WrongQuestionService {
         return saved;
     }
 
-    /**
-     * 批量创建错题记录
-     */
+    /* * * 批量Create错题Record */
     @Transactional
     public void createWrongQuestionsFromAttempt(QuizAttempt quizAttempt) {
         List<StudentAnswer> answers = studentAnswerRepository.findByQuizAttemptId(quizAttempt.getId());
@@ -90,18 +86,16 @@ public class WrongQuestionService {
         }
     }
 
-    /**
-     * 获取用户未重做的错题列表
-     */
+    /* * * GetUser未Redo的错题List */
     @Transactional(readOnly = true)
     public List<WrongQuestionDTO> getUserWrongQuestions(Long userId) {
         try {
             log.info("Getting wrong questions for user: {}", userId);
-            // 使用轻量投影查询，避免抓取重量级实体字段
+            // Use lightweight projection query to avoid fetching heavyweight entity fields
             List<com.quiz.dto.WrongQuestionLiteDto> rows = wrongQuestionRepository.findLiteByUserIdAndIsRedoneFalse(userId);
             log.info("Found {} wrong questions (lite) for user {}", rows.size(), userId);
 
-            // 批量获取所有题目的选项，避免N+1查询
+            // Batch get all question options to avoid N+1 queries
             List<Long> questionIds = rows.stream()
                     .map(com.quiz.dto.WrongQuestionLiteDto::getQuestionId)
                     .distinct()
@@ -112,7 +106,7 @@ public class WrongQuestionService {
                     : questionOptionRepository.findByQuestionIdsOrderByQuestionAndOrder(questionIds).stream()
                         .collect(Collectors.groupingBy(opt -> opt.getQuestion().getId()));
 
-            // 组装为前端期望的 WrongQuestionDTO 结构
+            // Assemble into WrongQuestionDTO structure expected by frontend
             List<WrongQuestionDTO> dtos = rows.stream().map(row -> {
                 WrongQuestionDTO dto = new WrongQuestionDTO();
                 dto.setWrongQuestionId(row.getWrongQuestionId());
@@ -160,9 +154,7 @@ public class WrongQuestionService {
         }
     }
 
-    /**
-     * 获取用户在特定课程下的错题
-     */
+    /* * * GetUser在特定Course下的错题 */
     public List<WrongQuestionDTO> getUserWrongQuestionsByCourse(Long userId, Long courseId) {
         List<WrongQuestion> wrongQuestions = wrongQuestionRepository.findByUserIdAndCourseIdAndIsRedoneFalse(userId, courseId);
         return wrongQuestions.stream()
@@ -170,9 +162,7 @@ public class WrongQuestionService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 获取用户在特定小测下的错题
-     */
+    /* * * GetUser在特定Quiz下的错题 */
     public List<WrongQuestionDTO> getUserWrongQuestionsByQuiz(Long userId, Long quizId) {
         List<WrongQuestion> wrongQuestions = wrongQuestionRepository.findByUserIdAndQuizIdAndIsRedoneFalse(userId, quizId);
         return wrongQuestions.stream()
@@ -180,9 +170,7 @@ public class WrongQuestionService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 转换WrongQuestion实体为DTO
-     */
+    /* * * ConversionWrongQuestion实体为DTO */
     private WrongQuestionDTO convertToDTO(WrongQuestion wrongQuestion) {
         try {
             log.debug("Converting wrong question {} to DTO", wrongQuestion.getWrongQuestionId());
@@ -197,7 +185,7 @@ public class WrongQuestionService {
             dto.setRedoneAt(wrongQuestion.getRedoneAt());
             dto.setUpdatedAt(wrongQuestion.getUpdatedAt());
 
-            // 转换Question
+            // Convert Question
             Question question = wrongQuestion.getQuestion();
             if (question == null) {
                 log.error("Question is null for wrong question {}", wrongQuestion.getWrongQuestionId());
@@ -210,7 +198,7 @@ public class WrongQuestionService {
             questionDTO.setType(question.getType().name());
             questionDTO.setExplanation(question.getExplanation());
 
-            // 转换Options
+            // Convert Options
             if (question.getOptions() != null) {
                 List<WrongQuestionDTO.OptionDTO> optionDTOs = question.getOptions().stream()
                         .map(option -> {
@@ -227,13 +215,13 @@ public class WrongQuestionService {
                 questionDTO.setOptions(List.of());
             }
 
-            // 转换Quiz
+            // Convert Quiz
             if (question.getQuiz() != null) {
                 WrongQuestionDTO.QuizDTO quizDTO = new WrongQuestionDTO.QuizDTO();
                 quizDTO.setId(question.getQuiz().getId());
                 quizDTO.setTitle(question.getQuiz().getTitle());
 
-                // 转换Course
+                // Convert Course
                 if (question.getQuiz().getCourse() != null) {
                     WrongQuestionDTO.CourseDTO courseDTO = new WrongQuestionDTO.CourseDTO();
                     courseDTO.setId(question.getQuiz().getCourse().getId());
@@ -254,16 +242,12 @@ public class WrongQuestionService {
         }
     }
 
-    /**
-     * 统计用户未重做的错题数量
-     */
+    /* * * StatisticsUser未Redo的错题Quantity */
     public Long countUserWrongQuestions(Long userId) {
         return wrongQuestionRepository.countByUserIdAndIsRedoneFalse(userId);
     }
 
-    /**
-     * 验证错题重做答案
-     */
+    /* * * Validate错题RedoAnswer */
     @Transactional
     public boolean validateAndMarkRedone(Long wrongQuestionId, List<Long> selectedOptionIds) {
         WrongQuestion wrongQuestion = wrongQuestionRepository.findById(wrongQuestionId)
@@ -275,16 +259,16 @@ public class WrongQuestionService {
 
         Question question = wrongQuestion.getQuestion();
         
-        // 获取正确答案
+        // Get correct answer
         List<QuestionOption> correctOptions = questionOptionRepository
                 .findCorrectOptionsByQuestionId(question.getId());
 
-        // 添加调试日志
+        // Add debug log
         log.info("Question ID: {}, Selected options: {}, Correct options: {}", 
                 question.getId(), selectedOptionIds, 
                 correctOptions.stream().map(QuestionOption::getId).toList());
 
-        // 使用公共验证工具类验证答案
+        // Use common validation utility class to validate answer
         boolean isCorrect = AnswerValidationUtil.isAnswerCorrectByIds(
                 selectedOptionIds, correctOptions, question.getType());
         
@@ -300,16 +284,12 @@ public class WrongQuestionService {
         return isCorrect;
     }
 
-    /**
-     * 获取错题详情（包含题目和选项信息）
-     */
+    /* * * Get错题Details（Package含Question和OptionInfo） */
     public Optional<WrongQuestion> getWrongQuestionById(Long wrongQuestionId) {
         return wrongQuestionRepository.findById(wrongQuestionId);
     }
 
-    /**
-     * 标记错题为已重做（不验证答案）
-     */
+    /* * * Tag错题为已Redo（不ValidateAnswer） */
     @Transactional
     public void markAsRedone(Long wrongQuestionId) {
         WrongQuestion wrongQuestion = wrongQuestionRepository.findById(wrongQuestionId)
@@ -320,9 +300,7 @@ public class WrongQuestionService {
         log.info("Wrong question {} marked as redone", wrongQuestionId);
     }
 
-    /**
-     * 批量清理已重做的错题记录
-     */
+    /* * * 批量清理已Redo的错题Record */
     @Transactional
     public int cleanupRedoneWrongQuestions() {
         List<WrongQuestion> redoneQuestions = wrongQuestionRepository.findByIsRedoneTrue();
