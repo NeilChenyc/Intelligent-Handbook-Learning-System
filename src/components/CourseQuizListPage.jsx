@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import { CheckCircle, Clock, AlertCircle, ArrowLeft, BookOpen, Play, Lock, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourseQuizListCached } from '../api/quizApi';
+import { API_BASE_URL } from '../config/api';
 
 const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) => {
   const { user } = useAuth();
@@ -95,7 +96,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
     // Refetch data after quiz completion to update unlock status
     try {
       // Get all quizzes for the course
-      const quizzesResponse = await fetch(`http://localhost:8080/quizzes/course/${course.id}`);
+      const quizzesResponse = await fetch(`${API_BASE_URL}/quizzes/course/${course.id}`);
       if (!quizzesResponse.ok) {
         throw new Error('Failed to fetch quiz data');
       }
@@ -105,7 +106,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
       let passedQuizIds = [];
       if (user?.id) {
         try {
-          const passedResponse = await fetch(`http://localhost:8080/quiz-attempts/user/${user.id}/course/${course.id}/passed`);
+          const passedResponse = await fetch(`${API_BASE_URL}/quiz-attempts/user/${user.id}/course/${course.id}/passed`);
           if (passedResponse.ok) {
             passedQuizIds = await passedResponse.json();
           }

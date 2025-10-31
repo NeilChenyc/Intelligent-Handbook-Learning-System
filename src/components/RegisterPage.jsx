@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, Mail, UserCheck, GraduationCap, ArrowLeft } from 'lucide-react';
+import { apiRequest } from '../config/api';
 
 const RegisterPage = ({ onRegister, onBackToLogin }) => {
   const [formData, setFormData] = useState({
@@ -86,8 +87,8 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
     setError('');
 
     try {
-      // Call backend registration API
-      const response = await fetch('http://localhost:8080/users/register', {
+      // Call backend registration API using dynamic URL
+      const data = await apiRequest('/users/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,8 +102,6 @@ const RegisterPage = ({ onRegister, onBackToLogin }) => {
           department: formData.department
         })
       });
-
-      const data = await response.json();
 
       if (data.success) {
         setSuccess('Registration successful! Please login with your account.');

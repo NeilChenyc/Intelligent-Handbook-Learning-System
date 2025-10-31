@@ -1,5 +1,5 @@
-// Certificate related API functions
-const API_BASE_URL = 'http://localhost:8080';
+// Certificate related API calls
+import { API_BASE_URL } from '../config/api';
 
 /**
  * Get all certificates with user visibility logic

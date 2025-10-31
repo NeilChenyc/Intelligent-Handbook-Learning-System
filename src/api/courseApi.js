@@ -1,8 +1,8 @@
 // TODO: Translate - Import getCourseQuizListCached function
 import { getCourseQuizListCached } from './quizApi';
+import { API_BASE_URL } from '../config/api';
 
 // Course relatedAPI调用Function
-const API_BASE_URL = 'http://localhost:8080';
 
 // Get all active courses (backend already ignores PDF binary fields)
 export const getAllCourses = async () => {

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080';
+import { API_BASE_URL } from '../config/api';
 
 // Get user's unredone wrong questions list
 export const getUserWrongQuestions = async (userId) => {

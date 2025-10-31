@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import { CheckCircle, XCircle, Clock, ArrowLeft, ArrowRight, RotateCcw, Trophy, FileText, Shield } from 'lucide-react';
 import { getQuestionsByQuiz, startQuizAttempt, submitQuizAnswers } from '../api/quizApi';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ const QuizPage = ({ quizId, courseName, onBack, onQuizComplete, course }) => {
     if (!course?.id || !quizId) return null;
     
     try {
-      const response = await fetch(`http://localhost:8080/quizzes/course/${course.id}/summaries`);
+      const response = await fetch(`${API_BASE_URL}/quizzes/course/${course.id}/summaries`);
       if (response.ok) {
         const quizzes = await response.json();
         const sortedQuizzes = quizzes.sort((a, b) => a.id - b.id);

@@ -21,7 +21,9 @@ public class CorsConfig implements WebMvcConfigurer {
                     "http://127.0.0.1:3000",
                     "https://quiz-frontend-app.azurewebsites.net",
                     "https://*.azurewebsites.net",
-                    "https://*.ngrok-free.app"
+                    "https://*.ngrok-free.app",
+                    "https://neilchenyc.github.io",
+                    "https://*.github.io"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
@@ -37,7 +39,9 @@ public class CorsConfig implements WebMvcConfigurer {
             "http://127.0.0.1:3000",
             "https://quiz-frontend-app.azurewebsites.net",
             "https://*.azurewebsites.net",
-            "https://*.ngrok-free.app"
+            "https://*.ngrok-free.app",
+            "https://neilchenyc.github.io",
+            "https://*.github.io"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

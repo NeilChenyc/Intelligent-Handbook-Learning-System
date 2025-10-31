@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, FileText, Settings, Brain, CheckCircle, AlertCircle, Loader, Minimize2 } from 'lucide-react';
 import { useUploadProgress } from '../contexts/UploadProgressContext';
+import { apiRequest, API_BASE_URL } from '../config/api';
 
 const Button = ({ children, onClick, disabled, variant = 'primary', className = '', ...props }) => {
   const baseClasses = 'px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
@@ -143,7 +144,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       setUploadProgress(10);
       updateTask(createdTaskId, { uploadProgress: 10 });
       
-      const response = await fetch('http://localhost:8080/courses/upload', {
+      const response = await fetch(`${API_BASE_URL}/courses/upload`, {
         method: 'POST',
         body: formDataToSend,
       });
@@ -217,7 +218,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       };
 
       // Call AI processing API
-      const aiResponse = await fetch(`http://localhost:8080/api/agent/process-course/${courseId}/async`, {
+      const aiResponse = await fetch(`${API_BASE_URL}/api/agent/process-course/${courseId}/async`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +264,7 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
 
     const poll = async () => {
       try {
-        const statusResponse = await fetch(`http://localhost:8080/api/agent/status/${aiTaskId}`);
+        const statusResponse = await fetch(`${API_BASE_URL}/api/agent/status/${aiTaskId}`);
         if (!statusResponse.ok) {
           throw new Error('Failed to get AI status');
         }

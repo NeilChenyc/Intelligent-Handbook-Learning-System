@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 const TestQuizPage = () => {
   const [data, setData] = useState(null);
@@ -7,7 +8,7 @@ const TestQuizPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:8080/questions/quiz/1');
+        const response = await fetch(`${API_BASE_URL}/questions/quiz/1`);
         const result = await response.json();
         console.log('Raw API data:', result);
         setData(result);

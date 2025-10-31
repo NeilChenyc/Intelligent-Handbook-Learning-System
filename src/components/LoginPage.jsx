@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, UserCheck, GraduationCap } from 'lucide-react';
+import { apiRequest } from '../config/api';
 
 const LoginPage = ({ onLogin, onShowRegister }) => {
   const [formData, setFormData] = useState({
@@ -51,8 +52,8 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
     setError('');
 
     try {
-      // Call backend login API
-      const response = await fetch('http://localhost:8080/users/login', {
+      // Call backend login API using dynamic URL
+      const data = await apiRequest('/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,8 +63,6 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
           password: formData.password
         })
       });
-
-      const data = await response.json();
 
       if (data.success) {
         // Login successful

@@ -15,8 +15,7 @@ import {
   getMonthlyTrend 
 } from './reportApi';
 import { getUserCertificates } from './certificateApi';
-
-const API_BASE_URL = 'http://localhost:8080';
+import { API_BASE_URL } from '../config/api';
 
 // ChatbotSessionManagement
 class ChatbotSession {
