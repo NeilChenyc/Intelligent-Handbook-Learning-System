@@ -22,6 +22,10 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# Database backups
+local_db_backup.sql
+*.sql
+
 # Runtime data
 pids
 *.pid
