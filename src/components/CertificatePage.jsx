@@ -247,7 +247,18 @@ const CertificatePage = () => {
 
                       <div className="mb-4">
                           <p className="text-sm text-gray-500 mb-2">Description</p>
-                          <p className="text-gray-700">{userCert.certificate.description || 'No description available'}</p>
+                          <p 
+                            className="text-gray-700"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
+                            {userCert.certificate.description || 'No description available'}
+                          </p>
                         </div>
                     </div>
 
@@ -305,7 +316,18 @@ const CertificatePage = () => {
                         </div>
                       </div>
                       
-                      <p className="text-gray-700 mb-4">{cert.description}</p>
+                      <p 
+                        className="text-gray-700 mb-4"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {cert.description}
+                      </p>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
@@ -333,11 +355,6 @@ const CertificatePage = () => {
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded">
                           {cert?.course?.department || 'General'}
                         </span>
-                      </div>
-
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 mb-2">Description</p>
-                        <p className="text-gray-700">{cert.description || 'No description available'}</p>
                       </div>
 
                       {cert.requirements && (

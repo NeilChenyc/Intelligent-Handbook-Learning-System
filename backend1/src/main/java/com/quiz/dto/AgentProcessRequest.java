@@ -40,4 +40,10 @@ public class AgentProcessRequest {
     
     /* * * 额外的Process指令或Requirement */
     private String additionalInstructions;
+    
+    /* * * 是否启用Quiz生成 */
+    private Boolean enableQuizGeneration = true;
+    
+    /* * * 是否启用Description生成 */
+    private Boolean enableDescriptionGeneration = false;
 }

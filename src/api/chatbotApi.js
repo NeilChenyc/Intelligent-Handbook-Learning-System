@@ -186,16 +186,31 @@ const availableTools = {
 };
 
 // Backend AI response function: call backend and return complete response object (including toolsUsed)
-const generateAIResponse = async (userMessage) => {
+const generateAIResponse = async (userMessage, userId = null, sessionId = null) => {
   try {
-    // Call backend OpenAI API
+    // Generate sessionId if not provided (using browser session + timestamp)
+    if (!sessionId) {
+      // Create a unique session ID based on browser session and current time
+      const browserSessionId = sessionStorage.getItem('chatbot_session_id') || 
+        `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Store session ID in sessionStorage for consistency across page reloads
+      if (!sessionStorage.getItem('chatbot_session_id')) {
+        sessionStorage.setItem('chatbot_session_id', browserSessionId);
+      }
+      sessionId = browserSessionId;
+    }
+
+    // Call backend OpenAI API with sessionId and userId
     const response = await fetch(`${API_BASE_URL}/chatbot/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: userMessage
+        message: userMessage,
+        sessionId: sessionId,
+        userId: userId
       })
     });
 
@@ -415,7 +430,7 @@ const executeTools = async (toolNames, userId = null) => {
 export const sendChatMessage = async (userMessage, userId = null) => {
   try {
     // Directly call backend to generate AI response (including toolsUsed)
-    const backendResponse = await generateAIResponse(userMessage);
+    const backendResponse = await generateAIResponse(userMessage, userId);
 
     // Add to conversation history
     chatbotSession.addToHistory(
@@ -428,6 +443,7 @@ export const sendChatMessage = async (userMessage, userId = null) => {
       success: true,
       response: backendResponse.message || backendResponse.response || 'No response received',
       toolsUsed: backendResponse.toolsUsed || [],
+      sessionId: backendResponse.sessionId || null,
       timestamp: new Date().toISOString()
     };
 
@@ -449,7 +465,16 @@ export const getChatHistory = () => {
 // Clear conversation history
 export const clearChatHistory = () => {
   chatbotSession.clearHistory();
+  // Also clear the session ID to start a new session
+  sessionStorage.removeItem('chatbot_session_id');
   return { success: true, message: '对话历史已清除' };
+};
+
+// Clear session (useful when user logs out or switches)
+export const clearChatSession = () => {
+  chatbotSession.clearHistory();
+  sessionStorage.removeItem('chatbot_session_id');
+  return { success: true, message: '会话已清除' };
 };
 
 // Get available tools list
@@ -464,5 +489,6 @@ export default {
   sendChatMessage,
   getChatHistory,
   clearChatHistory,
+  clearChatSession,
   getAvailableTools
 };

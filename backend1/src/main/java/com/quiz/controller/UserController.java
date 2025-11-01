@@ -104,4 +104,19 @@ public class UserController {
             ));
         }
     }
+
+    @GetMapping("/{id}/learning-progress")
+    public ResponseEntity<Map<String, Object>> getUserLearningProgress(@PathVariable("id") Long userId) {
+        try {
+            log.info("Fetching learning progress for user: {}", userId);
+            Map<String, Object> progressData = userService.getUserLearningProgress(userId);
+            return ResponseEntity.ok(progressData);
+        } catch (Exception e) {
+            log.error("Error fetching learning progress for user {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Failed to fetch learning progress: " + e.getMessage()
+            ));
+        }
+    }
 }

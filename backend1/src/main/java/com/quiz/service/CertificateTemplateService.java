@@ -75,9 +75,6 @@ public class CertificateTemplateService {
         result = result.replace("{{CERTIFICATE_NAME}}", userCertificate.getCertificate().getCertificateName());
         result = result.replace("{{CERTIFICATE_NUMBER}}", userCertificate.getCertificateNumber());
         result = result.replace("{{ISSUER}}", userCertificate.getCertificate().getIssuer());
-        result = result.replace("{{DESCRIPTION}}", 
-                userCertificate.getCertificate().getDescription() != null ? 
-                userCertificate.getCertificate().getDescription() : "");
         result = result.replace("{{CERTIFICATE_LEVEL}}", 
                 userCertificate.getCertificate().getCertificateLevel() != null ? 
                 userCertificate.getCertificate().getCertificateLevel() : "Intermediate");

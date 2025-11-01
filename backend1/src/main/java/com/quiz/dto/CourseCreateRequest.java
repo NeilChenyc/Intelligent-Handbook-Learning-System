@@ -12,4 +12,5 @@ public class CourseCreateRequest {
     private String description;
     private Long teacherId;
     private String department; // Department field for department course distribution in course management page
+    private Boolean enableAIDescription = false; // AI Smart Description Generation flag
 }

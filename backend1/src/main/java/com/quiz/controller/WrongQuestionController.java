@@ -82,16 +82,30 @@ public class WrongQuestionController {
         try {
             log.info("Processing wrong question redo for ID: {}, request: {}", wrongQuestionId, request);
             
+            // Handle type conversion from Integer to Long for JSON parsing
             @SuppressWarnings("unchecked")
-            List<Long> selectedOptionIds = (List<Long>) request.get("selectedOptionIds");
+            List<Object> rawSelectedOptionIds = (List<Object>) request.get("selectedOptionIds");
             
-            if (selectedOptionIds == null || selectedOptionIds.isEmpty()) {
+            if (rawSelectedOptionIds == null || rawSelectedOptionIds.isEmpty()) {
                 log.warn("No selected options provided for wrong question {}", wrongQuestionId);
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", "请选择答案"
                 ));
             }
+            
+            // Convert Integer/Long objects to Long
+            List<Long> selectedOptionIds = rawSelectedOptionIds.stream()
+                    .map(obj -> {
+                        if (obj instanceof Integer) {
+                            return ((Integer) obj).longValue();
+                        } else if (obj instanceof Long) {
+                            return (Long) obj;
+                        } else {
+                            throw new IllegalArgumentException("Invalid option ID type: " + obj.getClass());
+                        }
+                    })
+                    .toList();
             
             log.info("Selected option IDs: {}", selectedOptionIds);
             boolean isCorrect = wrongQuestionService.validateAndMarkRedone(wrongQuestionId, selectedOptionIds);

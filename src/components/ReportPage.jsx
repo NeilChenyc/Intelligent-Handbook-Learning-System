@@ -6,8 +6,7 @@ import {
   getOrganizationReport, 
   getDepartmentStats, 
   getEmployeeReports, 
-  getComplianceCategories, 
-  getMonthlyTrend 
+  getComplianceCategories
 } from '../api/reportApi';
 
 const ReportPage = () => {
@@ -29,7 +28,6 @@ const ReportPage = () => {
   const [departmentStats, setDepartmentStats] = useState([]);
   const [employeeReports, setEmployeeReports] = useState([]);
   const [complianceCategories, setComplianceCategories] = useState([]);
-  const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,7 +38,6 @@ const ReportPage = () => {
       departmentStats,
       employeeReports: filteredEmployeeReports,
       complianceCategories,
-      monthlyTrend,
       exportDate: new Date().toLocaleString('zh-CN')
     };
 
@@ -528,21 +525,18 @@ const ReportPage = () => {
           orgData,
           deptStats,
           empReports,
-          compCategories,
-          monthTrend
+          compCategories
         ] = await Promise.all([
           getOrganizationReport(),
           getDepartmentStats(),
           getEmployeeReports(),
-          getComplianceCategories(),
-          getMonthlyTrend()
+          getComplianceCategories()
         ]);
 
         setOrganizationData(orgData);
         setDepartmentStats(Array.isArray(deptStats?.departmentStats) ? deptStats.departmentStats : []);
         setEmployeeReports(Array.isArray(empReports?.employeeReports) ? empReports.employeeReports : []);
         setComplianceCategories(Array.isArray(compCategories?.complianceCategories) ? compCategories.complianceCategories : []);
-        setMonthlyTrend(Array.isArray(monthTrend?.monthlyTrend) ? monthTrend.monthlyTrend : []);
         
       } catch (err) {
         console.error('Error fetching report data:', err);
@@ -742,33 +736,7 @@ const ReportPage = () => {
         </CardContent>
       </Card>
 
-      {/* Month度ComplianceTrend */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5 text-blue-500" />
-            <span>Monthly Compliance Trend</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {monthlyTrend.map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium">{item.month}</span>
-                <div className="flex items-center space-x-3">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${item.rate}%` }}
-                    ></div>
-                  </div>
-                  <span className="font-bold text-blue-600">{item.rate}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* ComplianceClass别完成情况 */}
       <Card className="mb-8">
@@ -791,7 +759,13 @@ const ReportPage = () => {
                     <span className={`font-bold ${getRateColor(category.rate)}`}>{category.rate}%</span>
                   </div>
                 </div>
-                <p className="text-gray-600 text-sm mb-3">{category.description}</p>
+                <p className="text-gray-600 text-sm mb-3" style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>{category.description}</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Completion Status: {category.completed}/{category.totalEmployees}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">

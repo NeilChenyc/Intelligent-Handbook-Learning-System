@@ -147,13 +147,38 @@ public class CourseService {
         Course savedCourse = courseRepository.save(course);
         log.info("Course created with PDF handbook, id: {}", savedCourse.getId());
 
+        // 如果启用了AI描述生成，则使用AI生成课程描述
+        if (Boolean.TRUE.equals(request.getEnableAIDescription())) {
+            try {
+                log.info("Generating AI course description for course id: {}", savedCourse.getId());
+                String aiGeneratedDescription = pdfQuizAgentService.generateCourseDescription(
+                    handbookFile.getBytes(), 
+                    handbookFile.getOriginalFilename(),
+                    request.getTitle()
+                );
+                
+                if (aiGeneratedDescription != null && !aiGeneratedDescription.trim().isEmpty()) {
+                    savedCourse.setDescription(aiGeneratedDescription);
+                    savedCourse.setUpdatedAt(LocalDateTime.now());
+                    savedCourse = courseRepository.save(savedCourse);
+                    log.info("AI generated description updated for course id: {}, description length: {}", 
+                            savedCourse.getId(), aiGeneratedDescription.length());
+                } else {
+                    log.warn("AI description generation failed or returned empty for course id: {}", savedCourse.getId());
+                }
+            } catch (Exception e) {
+                log.error("Failed to generate AI description for course id: {}, error: {}", savedCourse.getId(), e.getMessage(), e);
+                // 继续执行，不因为AI描述生成失败而中断整个流程
+            }
+        }
+
         // 在UploadPDF并CreateCourse后，自动CreateCertificate以便在Available中Display
         try {
             certificateService.createCertificateForCourse(
                 savedCourse.getId(),
                 null,
                 null,
-                request.getDescription(),
+                savedCourse.getDescription(), // 使用可能已更新的描述
                 null,
                 null,
                 null

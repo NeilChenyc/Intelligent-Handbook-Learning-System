@@ -6,7 +6,7 @@ import 'highlight.js/styles/github.css';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Send, Bot, User, RefreshCw, MessageCircle, Trash2 } from 'lucide-react';
-import { sendChatMessage, getChatHistory, clearChatHistory, getAvailableTools } from '../api/chatbotApi';
+import { sendChatMessage, getChatHistory, clearChatHistory, clearChatSession, getAvailableTools } from '../api/chatbotApi';
 import { useAuth } from '../contexts/AuthContext';
 
 const ChatbotPage = () => {
@@ -15,6 +15,7 @@ const ChatbotPage = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [availableTools, setAvailableTools] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const messagesEndRef = useRef(null);
 
   // 滚动到Message底部
@@ -50,8 +51,9 @@ const ChatbotPage = () => {
 
   // Clear聊天History
   const handleClearHistory = () => {
-    clearChatHistory();
+    clearChatSession(); // Use clearChatSession instead of clearChatHistory to also clear sessionId
     setMessages([]);
+    setCurrentSessionId(null);
   };
 
   // SendMessage
@@ -73,8 +75,13 @@ const ChatbotPage = () => {
       setMessages(prev => [...prev, newUserMessage]);
 
       // SendMessage并Get回复
-      const response = await sendChatMessage(userMessage);
+      const response = await sendChatMessage(userMessage, user?.id);
       console.log('Chatbot API response:', response); // DebuggingLog
+      
+      // Update session ID if returned from backend
+      if (response.sessionId && response.sessionId !== currentSessionId) {
+        setCurrentSessionId(response.sessionId);
+      }
       
       // AddAI回复到Interface
       const aiMessage = {

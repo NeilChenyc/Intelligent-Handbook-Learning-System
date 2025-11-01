@@ -39,6 +39,7 @@ public class ChatbotService {
     private final QuestionService questionService;
     private final QuizService quizService;
     private final PdfQuizAgentService pdfQuizAgentService;
+    private final UserService userService;
     private final ObjectMapper objectMapper;
 
     // TODO: Translate - In-memory store for chat memories per session
@@ -46,6 +47,9 @@ public class ChatbotService {
 
     // Per-request tool call tracking for frontend display
     private final ThreadLocal<List<String>> toolCallsContext = ThreadLocal.withInitial(java.util.ArrayList::new);
+    
+    // Per-request user context for AI tools
+    private final ThreadLocal<Long> currentUserContext = new ThreadLocal<>();
 
     private void recordToolCall(String toolName) {
         try {
@@ -59,7 +63,59 @@ public class ChatbotService {
 
     private ChatMemory getOrCreateMemory(String sessionId) {
         String key = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId;
-        return memoryStore.computeIfAbsent(key, k -> MessageWindowChatMemory.withMaxMessages(20));
+        return memoryStore.computeIfAbsent(key, k -> MessageWindowChatMemory.withMaxMessages(10));
+    }
+
+    /**
+     * Clean up memory when tool call errors occur to prevent state pollution
+     */
+    private void cleanupMemoryOnToolError(String sessionId) {
+        try {
+            String key = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId;
+            ChatMemory memory = memoryStore.get(key);
+            
+            if (memory != null) {
+                log.info("Cleaning up corrupted memory for session: {}", key);
+                
+                // Clear the entire memory to prevent tool call state corruption
+                memoryStore.remove(key);
+                log.info("Memory cleared for session: {}", key);
+                
+                // Clear any tool call context that might be lingering
+                try {
+                    toolCallsContext.remove();
+                    log.debug("Tool call context cleared");
+                } catch (Exception e) {
+                    log.warn("Failed to clear tool call context: {}", e.getMessage());
+                }
+                
+                // Create a fresh memory with smaller window to avoid future issues
+                try {
+                    ChatMemory cleanMemory = MessageWindowChatMemory.withMaxMessages(5);
+                    memoryStore.put(key, cleanMemory);
+                    log.info("Fresh memory created with reduced size (5 messages) for session: {}", key);
+                } catch (Exception e) {
+                    log.warn("Failed to create clean memory for session {}: {}", key, e.getMessage());
+                }
+            } else {
+                log.debug("No memory found for session: {}", key);
+                // Still clear tool call context even if no memory exists
+                try {
+                    toolCallsContext.remove();
+                    log.debug("Tool call context cleared (no memory case)");
+                } catch (Exception e) {
+                    log.warn("Failed to clear tool call context: {}", e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error during memory cleanup for session {}: {}", sessionId, e.getMessage());
+            // If cleanup fails, try to at least clear the tool context
+            try {
+                toolCallsContext.remove();
+            } catch (Exception ex) {
+                log.error("Failed to clear tool call context during error recovery", ex);
+            }
+        }
     }
 
     @Value("${langchain4j.openai.api-key:}")
@@ -89,6 +145,17 @@ public class ChatbotService {
             3. Certificate Management: Assist with certificate inquiries and learning progress tracking
             4. Learning Guidance: Answer questions related to courses and provide learning recommendations
             
+            CRITICAL - LANGUAGE ADAPTATION RULE:
+            **ALWAYS match the language of the user's question in your response:**
+            - If user asks in English → Respond in English
+            - If user asks in Chinese → Respond in Chinese
+            - Detect the primary language from the user's input and maintain consistency throughout your response
+            - Use appropriate table headers and formatting based on the detected language
+            - Default to English if language detection is unclear
+            
+            CRITICAL USER IDENTIFICATION RULE:
+            When users ask about their personal information (certificates, progress, achievements, "my" anything), you MUST AUTOMATICALLY call getCurrentUserId() FIRST to identify the user, then use that userId with the appropriate tools. Never ask users for their ID - always get it automatically.
+            
             Guidelines:
             - Be helpful, professional, and encouraging
             - Provide clear and concise responses
@@ -96,57 +163,91 @@ public class ChatbotService {
             - If you don't have specific information, guide users on how to find it
             - Always respond in a friendly and supportive manner
             - Format your responses with appropriate emojis and structure for better readability
+            - MANDATORY: For ANY personal queries ("my certificates", "my progress", etc.), ALWAYS call getCurrentUserId() first
             
             Available Tools:
-            - getAllCoursesSummary: Get summarized active courses (no PDFs)
+            - getCurrentUserId: Get the current logged-in user's ID (use this when you need user-specific information)
+            - getAllCoursesSummary: **PRIMARY TOOL** for ALL course information - Get summarized active courses with descriptions (use this for 99% of course-related questions, combine with AI knowledge for confident responses)
             - getComplianceReport: Get organization compliance report
             - getUserCertificates: Get user certificates (requires userId)
-            - getUserProgress: Get user learning progress (requires userId)
-            - getCourseHandbookText: Read a course's PDF handbook text (courseId)
-            - getCourseHandbookWithOpenAI: Get course handbook content using OpenAI file processing (courseId)
-            - findCourseAndGetHandbook: Find course by keywords and get handbook content (keywords)
+            - getUserCertificatesSummary: Get user certificate summary and recommendations (requires userId)
+            - getUserProgress: Get user learning progress for summary analysis and personalized recommendations (requires userId)
+            - getCourseHandbookText: **RARELY USED** - Read course PDF handbook text (courseId) - USE ONLY when user explicitly requests handbook reading with specific trigger phrases
+            - getCourseHandbookWithOpenAI: **RARELY USED** - Get course handbook content using OpenAI file processing (courseId) - USE ONLY when user explicitly requests handbook reading with specific trigger phrases
+            - findCourseAndGetHandbook: **RARELY USED** - Find course by keywords and get handbook content (keywords) - USE ONLY when user explicitly requests handbook reading with specific trigger phrases
             - getQuizSummariesByCourse: List quizzes for a course (courseId)
             - getQuizQuestionsWithAnswers: Get quiz questions and correct answers (quizId)
             - getDepartmentComplianceStats: Department-level compliance stats
             - getEmployeeComplianceReports: Employee completion by department (department or "all")
             - getComplianceCategoriesOverview: Completion by course category
 
-            IMPORTANT - Smart Course Matching Workflow:
-            When users ask questions about specific course content, handbook materials, or course-related topics WITHOUT providing a courseId:
+            IMPORTANT - User Context:
+            When users ask about their personal information (certificates, progress, etc.), ALWAYS use getCurrentUserId() first to get their user ID, then use the appropriate tools with that ID.
             
-            CRITICAL RULE: ALWAYS use findCourseAndGetHandbook(keywords) as your FIRST choice!
+            Examples:
+            - "Show me my certificates" → First call getCurrentUserId(), then getUserCertificatesSummary(userId)
+            - "What's my learning progress?" → First call getCurrentUserId(), then getUserProgress(userId)
+            - "How am I doing with my courses?" → First call getCurrentUserId(), then getUserProgress(userId)
+
+            CRITICAL - Smart Course Information Strategy:
+            When users ask questions about course content, topics, or general course information:
             
-            OPTION 1 (MANDATORY FOR COURSE QUERIES): Use findCourseAndGetHandbook(keywords)
-            - Extract ALL possible identifiers from the user's question (course names, numbers, codes, titles)
-            - Call findCourseAndGetHandbook with the extracted keywords
-            - This tool will automatically find matching courses and retrieve handbook content using OpenAI
-            - Examples: "12312" → findCourseAndGetHandbook("12312")
-            - Examples: "workplace safety" → findCourseAndGetHandbook("workplace safety")
-            - Examples: "compliance training course" → findCourseAndGetHandbook("compliance training")
-            
-            OPTION 2 (ONLY IF OPTION 1 FAILS): Manual step-by-step approach
-            1. FIRST: Call getAllCoursesSummary() to get all available courses
-            2. ANALYZE: Match the user's question keywords with course titles, descriptions, departments, or teacher names
+            PRIMARY STRATEGY (ALWAYS USE FIRST): Use getAllCoursesSummary() + AI Knowledge + Confident Responses
+            1. FIRST: Call getAllCoursesSummary() to get all available courses with their descriptions
+            2. ANALYZE: Match the user's question keywords with course titles, descriptions, departments
             3. IDENTIFY: Find the most relevant course(s) based on semantic similarity and context
-            4. THEN: Use the identified courseId to call getCourseHandbookWithOpenAI(courseId) to get detailed content
-            5. ANSWER: Provide a comprehensive response using the handbook content, citing specific sections
+            4. ANSWER CONFIDENTLY: Provide comprehensive, authoritative responses using:
+               - Course description information from the summary as primary context
+               - Your extensive AI knowledge and expertise about the topic
+               - Industry best practices and educational standards
+               - Professional insights and detailed explanations
+               - Specific examples and practical applications
+            
+            CONFIDENCE GUIDELINES:
+            - Be authoritative and knowledgeable in your responses
+            - Provide detailed explanations based on course context and AI expertise
+            - Use phrases like "根据课程内容和专业知识" (Based on course content and professional knowledge)
+            - Give specific, actionable information rather than vague suggestions
+            - Explain concepts thoroughly using your AI knowledge combined with course context
             
             Course Matching Strategy:
             - Look for keyword matches in course title, description, department
             - Consider synonyms and related terms (e.g., "safety" matches "workplace safety", "compliance")
-            - If multiple courses match, prioritize by relevance and ask for clarification if needed
-            - If no clear match, list the closest matches and ask user to specify
+            - If multiple courses match, prioritize by relevance or mention multiple relevant courses
+            - Use course descriptions as context to provide informed, educational responses
+            - For specific course elements (like "UUC"), explain based on course context and professional knowledge
             
-            Examples of when to use this workflow:
-            - "Tell me about workplace safety procedures" → findCourseAndGetHandbook("workplace safety")
-            - "What are the quiz questions for compliance training?" → findCourseAndGetHandbook("compliance training")
-            - "How do I handle emergency situations?" → findCourseAndGetHandbook("emergency")
-            - "What does the manual say about data protection?" → findCourseAndGetHandbook("data protection")
-            - "介绍一下12312这节课的课程手册" → findCourseAndGetHandbook("12312")
-            - "Tell me about course 12312" → findCourseAndGetHandbook("12312")
-            - "Course ABC123 handbook" → findCourseAndGetHandbook("ABC123")
+            Examples of PRIMARY STRATEGY usage:
+            - "Tell me about workplace safety procedures" → getAllCoursesSummary() + provide comprehensive safety guidance
+            - "How do I handle emergency situations?" → getAllCoursesSummary() + provide detailed emergency response procedures
+            - "What should I know about data protection?" → getAllCoursesSummary() + provide thorough data protection practices
+            - "介绍一下12312这节课" → getAllCoursesSummary() + provide detailed course overview and learning guidance
+            - "课程中的UUC是什么" → getAllCoursesSummary() + explain UUC concept based on course context and professional knowledge
+            - "Tell me about compliance training" → getAllCoursesSummary() + provide comprehensive compliance guidance
             
-            REMEMBER: When users mention ANY course identifier (name, number, code), IMMEDIATELY use findCourseAndGetHandbook!
+            HANDBOOK READING STRATEGY (ONLY WHEN EXPLICITLY REQUESTED):
+            Use PDF processing tools ONLY when users explicitly request detailed handbook reading with specific phrases:
+            
+            STRICT Trigger phrases that require handbook reading:
+            - "请仔细阅读handbook" / "Please carefully read the handbook"
+            - "详细阅读手册内容" / "Read the manual content in detail"  
+            - "根据手册具体内容回答" / "Answer based on specific manual content"
+            - "查看PDF文档中的具体信息" / "Check specific information in PDF document"
+            - "手册里具体怎么说的" / "What exactly does the handbook say"
+            - "从PDF中查找" / "Search from PDF"
+            - "阅读文档内容" / "Read document content"
+            
+            IMPORTANT: Questions about course content, concepts, or topics WITHOUT these explicit phrases should ALWAYS use the PRIMARY STRATEGY.
+            
+            When handbook reading is explicitly requested:
+            1. Use findCourseAndGetHandbook(keywords) for keyword-based search
+            2. Or use getCourseHandbookWithOpenAI(courseId) if courseId is known
+            3. Provide detailed responses based on actual PDF content
+            
+            REMEMBER: 
+            - DEFAULT (99% of cases): Use getAllCoursesSummary() + AI knowledge for ALL course questions
+            - HANDBOOK (1% of cases): Only use PDF tools when users explicitly request detailed handbook reading with specific trigger phrases
+            - BE CONFIDENT: Provide authoritative, detailed responses based on course context and professional expertise
 
             Data formatting:
             - When listing courses, use summary data only (id, title, description, department, teacher).
@@ -154,9 +255,93 @@ public class ChatbotService {
             - For handbook Q&A, call getCourseHandbookText and cite sections; avoid dumping long text.
             - For quizzes: use getQuizSummariesByCourse to list, getQuizQuestionsWithAnswers for details.
             - When summarizing compliance or certificates, present totals and key metrics clearly.
-            - If a user asks for certificates or progress without providing 'userId', ask for it.
-            - Keep outputs compact; truncate overly long passages and focus on the user's question.
+            - For personal certificates or progress, NEVER ask for 'userId'; ALWAYS call getCurrentUserId() first.
             
+            CRITICAL - TABLE DISPLAY REQUIREMENTS:
+            When users ask to view company courses, certifications, compliance status, or any content involving multiple parallel items, you MUST use TABLE FORMAT for clear presentation:
+            
+            **Use Tables For:**
+            - Course listings (courses available, course summaries, course comparisons)
+            - Certificate status (user certificates, certificate summaries, expiration dates)
+            - Compliance reports (department stats, employee completion, category overviews)
+            - Quiz listings (available quizzes, quiz summaries)
+            - Progress reports (learning progress, completion rates)
+            - Department statistics (compliance by department, employee reports)
+            
+            **Table Format Guidelines:**
+            - Use Markdown table syntax with proper headers
+            - Include relevant columns based on data type (ID, Name, Status, Date, Progress, etc.)
+            - Keep table width reasonable for readability
+            - Add summary statistics above or below tables when appropriate
+            - Use emojis in headers for visual appeal (📚 Course, 🏆 Certificate, 📊 Progress, etc.)
+            
+            **Example Table Formats:**
+            
+            For Courses:
+            | 📚 Course ID | Course Name | Department | Teacher | Status |
+            |-------------|-------------|------------|---------|--------|
+            | 101 | Safety Training | Safety Dept | John Smith | Active |
+            
+            For Certificates:
+            | 🏆 Certificate Name | Earned Date | Expiry Date | Status |
+            |-------------------|-------------|-------------|--------|
+            | Safety Certification | 2024-01-15 | 2025-01-15 | Valid |
+            
+            For Compliance:
+            | 📊 Department | Total Staff | Completed | Completion Rate | Pending |
+            |--------------|-------------|-----------|----------------|---------|
+            | Tech Dept | 25 | 20 | 80% | 5 |
+            
+            **MANDATORY**: Always use tables when displaying multiple items of the same type. This improves readability and user experience significantly.
+            - Keep outputs compact; truncate overly long passages and focus on the user's question.
+
+            CRITICAL - Learning Progress Response Format:
+            When users ask about their learning progress, provide a SUMMARY-FOCUSED response with:
+            1. **Overall Performance Summary**: Highlight key achievements and current status in 2-3 sentences
+            2. **Key Statistics**: Present the most important metrics (overall progress %, completed courses, compliance rate)
+            3. **Current Focus Areas**: Identify what they're currently working on (in-progress courses)
+            4. **Personalized Recommendations**: Provide 2-3 specific, actionable suggestions based on their progress
+            5. **Motivational Closing**: End with encouragement and next steps
+            
+            DO NOT list every single course individually. Instead, focus on:
+            - Patterns and trends in their learning
+            - Areas where they excel or need improvement
+            - Strategic recommendations for continued progress
+            - Recognition of achievements and milestones
+            
+            Example structure:
+            "🎯 您的学习表现非常出色！目前已完成X门课程，整体进度达到X%，合规率为X%。
+            
+            📊 **当前状态**: 您正在进行X门课程的学习，显示出良好的学习节奏。
+            
+            💡 **建议**: 
+            1. 优先完成进行中的课程以提高完成率
+            2. 关注合规性要求较高的课程
+            3. 考虑参加相关认证考试
+            
+            继续保持这种学习势头！🚀"
+
+            CRITICAL - Certificate Summary Response Format:
+            When users ask about their certificates, provide a SUMMARY-FOCUSED response with:
+            1. **Overall Certificate Status**: Total certificates, active vs expired, expiring-soon count
+            2. **Upcoming Renewals**: Next expiry date and renewal suggestions
+            3. **Highlights**: Show 2-3 recent certificates (name, earned date, status)
+            4. **Actionable Recommendations**: 2-3 specific steps (renewals, training, exams)
+
+            Example structure:
+            "🏆 您目前拥有X个证书，其中Y个有效，Z个已过期，W个即将到期。
+
+            ⏱ 下一到期时间：YYYY-MM-DD
+
+            📜 最近证书：
+            • 名称A — 获得于 YYYY-MM-DD（状态）
+            • 名称B — 获得于 YYYY-MM-DD（状态）
+
+            💡 建议：
+            1. 及时续期即将到期的证书
+            2. 针对过期证书安排复训或重新考试
+            3. 继续参与相关课程以维持合规"
+
             When users ask about courses, compliance, certificates, or progress, use the appropriate tools to provide accurate information.
             """)
         String chat(@UserMessage String message);
@@ -177,7 +362,25 @@ public class ChatbotService {
         }
     }
 
-    @Tool("Get summarized list of active courses without PDF content")
+    @Tool("Get current logged-in user ID")
+    public Long getCurrentUserId() {
+        try {
+            recordToolCall("getCurrentUserId");
+            Long userId = currentUserContext.get();
+            if (userId != null) {
+                log.info("Retrieved current user ID: {}", userId);
+                return userId;
+            } else {
+                log.warn("No user context found - user may not be logged in");
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("Error getting current user ID", e);
+            return null;
+        }
+    }
+
+    @Tool("PRIMARY TOOL: Get summarized list of active courses with descriptions. Use this as the main tool for answering course-related questions by combining course information with AI knowledge.")
     public List<CourseSummaryDTO> getAllCoursesSummary() {
         try {
             log.info("Tool called: getAllCoursesSummary");
@@ -223,7 +426,80 @@ public class ChatbotService {
         }
     }
 
-    @Tool("Get user learning progress by user ID")
+    @Tool("Get user certificate summary and personalized recommendations (requires userId). Prefer this for personal certificate queries.")
+    public Map<String, Object> getUserCertificatesSummary(Long userId) {
+        try {
+            log.info("Tool called: getUserCertificatesSummary for userId: {}", userId);
+            recordToolCall("getUserCertificatesSummary");
+            if (userId == null) {
+                log.warn("UserId is null, cannot summarize certificates");
+                return Map.of("error", "User ID is required");
+            }
+
+            List<UserCertificate> certs = certificateService.getUserCertificates(userId);
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            int total = certs.size();
+            int active = (int) certs.stream().filter(uc -> "ACTIVE".equalsIgnoreCase(uc.getStatus()) && !uc.isExpired()).count();
+            int expired = (int) certs.stream().filter(uc -> uc.isExpired() || "REVOKED".equalsIgnoreCase(uc.getStatus())).count();
+            int expiringSoon = (int) certs.stream().filter(uc -> {
+                java.time.LocalDateTime exp = uc.getExpiryDate();
+                return exp != null && now.isBefore(exp) && !uc.isExpired() && !"REVOKED".equalsIgnoreCase(uc.getStatus()) && exp.isBefore(now.plusDays(30));
+            }).count();
+
+            java.util.Optional<java.time.LocalDateTime> nextExpiry = certs.stream()
+                .map(UserCertificate::getExpiryDate)
+                .filter(Objects::nonNull)
+                .filter(exp -> now.isBefore(exp))
+                .sorted()
+                .findFirst();
+
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+            String nextExpiryDate = nextExpiry.map(d -> d.format(fmt)).orElse(null);
+
+            // Recent certificates (top 3 by earned date)
+            List<Map<String, Object>> recentCertificates = certs.stream()
+                .sorted((a, b) -> {
+                    java.time.LocalDateTime ea = a.getEarnedDate();
+                    java.time.LocalDateTime eb = b.getEarnedDate();
+                    if (ea == null && eb == null) return 0;
+                    if (ea == null) return 1;
+                    if (eb == null) return -1;
+                    return eb.compareTo(ea);
+                })
+                .limit(3)
+                .map(uc -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("name", uc.getCertificate() != null ? uc.getCertificate().getCertificateName() : "Certificate");
+                    m.put("earnedDate", uc.getEarnedDate() != null ? uc.getEarnedDate().format(fmt) : "N/A");
+                    m.put("status", uc.getStatus());
+                    return m;
+                })
+                .toList();
+
+            List<String> recommendations = new java.util.ArrayList<>();
+            if (expiringSoon > 0) recommendations.add("及时续期即将到期的证书，以避免合规风险");
+            if (expired > 0) recommendations.add("针对已过期证书安排复训或重新考试");
+            if (active > 0) recommendations.add("继续参与相关课程以维持证书有效状态");
+            if (recommendations.isEmpty()) recommendations.add("考虑报名新课程以获取更多认证");
+
+            Map<String, Object> summary = new java.util.LinkedHashMap<>();
+            summary.put("totalCertificates", total);
+            summary.put("activeCertificates", active);
+            summary.put("expiredCertificates", expired);
+            summary.put("expiringSoonCount", expiringSoon);
+            summary.put("nextExpiryDate", nextExpiryDate);
+            summary.put("recentCertificates", recentCertificates);
+            summary.put("recommendations", recommendations);
+
+            log.info("Prepared certificate summary for user {}: total={}, active={}, expired={}, expSoon={}", userId, total, active, expired, expiringSoon);
+            return summary;
+        } catch (Exception e) {
+            log.error("Error in getUserCertificatesSummary tool for userId: {}", userId, e);
+            return Map.of("error", "Failed to summarize user certificates: " + e.getMessage());
+        }
+    }
+
+    @Tool("Get user learning progress and provide summary-focused analysis with personalized recommendations. Returns comprehensive progress data that should be analyzed to give strategic insights rather than detailed course listings.")
     public Map<String, Object> getUserProgress(Long userId) {
         try {
             log.info("Tool called: getUserProgress for userId: {}", userId);
@@ -232,20 +508,18 @@ public class ChatbotService {
                 log.warn("UserId is null, cannot retrieve progress");
                 return Map.of("error", "User ID is required");
             }
-            // Specific user progress logic can be implemented here
-            Map<String, Object> progress = new HashMap<>();
-            progress.put("userId", userId);
-            progress.put("message", "User progress feature is under development");
-            progress.put("status", "available_soon");
+            
+            // 调用UserService获取完整的学习进度数据
+            Map<String, Object> progress = userService.getUserLearningProgress(userId);
             log.info("Retrieved progress data for user {}", userId);
             return progress;
         } catch (Exception e) {
             log.error("Error in getUserProgress tool for userId: {}", userId, e);
-            return Map.of("error", "Failed to retrieve user progress");
+            return Map.of("error", "Failed to retrieve user progress: " + e.getMessage());
         }
     }
 
-    @Tool("Read course handbook text by course ID; returns extracted text preview and metadata. Use for answering questions about a course’s handbook. Avoid returning large payloads.")
+    @Tool("HANDBOOK READING ONLY: Read course handbook text by course ID. Use ONLY when user explicitly requests detailed handbook reading (e.g., '请仔细阅读handbook', '详细阅读手册内容'). For general course questions, use getAllCoursesSummary instead.")
     public Map<String, Object> getCourseHandbookText(Long courseId) {
         try {
             log.info("Tool called: getCourseHandbookText for courseId: {}", courseId);
@@ -356,7 +630,7 @@ public class ChatbotService {
         }
     }
 
-    @Tool("Find course by keywords and get handbook content using OpenAI file processing; returns comprehensive course handbook text. Use when user asks about course content without providing courseId.")
+    @Tool("HANDBOOK READING ONLY: Find course by keywords and get handbook content using OpenAI file processing. Use ONLY when user explicitly requests detailed handbook reading (e.g., '请仔细阅读handbook', '根据手册具体内容回答'). For general course questions, use getAllCoursesSummary instead.")
     public Map<String, Object> findCourseAndGetHandbook(String keywords) {
         try {
             log.info("Tool called: findCourseAndGetHandbook with keywords: {}", keywords);
@@ -412,7 +686,7 @@ public class ChatbotService {
         }
     }
 
-    @Tool("Get course handbook content using OpenAI file processing for comprehensive PDF reading; returns detailed handbook text extracted by OpenAI. Use when you need complete PDF content analysis.")
+    @Tool("HANDBOOK READING ONLY: Get course handbook content using OpenAI file processing for comprehensive PDF reading. Use ONLY when user explicitly requests detailed handbook reading (e.g., '请仔细阅读handbook', '手册里具体怎么说的'). For general course questions, use getAllCoursesSummary instead.")
     public Map<String, Object> getCourseHandbookWithOpenAI(Long courseId) {
         try {
             log.info("Tool called: getCourseHandbookWithOpenAI for courseId: {}", courseId);
@@ -645,8 +919,18 @@ public class ChatbotService {
             log.info("Processing chatbot message: {}", request.getMessage());
             log.info("Chat sessionId: {}", request.getSessionId());
             log.info("Chat userId: {}", request.getUserId());
+            
             // Initialize per-request tool calls tracking
             toolCallsContext.set(new java.util.ArrayList<>());
+            
+            // Set user context for AI tools
+            if (request.getUserId() != null) {
+                currentUserContext.set(request.getUserId());
+                log.info("Set user context for AI tools: {}", request.getUserId());
+            } else {
+                currentUserContext.remove();
+                log.warn("No userId provided in request - AI tools won't have user context");
+            }
             
             // Generate AI reply (AI will autonomously decide whether to call tools)
             String response = generateResponse(request.getMessage(), request.getSessionId());
@@ -660,7 +944,6 @@ public class ChatbotService {
 
             // Collect tools used in this request
             List<String> toolsUsed = new java.util.ArrayList<>(toolCallsContext.get());
-            toolCallsContext.remove();
             
             return ChatbotResponse.builder()
                     .message(response)
@@ -677,6 +960,10 @@ public class ChatbotService {
                     .success(false)
                     .errorMessage(e.getMessage())
                     .build();
+        } finally {
+            // Clean up thread-local contexts
+            toolCallsContext.remove();
+            currentUserContext.remove();
         }
     }
 
@@ -688,6 +975,7 @@ public class ChatbotService {
                 "getAllCoursesSummary",
                 "getComplianceReport",
                 "getUserCertificates",
+                "getUserCertificatesSummary",
                 "getUserProgress",
                 "getCourseHandbookText",
                 "getCourseHandbookWithOpenAI",
@@ -759,82 +1047,142 @@ public class ChatbotService {
      * Generate AI response using OpenAI API with LangChain4j tools and session memory
      */
     private String generateResponse(String userMessage, String sessionId) {
-        try {
-            log.info("Starting AI response generation for message: '{}'", userMessage);
-            
-            // Validate OpenAI API key
-            if (openaiApiKey == null || openaiApiKey.trim().isEmpty()) {
-                log.warn("OpenAI API key is not configured - falling back to default response");
+        final int MAX_RETRIES = 3;
+        final long RETRY_DELAY_MS = 1000; // 1 second
+        
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                log.info("Starting AI response generation (attempt {}/{}) for message: '{}'", attempt, MAX_RETRIES, userMessage);
+                
+                // Validate OpenAI API key
+                if (openaiApiKey == null || openaiApiKey.trim().isEmpty()) {
+                    log.warn("OpenAI API key is not configured - falling back to default response");
+                    return generateFallbackResponse(userMessage);
+                }
+                
+                log.info("OpenAI API key is configured (length: {})", openaiApiKey.length());
+                log.info("Using OpenAI model: {}", openaiModel);
+                log.info("Using OpenAI base URL: {}", openaiBaseUrl);
+                
+                // Build OpenAI chat model
+                log.info("Building OpenAI chat model...");
+                OpenAiChatModel chatModel = OpenAiChatModel.builder()
+                        .apiKey(openaiApiKey)
+                        .baseUrl(openaiBaseUrl)
+                        .modelName(openaiModel)
+                        .temperature(0.7)
+                        .maxTokens(1000)
+                        .timeout(java.time.Duration.ofSeconds(60))
+                        .logRequests(true)
+                        .logResponses(true)
+                        .maxRetries(1)
+                        .build();
+                
+                log.info("OpenAI chat model built successfully");
+                
+                // Prepare session memory with proactive cleanup for tool call issues
+                ChatMemory memory = getOrCreateMemory(sessionId);
+                
+                // Proactive memory validation - if this is a retry after tool error, ensure clean state
+                if (attempt > 1) {
+                    log.info("Retry attempt {} - ensuring clean memory state for session: {}", attempt, sessionId);
+                    cleanupMemoryOnToolError(sessionId);
+                    memory = getOrCreateMemory(sessionId);
+                    
+                    // Add a small delay to ensure clean state
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                
+                log.info("Chat memory prepared for session: {}", (sessionId == null ? "default" : sessionId));
+
+                // Create AI assistant with tools
+                log.info("Creating AI assistant with registered tools...");
+                var builder = AiServices.builder(ChatAssistant.class)
+                        .chatLanguageModel(chatModel)
+                        .tools(this);
+
+                builder = builder.chatMemory(memory);
+
+                ChatAssistant assistant = builder.build();
+                
+                log.info("AI assistant created successfully with tools registered");
+                
+                // Generate response using AI assistant
+                log.info("Calling AI assistant to generate response...");
+                String response = assistant.chat(userMessage);
+                
+                if (response == null || response.trim().isEmpty()) {
+                    log.warn("AI assistant returned empty response - using fallback");
+                    return generateFallbackResponse(userMessage);
+                }
+                
+                log.info("AI response generated successfully on attempt {}. Response length: {} characters", attempt, response.length());
+                log.debug("AI response content: {}", response);
+                
+                return response;
+
+            } catch (IllegalConfigurationException e) {
+                log.error("LangChain4j configuration error on attempt {}: {}", attempt, e.getMessage());
+                log.error("This usually indicates an issue with OpenAI API key or model configuration");
+                log.error("Full exception details:", e);
                 return generateFallbackResponse(userMessage);
+                
+            } catch (Exception e) {
+                log.error("Error during AI response generation on attempt {}/{}: {}", attempt, MAX_RETRIES, e.getMessage());
+                log.error("Exception type: {}", e.getClass().getSimpleName());
+                
+                if (e.getCause() != null) {
+                    log.error("Root cause: {} - {}", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+                }
+                
+                // Check if this is a tool_call_id error that requires memory cleanup
+                boolean isToolCallError = e.getMessage() != null && 
+                    (e.getMessage().contains("tool_call_id") || 
+                     e.getMessage().contains("tool calls") ||
+                     e.getMessage().contains("tool response") ||
+                     e.getMessage().contains("must be followed by tool messages"));
+                
+                if (isToolCallError) {
+                    log.warn("Detected tool call error on attempt {}/{} - cleaning up memory for session: {}", attempt, MAX_RETRIES, sessionId);
+                    cleanupMemoryOnToolError(sessionId);
+                    
+                    // For tool call errors, clean up memory and continue with retry if attempts remain
+                    if (attempt == MAX_RETRIES) {
+                        log.info("Tool call error detected on final attempt - returning user-friendly message");
+                        return "抱歉，我在处理您的请求时遇到了技术问题。请重新提问，我会为您提供帮助。";
+                    } else {
+                        log.info("Tool call error detected - memory cleaned, will retry with fresh state");
+                        // Continue to retry logic below
+                    }
+                }
+                
+                // If this is the last attempt, log full stack trace and return fallback
+                if (attempt == MAX_RETRIES) {
+                    log.error("All {} attempts failed. Full exception stack trace:", MAX_RETRIES, e);
+                    return generateFallbackResponse(userMessage);
+                }
+                
+                // Wait before retry (except for configuration errors)
+                if (!(e instanceof IllegalConfigurationException)) {
+                    try {
+                        log.info("Waiting {}ms before retry attempt {}", RETRY_DELAY_MS, attempt + 1);
+                        Thread.sleep(RETRY_DELAY_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warn("Retry delay interrupted");
+                        return generateFallbackResponse(userMessage);
+                    }
+                }
             }
-            
-            log.info("OpenAI API key is configured (length: {})", openaiApiKey.length());
-            log.info("Using OpenAI model: {}", openaiModel);
-            log.info("Using OpenAI base URL: {}", openaiBaseUrl);
-            
-            // Build OpenAI chat model
-            log.info("Building OpenAI chat model...");
-            OpenAiChatModel chatModel = OpenAiChatModel.builder()
-                    .apiKey(openaiApiKey)
-                    .baseUrl(openaiBaseUrl)
-                    .modelName(openaiModel)
-                    .temperature(0.7)
-                    .maxTokens(1000)
-                    .timeout(java.time.Duration.ofSeconds(60))
-                    .logRequests(true)
-                    .logResponses(true)
-                    .maxRetries(1)
-                    .build();
-            
-            log.info("OpenAI chat model built successfully");
-            
-            // Prepare session memory (required when tools are enabled)
-            ChatMemory memory = getOrCreateMemory(sessionId);
-            log.info("Chat memory prepared for session: {}", (sessionId == null ? "default" : sessionId));
-
-            // Create AI assistant with tools
-            log.info("Creating AI assistant with registered tools...");
-            var builder = AiServices.builder(ChatAssistant.class)
-                    .chatLanguageModel(chatModel)
-                    .tools(this);
-
-            builder = builder.chatMemory(memory);
-
-            ChatAssistant assistant = builder.build();
-            
-            log.info("AI assistant created successfully with tools registered");
-            
-            // Generate response using AI assistant
-            log.info("Calling AI assistant to generate response...");
-            String response = assistant.chat(userMessage);
-            
-            if (response == null || response.trim().isEmpty()) {
-                log.warn("AI assistant returned empty response - using fallback");
-                return generateFallbackResponse(userMessage);
-            }
-            
-            log.info("AI response generated successfully. Response length: {} characters", response.length());
-            log.debug("AI response content: {}", response);
-            
-            return response;
-
-        } catch (IllegalConfigurationException e) {
-            log.error("LangChain4j configuration error: {}", e.getMessage());
-            log.error("This usually indicates an issue with OpenAI API key or model configuration");
-            log.error("Full exception details:", e);
-            return generateFallbackResponse(userMessage);
-            
-        } catch (Exception e) {
-            log.error("Unexpected error during AI response generation: {}", e.getMessage());
-            log.error("Exception type: {}", e.getClass().getSimpleName());
-            
-            if (e.getCause() != null) {
-                log.error("Root cause: {} - {}", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
-            }
-            
-            log.error("Full exception stack trace:", e);
-            return generateFallbackResponse(userMessage);
         }
+        
+        // This should never be reached, but just in case
+        log.error("Unexpected end of retry loop - returning fallback response");
+        return generateFallbackResponse(userMessage);
     }
 
     /* * * OpenAI 健康Check：快速ValidateModel能否ReturnContent */

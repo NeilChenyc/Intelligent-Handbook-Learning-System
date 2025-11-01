@@ -11,6 +11,7 @@ import com.quiz.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -144,7 +145,7 @@ public class CertificateService {
     /**
      * Award certificate to user when course is completed
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UserCertificate awardCertificateToUser(Long userId, Long courseId, Integer finalScore, 
                                                  Integer completionPercentage) {
         log.info("Awarding certificate to user {} for course {}", userId, courseId);

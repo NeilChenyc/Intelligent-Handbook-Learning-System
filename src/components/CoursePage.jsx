@@ -89,6 +89,13 @@ const CoursePage = () => {
     return isActive ? 'Active' : 'Inactive';
   };
 
+  // Limit description to first 3 lines
+  const limitDescriptionToThreeLines = (description) => {
+    if (!description) return '';
+    const lines = description.split('\n');
+    return lines.slice(0, 3).join('\n');
+  };
+
   // Calculate course statistics
   const courseStats = {
     total: courses.length,
@@ -295,14 +302,20 @@ const CoursePage = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
-                        <p className="text-sm text-gray-600">{course.description}</p>
+                        <p className="text-sm text-gray-600" style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>{course.description}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">Instructor: {course.teacher?.username || 'Not specified'}</span>
+                        <span className="text-sm text-gray-600">Instructor: {course.teacher?.fullName || course.teacher?.username || 'Not specified'}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Calendar className="w-4 h-4 text-gray-500" />

@@ -42,7 +42,13 @@ public class AnswerValidationUtil {
     public static boolean isAnswerCorrectByIds(List<Long> selectedOptionIds, 
                                              List<QuestionOption> correctOptions, 
                                              Question.QuestionType questionType) {
+        log.info("=== AnswerValidationUtil.isAnswerCorrectByIds ===");
+        log.info("Selected option IDs: {}", selectedOptionIds);
+        log.info("Question type: {}", questionType);
+        log.info("Correct options: {}", correctOptions);
+        
         if (selectedOptionIds.isEmpty()) {
+            log.info("Selected options is empty, returning false");
             return false;
         }
         
@@ -51,16 +57,39 @@ public class AnswerValidationUtil {
                 .map(QuestionOption::getId)
                 .toList();
         
+        log.info("Correct option IDs: {}", correctOptionIds);
+        
         if (questionType == Question.QuestionType.SINGLE_CHOICE) {
-            // Single choice: Can only select one option, and must be the correct option
-            return selectedOptionIds.size() == 1 && correctOptionIds.contains(selectedOptionIds.get(0));
+            log.info("Processing SINGLE_CHOICE question");
+            boolean sizeCheck = selectedOptionIds.size() == 1;
+            
+            Long selectedId = selectedOptionIds.get(0);
+            log.info("Selected ID: {} (type: {})", selectedId, selectedId.getClass().getSimpleName());
+            log.info("Correct option IDs details:");
+            for (int i = 0; i < correctOptionIds.size(); i++) {
+                Long correctId = correctOptionIds.get(i);
+                log.info("  [{}]: {} (type: {})", i, correctId, correctId.getClass().getSimpleName());
+                log.info("  equals check: {}", selectedId.equals(correctId));
+            }
+            
+            boolean containsCheck = correctOptionIds.contains(selectedId);
+            log.info("Size check (should be 1): {} (actual size: {})", sizeCheck, selectedOptionIds.size());
+            log.info("Contains check: {} (checking if {} is in {})", containsCheck, selectedId, correctOptionIds);
+            
+            boolean result = sizeCheck && containsCheck;
+            log.info("Final result: {}", result);
+            return result;
         } else if (questionType == Question.QuestionType.MULTIPLE_CHOICE) {
+            log.info("Processing MULTIPLE_CHOICE question");
             // Multiple choice: Selected options must exactly match correct options
-            return selectedOptionIds.size() == correctOptionIds.size() && 
+            boolean result = selectedOptionIds.size() == correctOptionIds.size() && 
                    selectedOptionIds.containsAll(correctOptionIds) && 
                    correctOptionIds.containsAll(selectedOptionIds);
+            log.info("Final result: {}", result);
+            return result;
         }
         
+        log.info("Unknown question type, returning false");
         return false;
     }
 }

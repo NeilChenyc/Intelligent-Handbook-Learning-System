@@ -30,6 +30,33 @@ const CourseManagementPage = () => {
   const [selectedCourseForQuestions, setSelectedCourseForQuestions] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDepartment, setFilterDepartment] = useState('all');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+
+  // 过滤和搜索课程
+  const filteredCourses = courses.filter(course => {
+    // 搜索过滤
+    const matchesSearch = searchTerm === '' || 
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.teacher?.fullName && course.teacher.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (course.teacher?.username && course.teacher.username.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // 状态过滤
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'published' && course.isActive) ||
+      (filterStatus === 'unpublished' && !course.isActive);
+    
+    // 部门过滤
+    const matchesDepartment = filterDepartment === 'all' || 
+      course.department === filterDepartment ||
+      (filterDepartment === 'everyone' && (!course.department || course.department === 'Everyone'));
+    
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
+
+  // 获取所有唯一的部门
+  const departments = [...new Set(courses.map(course => course.department || 'Everyone'))];
 
   // GetCourseData
   const fetchCourses = async (retryCount = 0) => {
@@ -70,6 +97,20 @@ const CourseManagementPage = () => {
   useEffect(() => {
     fetchCourses();
   }, []);
+
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFilterDropdown && !event.target.closest('.filter-dropdown-container')) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilterDropdown]);
 
   const handleUploadClick = () => {
     setShowUploadModal(true);
@@ -164,10 +205,68 @@ const CourseManagementPage = () => {
             />
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
           </div>
-          <Button variant="outline" className="flex items-center space-x-2">
-            <Filter className="w-4 h-4" />
-            <span>Filter</span>
-          </Button>
+          <div className="relative filter-dropdown-container">
+            <Button 
+              variant="outline" 
+              className="flex items-center space-x-2"
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filter</span>
+            </Button>
+            
+            {/* Filter dropdown */}
+            {showFilterDropdown && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                <div className="p-4 space-y-4">
+                  {/* Status filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select 
+                      value={filterStatus} 
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="published">Published</option>
+                      <option value="unpublished">Unpublished</option>
+                    </select>
+                  </div>
+                  
+                  {/* Department filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <select 
+                      value={filterDepartment} 
+                      onChange={(e) => setFilterDepartment(e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="all">All Departments</option>
+                      {departments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Clear filters */}
+                  <div className="pt-2 border-t border-gray-200">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => {
+                        setFilterStatus('all');
+                        setFilterDepartment('all');
+                        setSearchTerm('');
+                      }}
+                    >
+                      Clear All Filters
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -192,21 +291,40 @@ const CourseManagementPage = () => {
                 Retry
               </Button>
             </div>
-          ) : courses.length === 0 ? (
+          ) : filteredCourses.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <BookOpen className="w-12 h-12 mx-auto" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
-              <p className="text-gray-500 mb-4">Start by uploading your first course manual</p>
-              <Button onClick={() => setShowUploadModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Course
-              </Button>
+              {courses.length === 0 ? (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
+                  <p className="text-gray-500 mb-4">Start by uploading your first course manual</p>
+                  <Button onClick={() => setShowUploadModal(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Course
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No courses match your filters</h3>
+                  <p className="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setFilterStatus('all');
+                      setFilterDepartment('all');
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {courses.map((course) => (
+              {filteredCourses.map((course) => (
                 <div key={course.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -216,7 +334,13 @@ const CourseManagementPage = () => {
                           {course.isActive ? 'Published' : 'Unpublished'}
                         </span>
                       </div>
-                      <p className="text-gray-600 mb-4">{course.description}</p>
+                      <p className="text-gray-600 mb-4" style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>{course.description}</p>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                         <div className="flex items-center space-x-1">
@@ -225,7 +349,7 @@ const CourseManagementPage = () => {
                         </div>
                         <div className="flex items-center space-x-1">
                           <FileText className="w-4 h-4" />
-                          <span>Teacher: {course.teacher?.fullName || course.teacher?.username || 'Unknown'}</span>
+                          <span>Instructor: {course.teacher?.fullName || course.teacher?.username || 'Unknown'}</span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Tag className="w-4 h-4" />

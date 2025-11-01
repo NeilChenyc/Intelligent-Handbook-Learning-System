@@ -30,6 +30,9 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
     department: 'Everyone'
   });
 
+  // AI Description Generation state
+  const [enableAIDescription, setEnableAIDescription] = useState(false);
+
   // Department options
   const departments = [
     { value: 'Everyone', label: 'Everyone' },
@@ -127,7 +130,8 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
        type: 'course_upload',
        status: 'uploading',
        uploadProgress: 0,
-       enableAI: enableAI
+       enableAI: enableAI,
+       enableAIDescription: enableAIDescription
      });
      setCurrentTaskId(createdTaskId);
 
@@ -135,10 +139,11 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       // Create FormData object
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
-      formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('description', enableAIDescription ? '' : (formData.description || ''));
       formDataToSend.append('department', formData.department || 'Everyone');
       formDataToSend.append('teacherId', '1'); // Temporarily hardcode teacher ID
       formDataToSend.append('handbookFile', file);
+      formDataToSend.append('enableAIDescription', enableAIDescription.toString());
 
       // Call backend API with progress simulation
       setUploadProgress(10);
@@ -165,11 +170,11 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
       // Update task progress
        updateTask(createdTaskId, {
          uploadProgress: 100,
-         status: enableAI ? 'ai_processing' : 'completed'
+         status: (enableAI || enableAIDescription) ? 'ai_processing' : 'completed'
        });
 
       // If AI is enabled, trigger AI processing
-      if (enableAI) {
+      if (enableAI || enableAIDescription) {
         await handleAIProcessing(courseData.id, createdTaskId);
       } else {
         // Complete upload process directly
@@ -214,6 +219,8 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
         questionsPerQuiz: agentConfig.questionsPerQuiz,
         difficulty: agentConfig.difficulty,
         overwriteExisting: true,
+        enableQuizGeneration: enableAI,
+        enableDescriptionGeneration: enableAIDescription,
         additionalInstructions: 'Please generate high-quality quiz questions based on PDF content'
       };
 
@@ -574,17 +581,51 @@ const CourseUploadModal = ({ isOpen, onClose, onUpload }) => {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
-                  placeholder="Please enter course description"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Course Description
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <Brain className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs text-gray-600">AI Smart Description Generation</span>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableAIDescription}
+                        onChange={(e) => setEnableAIDescription(e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                        enableAIDescription ? 'bg-purple-600' : 'bg-gray-300'
+                      }`}>
+                        <span className={`inline-block h-2 w-2 transform rounded-full bg-white transition-transform ${
+                          enableAIDescription ? 'translate-x-4' : 'translate-x-1'
+                        }`} />
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                {enableAIDescription ? (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Brain className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm text-purple-800 font-medium">AI will generate course description from PDF content</span>
+                    </div>
+                    <p className="text-xs text-purple-700">
+                      The AI will analyze your uploaded PDF and automatically create a comprehensive course description based on the content, learning objectives, and key topics covered.
+                    </p>
+                  </div>
+                ) : (
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                    placeholder="Please enter course description"
+                  />
+                )}
               </div>
 
               <div className="md:col-span-2">

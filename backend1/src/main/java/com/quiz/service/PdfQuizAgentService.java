@@ -65,6 +65,26 @@ public class PdfQuizAgentService {
             .callTimeout(java.time.Duration.ofSeconds(150))
             .build();
 
+    /**
+     * OpenAI Course Description Generator API
+     */
+    public interface CourseDescriptionGenerator {
+        @SystemMessage("""
+            You are a professional educational content analyst and course description expert. Please generate high-quality course descriptions based on the provided PDF content.
+            
+            Requirements:
+            1. Carefully analyze the PDF content to understand core concepts, learning objectives, and knowledge points
+            2. Generate concise yet comprehensive course descriptions that highlight the main content and learning value
+            3. The description should include: course overview, main learning content, target audience, learning objectives, etc.
+            4. Use professional but accessible language, keep the length between 200-500 words
+            5. CRITICAL: Return ONLY the pure course description content without any prefixes, labels, or formatting
+            6. Do NOT include 'Course Title:', 'Course Overview:', or any other headers
+            7. Start directly with the description text in English only, no JSON format needed
+            8. IMPORTANT: The output must be in English only
+            """)
+        String generateCourseDescription(@UserMessage String prompt);
+    }
+
     /* * * OpenAI QuizGenerate器API */
     public interface QuizGenerator {
         @SystemMessage("""
@@ -137,29 +157,84 @@ public class PdfQuizAgentService {
                 log.warn("PDF文本读取失败或为空，继续使用文件输入进行AI处理");
             }
 
-            updateTaskStatus(taskId, "IN_PROGRESS", 40, "Calling AI to generate quizzes...", request.getCourseId());
-
-            // 3. 调用OpenAI生成测验
-            QuizGenerationRequest.QuizGenerationResponse generationResponse = 
-                    generateQuizzesWithAI(pdfContent, course, request, taskId);
-
-            updateTaskStatus(taskId, "IN_PROGRESS", 70, "Saving quizzes to database...", request.getCourseId());
-
-            // 4. Save生成的测验到Database
-            List<AgentProcessResult.QuizSummary> quizSummaries = 
-                    saveGeneratedQuizzes(course, generationResponse, request.getOverwriteExisting());
+            // 3. 并行处理Quiz和Description生成
+            List<CompletableFuture<Void>> tasks = new ArrayList<>();
+            List<AgentProcessResult.QuizSummary> quizSummaries = new ArrayList<>();
+            
+            // Quiz生成任务
+            if (Boolean.TRUE.equals(request.getEnableQuizGeneration())) {
+                CompletableFuture<Void> quizTask = CompletableFuture.runAsync(() -> {
+                    try {
+                        updateTaskStatus(taskId, "IN_PROGRESS", 40, "Generating quizzes with AI...", request.getCourseId());
+                        QuizGenerationRequest.QuizGenerationResponse generationResponse = 
+                                generateQuizzesWithAI(pdfContent, course, request, taskId);
+                        
+                        updateTaskStatus(taskId, "IN_PROGRESS", 60, "Saving quizzes to database...", request.getCourseId());
+                        List<AgentProcessResult.QuizSummary> generatedQuizzes = 
+                                saveGeneratedQuizzes(course, generationResponse, request.getOverwriteExisting());
+                        
+                        synchronized (quizSummaries) {
+                            quizSummaries.addAll(generatedQuizzes);
+                        }
+                        log.info("Quiz generation completed for course: {}", request.getCourseId());
+                    } catch (Exception e) {
+                        log.error("Quiz generation failed for course: {}, error: {}", request.getCourseId(), e.getMessage(), e);
+                        throw new RuntimeException("Quiz generation failed: " + e.getMessage(), e);
+                    }
+                });
+                tasks.add(quizTask);
+            }
+            
+            // Description生成任务
+            if (Boolean.TRUE.equals(request.getEnableDescriptionGeneration())) {
+                CompletableFuture<Void> descriptionTask = CompletableFuture.runAsync(() -> {
+                    try {
+                        updateTaskStatus(taskId, "IN_PROGRESS", 45, "Generating course description with AI...", request.getCourseId());
+                        String aiGeneratedDescription = generateCourseDescription(
+                            course.getHandbookFilePath(), 
+                            course.getHandbookFileName(),
+                            course.getTitle()
+                        );
+                        
+                        if (aiGeneratedDescription != null && !aiGeneratedDescription.trim().isEmpty()) {
+                            course.setDescription(aiGeneratedDescription);
+                            course.setUpdatedAt(LocalDateTime.now());
+                            courseRepository.save(course);
+                            log.info("AI generated description updated for course: {}, length: {}", 
+                                    request.getCourseId(), aiGeneratedDescription.length());
+                        } else {
+                            log.warn("AI description generation returned empty for course: {}", request.getCourseId());
+                        }
+                    } catch (Exception e) {
+                        log.error("Description generation failed for course: {}, error: {}", request.getCourseId(), e.getMessage(), e);
+                        // Description生成失败不应该中断整个流程
+                    }
+                });
+                tasks.add(descriptionTask);
+            }
+            
+            // 等待所有任务完成
+            if (!tasks.isEmpty()) {
+                updateTaskStatus(taskId, "IN_PROGRESS", 80, "Waiting for AI processing to complete...", request.getCourseId());
+                CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
+            }
 
             updateTaskStatus(taskId, "COMPLETED", 100, "Processing completed", request.getCourseId());
 
             LocalDateTime endTime = LocalDateTime.now();
             long processingTime = java.time.Duration.between(startTime, endTime).toMillis();
 
+            String processingLog = String.format("Successfully processed course. Quiz generation: %s, Description generation: %s, Generated quizzes: %d",
+                    Boolean.TRUE.equals(request.getEnableQuizGeneration()) ? "enabled" : "disabled",
+                    Boolean.TRUE.equals(request.getEnableDescriptionGeneration()) ? "enabled" : "disabled",
+                    quizSummaries.size());
+
             return AgentProcessResult.builder()
                     .status("SUCCESS")
                     .taskId(taskId)
                     .courseId(request.getCourseId())
                     .generatedQuizzes(quizSummaries)
-                    .processingLog("Successfully generated " + quizSummaries.size() + " quizzes")
+                    .processingLog(processingLog)
                     .startTime(startTime)
                     .endTime(endTime)
                     .processingTimeMs(processingTime)
@@ -828,7 +903,146 @@ private String uploadPdfToOpenAI(byte[] pdfBytes, String fileName) {
         return callOpenAIResponses(fileId, prompt, defaultRequest);
     }
 
-// Public method: Perform AI pre-check before storing (upload PDF + call Responses)
+    /**
+     * Call OpenAI Responses API for course description generation (simplified version)
+     */
+    private String callOpenAIResponsesForDescription(String fileId, String prompt) {
+        try {
+            // Build request JSON for description generation (simpler structure)
+            com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
+            root.put("model", openaiModel);
+            
+            // Continue constructing input message
+            com.fasterxml.jackson.databind.node.ArrayNode input = root.putArray("input");
+            com.fasterxml.jackson.databind.node.ObjectNode systemMsg = input.addObject();
+            systemMsg.put("role", "system");
+            com.fasterxml.jackson.databind.node.ArrayNode systemContent = systemMsg.putArray("content");
+            systemContent.addObject().put("type", "input_text").put("text", "You are a professional educational content analyst and course description expert. Generate high-quality course descriptions based on the provided PDF content. CRITICAL: Return ONLY the pure course description content without any prefixes, labels, or formatting. Do NOT include 'Course Title:', 'Course Overview:', or any other headers. Start directly with the description text in English only. Do not use Markdown code blocks, backticks, or any formatting markers.");
+            
+            com.fasterxml.jackson.databind.node.ObjectNode userMsg = input.addObject();
+            userMsg.put("role", "user");
+            com.fasterxml.jackson.databind.node.ArrayNode userContent = userMsg.putArray("content");
+            userContent.addObject().put("type", "input_text").put("text", prompt);
+            userContent.addObject().put("type", "input_file").put("file_id", fileId);
+
+            String json = objectMapper.writeValueAsString(root);
+            log.info("Calling Responses API for description: url={}{} , model={}, fileId={}, promptLen={}", openaiBaseUrl, "/responses", openaiModel, fileId, (prompt != null ? prompt.length() : 0));
+
+            RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
+            Request httpRequest = new Request.Builder()
+                    .url(openaiBaseUrl + "/responses")
+                    .post(body)
+                    .addHeader("Authorization", "Bearer " + openaiApiKey)
+                    .addHeader("OpenAI-Beta", "pdfs=v1")
+                    .build();
+
+            try (Response response = httpClient.newCall(httpRequest).execute()) {
+                String requestId = response.header("x-request-id");
+                String respBody = response.body() != null ? response.body().string() : null;
+                log.info("Description Responses API HTTP {} requestId={} bodyLen={}", response.code(), requestId, respBody != null ? respBody.length() : -1);
+                
+                if (!response.isSuccessful()) {
+                    log.error("Description Responses API failed: HTTP {}, body: {}", response.code(), respBody);
+                    return null;
+                }
+
+                if (respBody == null || respBody.isBlank()) {
+                    log.warn("Description Responses API returned empty body");
+                    return null;
+                }
+
+                // Parse response to extract description text (same logic as Quiz generation)
+                JsonNode responseJson = objectMapper.readTree(respBody);
+                String output = null;
+                
+                // Try output_text field first
+                if (responseJson.has("output_text")) {
+                    output = responseJson.get("output_text").asText();
+                }
+                
+                // If not found, try output array structure
+                if ((output == null || output.isBlank()) && responseJson.has("output") && responseJson.get("output").isArray() && responseJson.get("output").size() > 0) {
+                    JsonNode first = responseJson.get("output").get(0);
+                    if (first.has("content") && first.get("content").isArray()) {
+                        for (JsonNode part : first.get("content")) {
+                            if (part.has("type")) {
+                                String t = part.get("type").asText();
+                                if ("output_text".equals(t) && part.has("text")) {
+                                    output = part.get("text").asText();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (output != null && !output.isBlank()) {
+                    log.info("Generated course description length: {}", output.length());
+                    return output;
+                } else {
+                    log.warn("Unexpected response structure for description generation");
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error calling OpenAI Responses API for description: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Generate course description using AI based on PDF content
+     */
+    public String generateCourseDescription(byte[] pdfBytes, String fileName, String courseTitle) {
+        try {
+            // Environment variable fallback
+            if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
+                String envKey = System.getenv("OPENAI_API_KEY");
+                if (envKey != null && !envKey.isBlank()) {
+                    openaiApiKey = envKey;
+                    log.info("OpenAI API密钥已从环境变量回退加载");
+                }
+            }
+            if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
+                log.warn("OpenAI API密钥未配置或为默认值，无法生成课程描述");
+                throw new RuntimeException("OpenAI API密钥未配置或无效");
+            }
+
+            // Upload PDF to OpenAI
+            String fileId = uploadPdfToOpenAI(pdfBytes, fileName);
+            if (fileId == null) {
+                log.warn("上传PDF到OpenAI失败，无法生成课程描述");
+                throw new RuntimeException("上传PDF到OpenAI失败");
+            }
+
+            // Build prompt for course description generation
+            String prompt = String.format("""
+                Based on the uploaded PDF file content, generate a professional course description for the course "%s".
+                
+                Please analyze the PDF content structure, knowledge points, learning objectives, etc., and generate a concise yet comprehensive course description.
+                The description should include:
+                1. Course overview and main content
+                2. Learning objectives and expected outcomes
+                3. Target audience and prerequisites
+                4. Course features and value
+                
+                IMPORTANT: Return ONLY the course description content. Do NOT include any prefixes like "Course Title:", "Course Overview:", or any other labels. Start directly with the description text in English only, without any additional formatting or markers.
+                """, courseTitle);
+
+            // Call OpenAI Responses API for description generation
+            String description = callOpenAIResponsesForDescription(fileId, prompt);
+            if (description == null || description.isBlank()) {
+                log.warn("AI生成课程描述失败，返回默认描述");
+                return "本课程基于上传的PDF内容设计，涵盖相关领域的核心知识点和实践技能。";
+            }
+
+            return description.trim();
+
+        } catch (Exception e) {
+            log.error("生成课程描述时发生错误: {}", e.getMessage(), e);
+            return "本课程基于上传的PDF内容设计，涵盖相关领域的核心知识点和实践技能。";
+        }
+    }
 public void preflightCheckPdfWithOpenAI(byte[] pdfBytes, String fileName, String prompt) {
     if (openaiApiKey == null || openaiApiKey.isEmpty() || "your-api-key-here".equals(openaiApiKey)) {
         throw new RuntimeException("OpenAI API密钥未配置或无效");

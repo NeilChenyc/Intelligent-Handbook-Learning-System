@@ -204,6 +204,7 @@ const LoginPage = ({ onLogin, onShowRegister }) => {
             <p className="text-gray-600 text-sm">
               Don't have an account?
               <button
+                type="button"
                 onClick={onShowRegister}
                 className="text-blue-600 hover:text-blue-700 font-medium ml-1"
               >

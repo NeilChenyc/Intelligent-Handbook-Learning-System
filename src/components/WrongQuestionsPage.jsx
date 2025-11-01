@@ -24,13 +24,13 @@ const WrongQuestionsPage = () => {
   const defaultWrongQuestions = [
     {
       id: 'default-1',
-      question: '公司规定员工迟到超过多少分钟算作旷工半天？',
+      question: 'What is the company rule regarding how many minutes of lateness constitutes half a day of absenteeism?',
       type: 'single',
       options: [
-        { id: 'a', text: '15分钟' },
-        { id: 'b', text: '30分钟' },
-        { id: 'c', text: '45分钟' },
-        { id: 'd', text: '60分钟' }
+        { id: 'a', text: '15 minutes' },
+        { id: 'b', text: '30 minutes' },
+        { id: 'c', text: '45 minutes' },
+        { id: 'd', text: '60 minutes' }
       ],
       correctAnswer: 'b',
       explanation: '根据公司考勤制度，员工迟到超过30分钟将被视为旷工半天。',
@@ -204,37 +204,14 @@ const WrongQuestionsPage = () => {
       setIsCorrect(correct);
       setShowResult(true);
 
-      // If answered correctly, submit to backend and mark as redone
+      // If answered correctly, submit to backend but don't remove from list yet
       if (correct && currentQuestion.wrongQuestionId) {
         try {
           await submitWrongQuestionRedo(currentQuestion.wrongQuestionId, userAnswer);
-          
-          // Remove from wrong question list
-          const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
-          setWrongQuestions(updatedWrongQuestions);
-          
-          // Update wrong question count
-          setWrongQuestionsCount(prev => Math.max(0, prev - 1));
-          
-          // Update localStorage作为Backup
-          localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
-          
-          // If current is last question, go back to previous; otherwise keep current index
-          if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
-            setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
-          }
+          console.log('答案正确，已提交到后端');
         } catch (apiError) {
           console.error('提交错题重做失败:', apiError);
-          // APIFailure时仍然在本地Remove，但DisplayWarning
           setError('网络错误，但答案正确已记录');
-          
-          const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
-          setWrongQuestions(updatedWrongQuestions);
-          localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
-          
-          if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
-            setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
-          }
         }
       } else if (!correct) {
         // Answered incorrectly, keep in wrong question list
@@ -251,10 +228,25 @@ const WrongQuestionsPage = () => {
 
   const nextQuestion = () => {
     if (isCorrect) {
-      // If answered correctly, question already removed, no need to change index
+      // If answered correctly, now remove the question from the list
+      const updatedWrongQuestions = wrongQuestions.filter((_, index) => index !== currentQuestionIndex);
+      setWrongQuestions(updatedWrongQuestions);
+      
+      // Update wrong question count
+      setWrongQuestionsCount(prev => Math.max(0, prev - 1));
+      
+      // Update localStorage as backup
+      localStorage.setItem('wrongQuestions', JSON.stringify(updatedWrongQuestions));
+      
+      // Reset states
       setUserAnswer(null);
       setShowResult(false);
       setIsCorrect(false);
+      
+      // Adjust current question index if necessary
+      if (currentQuestionIndex >= updatedWrongQuestions.length && updatedWrongQuestions.length > 0) {
+        setCurrentQuestionIndex(updatedWrongQuestions.length - 1);
+      }
     } else {
       // If answered incorrectly, move to next question
       if (currentQuestionIndex < wrongQuestions.length - 1) {
@@ -371,7 +363,7 @@ const WrongQuestionsPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-              错题练习
+              Incorrect Question Practice
             </span>
             {showResult && (
               isCorrect ? 
@@ -437,7 +429,7 @@ const WrongQuestionsPage = () => {
                 {isCorrect ? 'Congratulations! You got it right! This question has been removed from the wrong questions list.' : currentQuestion?.explanation}
               </h4>
               <p className={isCorrect ? 'text-green-700' : 'text-yellow-700'}>
-                {isCorrect ? '恭喜您答对了！该题已从错题列表中移除。' : currentQuestion?.explanation}
+                {isCorrect ? 'Go next!' : currentQuestion?.explanation}
               </p>
             </div>
           )}

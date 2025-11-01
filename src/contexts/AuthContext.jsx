@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { clearChatSession } from '../api/chatbotApi';
 
 // Create authentication context
 const AuthContext = createContext();
@@ -47,6 +48,12 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('userInfo');
+    // Clear chatbot session when user logs out to prevent memory sharing
+    try {
+      clearChatSession();
+    } catch (error) {
+      console.error('Error clearing chat session on logout:', error);
+    }
   };
 
   // Check if user is logged in

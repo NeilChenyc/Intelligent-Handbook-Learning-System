@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
-import { CheckCircle, Clock, AlertCircle, ArrowLeft, BookOpen, Play, Lock, Trophy } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, ArrowLeft, BookOpen, Play, Lock, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCourseQuizListCached } from '../api/quizApi';
 import { API_BASE_URL } from '../config/api';
@@ -12,6 +12,7 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // TODO: Translate - Get course quiz data from backend
   useEffect(() => {
@@ -271,7 +272,40 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
             </div>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{course.title}</h1>
-              <p className="text-gray-600 mb-4">{course.description}</p>
+              <div className="mb-4">
+                <p 
+                  className={`text-gray-600 ${
+                    !isDescriptionExpanded 
+                      ? 'line-clamp-3 overflow-hidden' 
+                      : ''
+                  }`}
+                  style={!isDescriptionExpanded ? {
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'pre-wrap'
+                  } : {
+                    whiteSpace: 'pre-wrap'
+                  }}
+                >
+                  {course.description}
+                </p>
+                {course.description && course.description.split('\n').length > 3 && (
+                  <button
+                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 transition-colors"
+                  >
+                    <span>{isDescriptionExpanded ? 'Show Less' : 'Show More'}</span>
+                    {isDescriptionExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+              </div>
               <div className="flex items-center space-x-6 text-sm text-gray-600">
                 <span>Course ID: {course.id}</span>
                 <span>Quiz Count: {totalQuizzes}</span>
@@ -385,7 +419,12 @@ const CourseQuizListPage = ({ course, onBack, onProgressUpdate, onStartQuiz }) =
                       <h3 className="text-lg font-semibold text-gray-900">{quiz.title}</h3>
                     </div>
                     
-                    <p className="text-gray-600 mb-3">{quiz.description}</p>
+                    <p 
+                      className="text-gray-600 mb-3"
+                      style={{ whiteSpace: 'pre-wrap' }}
+                    >
+                      {quiz.description}
+                    </p>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
