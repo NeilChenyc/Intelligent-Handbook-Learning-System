@@ -21,12 +21,19 @@ import dev.langchain4j.service.UserMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import okhttp3.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 @Service
 @RequiredArgsConstructor
@@ -42,8 +49,96 @@ public class ChatbotService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
 
-    // TODO: Translate - In-memory store for chat memories per session
-    private final Map<String, ChatMemory> memoryStore = new java.util.concurrent.ConcurrentHashMap<>();
+    // 内部类：包装ChatMemory和过期时间戳
+    static class TimedChatMemory {
+        private final ChatMemory chatMemory;
+        private volatile long expirationTime; // 过期时间戳（毫秒）
+
+        TimedChatMemory(ChatMemory chatMemory, long ttlMillis) {
+            this.chatMemory = chatMemory;
+            this.expirationTime = System.currentTimeMillis() + ttlMillis;
+        }
+
+        public ChatMemory getChatMemory() {
+            return chatMemory;
+        }
+
+        public long getExpirationTime() {
+            return expirationTime;
+        }
+
+        // 续约TTL
+        public void renew(long ttlMillis) {
+            this.expirationTime = System.currentTimeMillis() + ttlMillis;
+        }
+
+        // 判断是否过期
+        public boolean isExpired() {
+            return System.currentTimeMillis() > expirationTime;
+        }
+    }
+
+    // 会话记忆存储（带过期时间）
+    private final ConcurrentHashMap<String, TimedChatMemory> memoryStore = new ConcurrentHashMap<>();
+
+    // Chatbot配置参数
+    @Value("${chatbot.session.ttl:15}")
+    private int sessionTtlMinutes; // 会话默认生存时间（分钟）
+
+    @Value("${chatbot.session.cleanup.interval:5}")
+    private int cleanupIntervalMinutes; // 清理任务执行间隔（分钟）
+
+    // 定时任务执行器
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    // 初始化方法：启动定时清理任务
+    @PostConstruct
+    public void init() {
+        long period = cleanupIntervalMinutes * 60 * 1000L;
+        scheduler.scheduleAtFixedRate(this::cleanupExpiredSessions, period, period, TimeUnit.MILLISECONDS);
+        log.info("Chatbot session cleanup scheduler started: interval = {} minutes, TTL = {} minutes",
+                 cleanupIntervalMinutes, sessionTtlMinutes);
+    }
+
+    // 清理过期会话的方法
+    private void cleanupExpiredSessions() {
+        try {
+            long currentTime = System.currentTimeMillis();
+            int cleanedCount = 0;
+
+            // 遍历所有会话，清理过期的
+            Iterator<Map.Entry<String, TimedChatMemory>> iterator = memoryStore.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<String, TimedChatMemory> entry = iterator.next();
+                if (entry.getValue().isExpired()) {
+                    iterator.remove();
+                    cleanedCount++;
+                    log.debug("Cleaned up expired session: {}", entry.getKey());
+                }
+            }
+
+            if (cleanedCount > 0) {
+                log.info("Cleanup completed: {} expired sessions removed", cleanedCount);
+            }
+        } catch (Exception e) {
+            log.error("Error during session cleanup", e);
+        }
+    }
+
+    // 销毁方法：关闭定时任务执行器
+    @PreDestroy
+    public void destroy() {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        log.info("Chatbot session cleanup scheduler stopped");
+    }
 
     // Per-request tool call tracking for frontend display
     private final ThreadLocal<List<String>> toolCallsContext = ThreadLocal.withInitial(java.util.ArrayList::new);
@@ -63,7 +158,41 @@ public class ChatbotService {
 
     private ChatMemory getOrCreateMemory(String sessionId) {
         String key = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId;
-        return memoryStore.computeIfAbsent(key, k -> MessageWindowChatMemory.withMaxMessages(10));
+        long ttlMillis = sessionTtlMinutes * 60 * 1000L;
+
+        // 尝试获取现有的会话记忆
+        TimedChatMemory timedMemory = memoryStore.get(key);
+
+        if (timedMemory != null) {
+            if (timedMemory.isExpired()) {
+                // 如果会话已过期，移除并创建新的
+                memoryStore.remove(key);
+                log.debug("Session {} has expired, creating new one", key);
+            } else {
+                // 如果会话未过期，续约并返回
+                timedMemory.renew(ttlMillis);
+                log.debug("Session {} renewed, new expiration time: {}", key,
+                         new Date(timedMemory.getExpirationTime()));
+                return timedMemory.getChatMemory();
+            }
+        }
+
+        // 创建新的会话记忆
+        ChatMemory newMemory = MessageWindowChatMemory.withMaxMessages(10);
+        TimedChatMemory newTimedMemory = new TimedChatMemory(newMemory, ttlMillis);
+
+        // 使用putIfAbsent确保线程安全
+        TimedChatMemory existing = memoryStore.putIfAbsent(key, newTimedMemory);
+        if (existing != null) {
+            // 如果在我们创建的同时有其他线程创建了，返回已有的并续约
+            existing.renew(ttlMillis);
+            log.debug("Session {} was created by another thread, using existing one", key);
+            return existing.getChatMemory();
+        }
+
+        log.debug("Session {} created, expiration time: {}", key,
+                 new Date(newTimedMemory.getExpirationTime()));
+        return newMemory;
     }
 
     /**
@@ -72,15 +201,15 @@ public class ChatbotService {
     private void cleanupMemoryOnToolError(String sessionId) {
         try {
             String key = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId;
-            ChatMemory memory = memoryStore.get(key);
-            
-            if (memory != null) {
+            TimedChatMemory timedMemory = memoryStore.get(key);
+
+            if (timedMemory != null) {
                 log.info("Cleaning up corrupted memory for session: {}", key);
-                
+
                 // Clear the entire memory to prevent tool call state corruption
                 memoryStore.remove(key);
                 log.info("Memory cleared for session: {}", key);
-                
+
                 // Clear any tool call context that might be lingering
                 try {
                     toolCallsContext.remove();
@@ -88,11 +217,12 @@ public class ChatbotService {
                 } catch (Exception e) {
                     log.warn("Failed to clear tool call context: {}", e.getMessage());
                 }
-                
+
                 // Create a fresh memory with smaller window to avoid future issues
                 try {
+                    long ttlMillis = sessionTtlMinutes * 60 * 1000L;
                     ChatMemory cleanMemory = MessageWindowChatMemory.withMaxMessages(5);
-                    memoryStore.put(key, cleanMemory);
+                    memoryStore.put(key, new TimedChatMemory(cleanMemory, ttlMillis));
                     log.info("Fresh memory created with reduced size (5 messages) for session: {}", key);
                 } catch (Exception e) {
                     log.warn("Failed to create clean memory for session {}: {}", key, e.getMessage());
