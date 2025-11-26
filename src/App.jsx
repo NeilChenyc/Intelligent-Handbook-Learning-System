@@ -19,6 +19,7 @@ import QuizManagementPage from './components/QuizManagementPage';
 import TestQuizPage from './components/TestQuizPage';
 import ChatbotPage from './components/ChatbotPage';
 import UploadProgressIndicator from './components/UploadProgressIndicator';
+import FocusTimer from './components/FocusTimer';
 
 // Main app content component
 const AppContent = () => {
@@ -276,19 +277,22 @@ const AppContent = () => {
     <div className="min-h-screen bg-gray-100">
       {/* 顶部导航栏 */}
       <Header />
-      
+
       <div className="flex h-[calc(100vh-80px)]">
         {/* 左侧侧边栏 */}
         <Sidebar activeMenu={activeMenu} onMenuChange={handleMenuChange} />
-        
+
         {/* 主体ContentArea */}
         <main className="flex-1 overflow-y-auto bg-white">
           {renderContent()}
         </main>
       </div>
-      
-      {/* UploadProgress指示器 */}
+
+      {/* 上传进度指示器 */}
       <UploadProgressIndicator />
+
+      {/* 学习专注模式 */}
+      {isAuthenticated() && <FocusTimer />}
     </div>
   );
 };
