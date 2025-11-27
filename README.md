@@ -1,4 +1,4 @@
-# AI-Powered Learning Management System
+<img width="1959" height="944" alt="image" src="https://github.com/user-attachments/assets/0211db65-d38d-4cf4-9c72-21a9eaf0a079" /># AI-Powered Learning Management System
 
 A comprehensive learning management system with AI agents for PDF-based quiz generation and intelligent chatbot assistance.
 
@@ -11,6 +11,11 @@ This is a full-stack learning management system that combines modern web technol
 - **Learning Analytics**: Progress tracking and performance analysis
 - **Content Management**: Course and quiz management system
 - **Compliance Monitoring**: Automated reporting and certificate management
+<img width="1959" height="944" alt="image" src="https://github.com/user-attachments/assets/07b3a7bf-e275-4190-a8f9-e493b0ef24d0" />
+<img width="1972" height="952" alt="image" src="https://github.com/user-attachments/assets/f83063f3-68e1-4db8-af56-8d4e99011ff4" />
+<img width="1890" height="921" alt="image" src="https://github.com/user-attachments/assets/1fda2755-1066-4c29-b711-b172cf14b263" />
+
+
 
 ## ✨ Key Features
 
