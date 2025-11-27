@@ -1,4 +1,4 @@
-<img width="1959" height="944" alt="image" src="https://github.com/user-attachments/assets/0211db65-d38d-4cf4-9c72-21a9eaf0a079" /># AI-Powered Learning Management System
+# AI-Powered Learning Management System
 
 A comprehensive learning management system with AI agents for PDF-based quiz generation and intelligent chatbot assistance.
 
