@@ -204,8 +204,8 @@ For questions about this project, please reach out to the development team.
 | `cam1` | Platform YOLO | `ly_counter` | `index = 8` AND `time = T` | `objcount` column |
 | `cam2` | Corridor 1 YOLO | `ly_counter` | `index = 13` AND `time = T` | `objcount` column (*Note 1*) |
 | `cam3` | Corridor 2 YOLO | `ly_counter` | `index = 14` AND `time = T` | `objcount` column (*Note 1*) |
-| `cam4` | Corridor 1 CSRNet | `ly_counter` | `index = 7` AND `time = T` | `density` column (*Note 2*) |
-| `cam5` | Corridor 2 CSRNet | `ly_counter` | `index = 12` AND `time = T` | `density` column |
+| `cam4` | Corridor 1 CSRNet | `ly_counter` | `index = 13` AND `time = T` | `density` column (*Note 2*) |
+| `cam5` | Corridor 2 CSRNet | `ly_counter` | `index = 14` AND `time = T` | `density` column |
 | `cam6` | Underpass YOLO | `ly_counter` | `index = 7` AND `time = T` | `objcount` column |
 | `Station4_In` | In-flow (last 30s) | `ly_counter` | `index = 7` | `sum(T) - sum(T - 30s)` |
 | `Station4_Out` | Out-flow (last 30s) | `ly_counter` | `index = 8` | `sum(T) - sum(T - 30s)` |
