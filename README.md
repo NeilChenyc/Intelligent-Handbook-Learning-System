@@ -200,7 +200,7 @@ For questions about this project, please reach out to the development team.
 
 | Model Input | 描述 | 表来源 | Source Logic / SQL Condition | 对应列 |
 | :--- | :--- | :--- | :--- | :--- |
-| `timestamp` | Time of prediction | `ly_counter` | `time` column | `T` |
+| `timestamp` | Time of prediction | `ly_counter` | `time` column | `time` |
 | `cam1` | Platform YOLO | `ly_counter` | `index = 8` AND `time = T` | `objcount` column |
 | `cam2` | Corridor 1 YOLO | `ly_counter` | `index = 13` AND `time = T` | `objcount` column |
 | `cam3` | Corridor 2 YOLO | `ly_counter` | `index = 14` AND `time = T` | `objcount` column |
