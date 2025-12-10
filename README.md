@@ -198,7 +198,7 @@ For questions about this project, please reach out to the development team.
 
 ## Mapping Table
 
-| Model Input Field | Description | Source Table | Source Logic / SQL Condition | Value Extraction |
+| Model Input | 描述 | 表来源 | Source Logic / SQL Condition | 对应列 |
 | :--- | :--- | :--- | :--- | :--- |
 | `timestamp` | Time of prediction | `ly_counter` | `time` column | `T` (e.g., "2023-12-10 08:35:00") |
 | `cam1` | Platform YOLO | `ly_counter` | `index = 8` AND `time = T` | `objcount` column |
